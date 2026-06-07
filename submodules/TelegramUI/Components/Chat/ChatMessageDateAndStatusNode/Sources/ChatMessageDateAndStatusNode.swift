@@ -12,6 +12,8 @@ import ReactionImageComponent
 import AnimationCache
 import MultiAnimationRenderer
 import TelegramStringFormatting
+// MARK: NAGRAM
+import NagramSettings
 
 private func maybeAddRotationAnimation(_ layer: CALayer, duration: Double) {
     if let _ = layer.animation(forKey: "clockFrameAnimation") {
@@ -1471,5 +1473,6 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
 }
 
 public func shouldDisplayInlineDateReactions(message: EngineMessage, isPremium: Bool, forceInline: Bool) -> Bool {
-    return false
+    // MARK: NAGRAM
+    return NagramSettings.shared.hideReactions
 }

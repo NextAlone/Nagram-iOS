@@ -131,6 +131,9 @@ swift_library(
         "//submodules/TelegramUI/Components/AvatarComponent",
         "//submodules/TelegramUI/Components/PeerManagement/OwnershipTransferController",
         "//submodules/TelegramUI/Components/GlassControls",
+        # MARK: NAGRAM
+        "//Nagram/SettingsSignal:NagramSettingsSignal",
+        "//Nagram/Settings:NagramSettings",
     ],
     visibility = [
         "//visibility:public",

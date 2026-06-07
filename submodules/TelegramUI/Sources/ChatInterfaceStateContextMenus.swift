@@ -24,6 +24,8 @@ import AdUI
 import TelegramNotices
 import ReactionListContextMenuContent
 import TelegramUIPreferences
+// MARK: NAGRAM — force-copy 增强开关模块
+import NagramSettings
 import TranslateUI
 import DebugSettingsUI
 import ChatPresentationInterfaceState
@@ -1307,7 +1309,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             }
         }
         
-        let isCopyProtected = chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()
+        // MARK: NAGRAM force-copy — 原条件追加 && !forceCopyEnabled，开启后无视 content protection 允许复制
+        let isCopyProtected = (chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !NagramSettings.shared.forceCopyEnabled
         if !messageText.isEmpty || richMessageMarkdown != nil || (resourceAvailable && isImage) || diceEmoji != nil {
             if !isExpired {
                 if !isPoll {

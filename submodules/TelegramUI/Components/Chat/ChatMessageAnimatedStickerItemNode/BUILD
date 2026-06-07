@@ -55,6 +55,8 @@ swift_library(
         "//submodules/TelegramUI/Components/Chat/MessageHaptics",
         "//submodules/TelegramUI/Components/Chat/ChatMessageTransitionNode",
         "//submodules/TelegramUI/Components/Chat/ChatMessageSuggestedPostInfoNode",
+        # MARK: NAGRAM
+        "//Nagram/Settings:NagramSettings",
     ],
     visibility = [
         "//visibility:public",

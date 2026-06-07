@@ -271,6 +271,9 @@ filegroup(
         "Telegram-iOS/en.lproj/Localizable.strings",
     ] + [
         "{}.lproj/Localizable.strings".format(language) for language in empty_languages
+    ] + [
+        # MARK: NAGRAM — Nagram 本地化字符串打进 app bundle
+        "//Nagram/Strings:NagramLocalizableStrings",
     ],
 )
 

@@ -11,6 +11,7 @@ import UndoUI
 import ChatShareMessageTagView
 import ReactionSelectionNode
 import TopMessageReactions
+import NagramSettings
 
 func chatShareToSavedMessagesAdditionalView(_ chatController: ChatControllerImpl, reactionItems: [ReactionItem], correlationIds: [Int64]) -> (() -> UndoOverlayControllerAdditionalView?)? {
     if !chatController.presentationInterfaceState.isPremium {
@@ -172,6 +173,9 @@ extension ChatControllerImpl {
             canShareToStory = false
         }
         if message.text.containsOnlyEmoji {
+            canShareToStory = false
+        }
+        if NagramSettings.shared.hideStories { // MARK: NAGRAM — 隐藏动态时移除聊天分享菜单里的发布到动态入口
             canShareToStory = false
         }
 

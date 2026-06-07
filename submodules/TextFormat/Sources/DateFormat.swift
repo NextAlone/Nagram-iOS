@@ -2,6 +2,8 @@ import Foundation
 import TelegramCore
 import TelegramPresentationData
 import TelegramUIPreferences
+// MARK: NAGRAM
+import NagramSettings
 
 public func stringForEntityFormattedDate(timestamp: Int32, format: MessageTextEntityType.DateTimeFormat, strings: PresentationStrings, dateTimeFormat: PresentationDateTimeFormat) -> String {
     switch format {
@@ -140,6 +142,9 @@ public func stringForMessageTimestamp(timestamp: Int32, dateTimeFormat: Presenta
         gmtime_r(&t, &timeinfo)
     }
     
+    // MARK: NAGRAM
+    var withSeconds = withSeconds
+    if NagramSettings.shared.secondsInMessages { withSeconds = true }
     return stringForShortTimestamp(hours: timeinfo.tm_hour, minutes: timeinfo.tm_min, seconds: withSeconds ? timeinfo.tm_sec : nil, dateTimeFormat: dateTimeFormat)
 }
 

@@ -17,6 +17,8 @@ swift_library(
         "//submodules/Markdown:Markdown",
         "//submodules/Emoji:Emoji",
         "//third-party/libprisma",
+        # MARK: NAGRAM
+        "//Nagram/Settings:NagramSettings",
     ],
     visibility = [
         "//visibility:public",

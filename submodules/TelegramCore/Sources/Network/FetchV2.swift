@@ -4,6 +4,7 @@ import SwiftSignalKit
 import MtProtoKit
 import RangeSet
 import TelegramApi
+import NagramSettings // MARK: NAGRAM — 下载加速
 
 private let possiblePartLengths: [Int64] = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576]
 
@@ -388,9 +389,10 @@ private final class FetchImpl {
             }
             
             if isStory {
-                self.defaultPartSize = 512 * 1024
+                // MARK: NAGRAM — 下载加速:按档位放大分片(小文件保持默认)
+                self.defaultPartSize = NagramSettings.shared.downloadPartSize(default: 512 * 1024, fileSize: self.size)
             } else {
-                self.defaultPartSize = 128 * 1024
+                self.defaultPartSize = NagramSettings.shared.downloadPartSize(default: 128 * 1024, fileSize: self.size)
             }
             self.cdnPartSize = 128 * 1024
             
@@ -440,7 +442,7 @@ private final class FetchImpl {
                     maxPartSize: 1 * 1024 * 1024,
                     partAlignment: 4 * 1024,
                     partDivision: 1 * 1024 * 1024,
-                    maxPendingParts: 6,
+                    maxPendingParts: NagramSettings.shared.maxPendingDownloadParts(default: 6),
                     decryptionState: decryptionState
                 ))
             }
@@ -696,7 +698,7 @@ private final class FetchImpl {
                             maxPartSize: self.cdnPartSize * 2,
                             partAlignment: self.cdnPartSize,
                             partDivision: 1 * 1024 * 1024,
-                            maxPendingParts: 6,
+                            maxPendingParts: NagramSettings.shared.maxPendingDownloadParts(default: 6),
                             decryptionState: nil
                         ))
                         self.update()
@@ -745,7 +747,7 @@ private final class FetchImpl {
                                 maxPartSize: self.defaultPartSize,
                                 partAlignment: 4 * 1024,
                                 partDivision: 1 * 1024 * 1024,
-                                maxPendingParts: 6,
+                                maxPendingParts: NagramSettings.shared.maxPendingDownloadParts(default: 6),
                                 decryptionState: nil
                             ))
                             
@@ -935,7 +937,7 @@ private final class FetchImpl {
                             maxPartSize: self.cdnPartSize * 2,
                             partAlignment: self.cdnPartSize,
                             partDivision: 1 * 1024 * 1024,
-                            maxPendingParts: 6,
+                            maxPendingParts: NagramSettings.shared.maxPendingDownloadParts(default: 6),
                             decryptionState: nil
                         ))
                     case let .cdnRefresh(cdnData, refreshToken):

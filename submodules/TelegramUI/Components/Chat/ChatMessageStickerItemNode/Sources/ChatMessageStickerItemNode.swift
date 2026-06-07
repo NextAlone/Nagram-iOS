@@ -54,7 +54,9 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
     private var suggestedPostInfoNode: ChatMessageSuggestedPostInfoNode?
     
     private var viaBotNode: TextNode?
-    private let dateAndStatusNode: ChatMessageDateAndStatusNode
+    // MARK: NAGRAM — 贴纸尺寸系数（默认 1.0 = 原生）；dateAndStatusNode 放开可见性供 ChatMessageItemImpl 控制时间戳显隐
+    public var sizeCoefficient: Float = 1.0
+    public let dateAndStatusNode: ChatMessageDateAndStatusNode
     private var threadInfoNode: ChatMessageThreadInfoNode?
     private var replyInfoNode: ChatMessageReplyInfoNode?
     private var replyBackgroundContent: WallpaperBubbleBackgroundNode?
@@ -420,7 +422,8 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
     }
     
     override public func asyncLayout() -> (_ item: ChatMessageItem, _ params: ListViewItemLayoutParams, _ mergedTop: ChatMessageMerge, _ mergedBottom: ChatMessageMerge, _ dateHeaderAtBottom: ChatMessageHeaderSpec) -> (ListViewItemNodeLayout, (ListViewItemUpdateAnimation, ListViewItemApply, Bool) -> Void) {
-        let displaySize = CGSize(width: 184.0, height: 184.0)
+        // MARK: NAGRAM — 贴纸尺寸系数缩放
+        let displaySize = CGSize(width: 184.0 * CGFloat(self.sizeCoefficient), height: 184.0 * CGFloat(self.sizeCoefficient))
         let telegramFile = self.telegramFile
         let layoutConstants = self.layoutConstants
         let imageLayout = self.imageNode.asyncLayout()

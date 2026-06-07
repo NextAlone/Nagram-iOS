@@ -24,6 +24,8 @@ swift_library(
         "//submodules/AudioWaveform",
         "//submodules/UndoUI",
         "//submodules/TextFormat",
+        # MARK: NAGRAM
+        "//Nagram/Settings:NagramSettings",
     ],
     visibility = [
         "//visibility:public",

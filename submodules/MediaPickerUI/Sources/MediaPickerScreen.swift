@@ -34,6 +34,8 @@ import GlassBarButtonComponent
 import GlassControls
 import AlertComponent
 import MultilineTextComponent
+// MARK: NAGRAM
+import NagramSettings
 
 final class MediaPickerInteraction {
     let downloadManager: AssetDownloadManager
@@ -710,8 +712,8 @@ public final class MediaPickerScreenImpl: ViewController, MediaPickerScreen, Att
                 }
             }
             
-            if useLegacyCamera {
-                let enableAnimations = self.controller?.context.sharedContext.energyUsageSettings.fullTranslucency ?? true
+            if useLegacyCamera && !NagramSettings.shared.disableGalleryCamera { // MARK: NAGRAM
+                let enableAnimations = (self.controller?.context.sharedContext.energyUsageSettings.fullTranslucency ?? true) && !NagramSettings.shared.disableGalleryCameraPreview // MARK: NAGRAM
   
                 let cameraView = TGAttachmentCameraView(forSelfPortrait: false, videoModeByDefault: controller.bannedSendPhotos != nil && controller.bannedSendVideos == nil)!
                 cameraView.clipsToBounds = true
@@ -734,7 +736,7 @@ public final class MediaPickerScreenImpl: ViewController, MediaPickerScreen, Att
                 
                 self.gridNode.scrollView.addSubview(cameraView)
                 self.gridNode.addSubnode(self.cameraActivateAreaNode)
-            } else if useModernCamera, !Camera.isIpad {
+            } else if useModernCamera, !Camera.isIpad, !NagramSettings.shared.disableGalleryCamera { // MARK: NAGRAM
                 #if !targetEnvironment(simulator)
                 var cameraPosition: Camera.Position = .back
                 if case .assets(nil, .createAvatar) = controller.subject {
@@ -899,14 +901,20 @@ public final class MediaPickerScreenImpl: ViewController, MediaPickerScreen, Att
             let isCameraActive = !self.isSuspended && !self.hasGallery && self.isCameraPreviewVisible
             if let cameraView = self.cameraView {
                 if isCameraActive {
-                    cameraView.resumePreview()
+                    // MARK: NAGRAM
+                    if !NagramSettings.shared.disableGalleryCameraPreview {
+                        cameraView.resumePreview()
+                    }
                 } else {
                     cameraView.pausePreview()
                 }
             } else if let camera = self.modernCamera, let cameraView = self.modernCameraView {
                 if isCameraActive {
-                    cameraView.isEnabled = true
-                    camera.startCapture()
+                    // MARK: NAGRAM
+                    if !NagramSettings.shared.disableGalleryCameraPreview {
+                        cameraView.isEnabled = true
+                        camera.startCapture()
+                    }
                 } else {
                     cameraView.isEnabled = false
                     camera.stopCapture()

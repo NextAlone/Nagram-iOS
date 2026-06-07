@@ -18,6 +18,8 @@ import AsyncDisplayKit
 import PresentationDataUtils
 import FetchManagerImpl
 import InAppPurchaseManager
+import NagramSettings
+import NagramStrings
 import AnimationCache
 import MultiAnimationRenderer
 import DCTAnimationCacheImpl
@@ -820,6 +822,8 @@ public final class AccountContextImpl: AccountContext {
     }
     
     public func requestCall(peerId: PeerId, isVideo: Bool, completion: @escaping () -> Void) {
+        // MARK: NAGRAM — 通话前确认:原逻辑封装为 makeCall,confirmCalls 开启时先弹确认
+        let makeCall: () -> Void = {
         guard let callResult = self.sharedContext.callManager?.requestCall(context: self, peerId: peerId, isVideo: isVideo, endCurrentIfAny: false) else {
             return
         }
@@ -886,6 +890,16 @@ public final class AccountContextImpl: AccountContext {
             }
         } else {
             completion()
+        }
+        }
+        // MARK: NAGRAM — 通话前确认
+        if NagramSettings.shared.confirmCalls {
+            let presentationData = self.sharedContext.currentPresentationData.with { $0 }
+            self.sharedContext.mainWindow?.present(textAlertController(context: self, title: nil, text: isVideo ? ngI18n("Nagram.ConfirmCall.Video", presentationData.strings.baseLanguageCode) : ngI18n("Nagram.ConfirmCall.Audio", presentationData.strings.baseLanguageCode), actions: [TextAlertAction(type: .genericAction, title: presentationData.strings.Common_Cancel, action: {}), TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {
+                makeCall()
+            })]), on: .root)
+        } else {
+            makeCall()
         }
     }
 }

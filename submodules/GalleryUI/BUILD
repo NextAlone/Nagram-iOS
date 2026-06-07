@@ -76,6 +76,8 @@ swift_library(
         "//submodules/TelegramUI/Components/GlassControls",
         "//submodules/TelegramUI/Components/VideoPlaybackControlsComponent",
         "//submodules/UIKitRuntimeUtils",
+        # MARK: NAGRAM
+        "//Nagram/Settings:NagramSettings",
     ],
     visibility = [
         "//visibility:public",

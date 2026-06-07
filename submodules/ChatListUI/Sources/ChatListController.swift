@@ -10,6 +10,8 @@ import TelegramUIPreferences
 import TelegramBaseController
 import OverlayStatusController
 import AccountContext
+import NagramSettingsSignal
+import NagramSettings
 import AlertUI
 import PresentationDataUtils
 import UndoUI
@@ -2129,12 +2131,17 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             if self.previewing {
                 self.storiesReady.set(.single(true))
             } else {
-                self.storySubscriptionsDisposable = (self.context.engine.messages.storySubscriptions(isHidden: self.location == .chatList(groupId: .archive))
-                |> deliverOnMainQueue).startStrict(next: { [weak self] rawStorySubscriptions in
+                // MARK: NAGRAM — 隐藏动态:combineLatest hideStories 开关,开启时清空 stories 订阅(即时刷新)
+                self.storySubscriptionsDisposable = (combineLatest(self.context.engine.messages.storySubscriptions(isHidden: self.location == .chatList(groupId: .archive)), nagramBoolSignal("nagram.hideStories", defaultValue: false))
+                |> deliverOnMainQueue).startStrict(next: { [weak self] rawStorySubscriptions, hideStories in
                     guard let self else {
                         return
                     }
-                    
+
+                    var rawStorySubscriptions = rawStorySubscriptions
+                    if hideStories {
+                        rawStorySubscriptions = EngineStorySubscriptions(accountItem: nil, items: [], hasMoreToken: nil)
+                    }
                     self.rawStorySubscriptions = rawStorySubscriptions
                     var items: [EngineStorySubscriptions.Item] = []
                     if self.shouldFixStorySubscriptionOrder {
@@ -2886,6 +2893,9 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     
     private weak var storyCameraTooltip: TooltipScreen?
     fileprivate func openStoryCamera(fromList: Bool, gesturePullOffset: CGFloat? = nil) {
+        if NagramSettings.shared.hideStories { // MARK: NAGRAM — 隐藏动态时禁止打开动态发布页
+            return
+        }
         guard !self.context.isFrozen else {
             let controller = self.context.sharedContext.makeAccountFreezeInfoScreen(context: self.context)
             self.push(controller)
@@ -3495,6 +3505,13 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         }
     }
     
+    // MARK: NAGRAM — hideTabBar 时 header「⋯」入口:push 完整系统设置页。
+    @objc fileprivate func settingsPressed() {
+        if let rootController = self.context.sharedContext.mainWindow?.viewController as? TelegramRootControllerInterface, let settingsController = rootController.getSettingsController() {
+            (self.navigationController as? NavigationController)?.pushViewController(settingsController)
+        }
+    }
+
     @objc func editPressed() {
         if self.secondaryContext == nil {
             if case .chatList(.root) = self.chatListDisplayNode.effectiveContainerNode.location {
@@ -3530,8 +3547,12 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         if let layout = self.validLayout {
             self.updateLayout(layout: layout, transition: .animated(duration: 0.2, curve: .easeInOut))
         }
+        // MARK: NAGRAM — hideTabBar 时进入选择模式显示 tab bar 区(供选择 toolbar)
+        if NagramSettings.shared.hideTabBar {
+            (self.parent as? TabBarController)?.updateIsTabBarHidden(false, transition: .animated(duration: 0.2, curve: .easeInOut))
+        }
     }
-    
+
     @objc fileprivate func donePressed() {
         let skipLayoutUpdate = self.reorderingDonePressed()
         
@@ -3556,8 +3577,12 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                 self.updateLayout(layout: layout, transition: .animated(duration: 0.2, curve: .easeInOut))
             }
         }
+        // MARK: NAGRAM — hideTabBar 时结束选择模式重新隐藏 tab bar
+        if NagramSettings.shared.hideTabBar {
+            (self.parent as? TabBarController)?.updateIsTabBarHidden(true, transition: .animated(duration: 0.2, curve: .easeInOut))
+        }
     }
-    
+
     private var skipTabContainerUpdate = false
     fileprivate func reorderingDonePressed() -> Bool {
         guard let defaultFilters = self.tabContainerData else {
@@ -4717,7 +4742,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         completion?()
         
         self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: transition)
-        (self.parent as? TabBarController)?.updateIsTabBarHidden(false, transition: transition)
+        (self.parent as? TabBarController)?.updateIsTabBarHidden(NagramSettings.shared.hideTabBar ? true : false, transition: transition) // MARK: NAGRAM — 搜索关闭恢复时保持 hideTabBar
         
         self.isSearchActive = false
         if let navigationController = self.navigationController as? NavigationController {
@@ -6537,6 +6562,9 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         return self.storyCameraTransitionInCoordinator != nil
     }
     func storyCameraPanGestureChanged(transitionFraction: CGFloat) {
+        if NagramSettings.shared.hideStories { // MARK: NAGRAM — 隐藏动态时禁止侧滑进入动态发布页
+            return
+        }
         guard let rootController = self.context.sharedContext.mainWindow?.viewController as? TelegramRootControllerInterface else {
             return
         }
@@ -6583,6 +6611,9 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     }
     
     var isStoryPostingAvailable: Bool {
+        if NagramSettings.shared.hideStories { // MARK: NAGRAM — 隐藏动态时同步禁用发布动态手势入口
+            return false
+        }
         guard !self.context.isFrozen else {
             return false
         }
@@ -6714,11 +6745,15 @@ private final class ChatListLocationContext {
     var rightButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>?
     var proxyButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>?
     var storyButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>?
-    
+    var settingsButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>? // MARK: NAGRAM — hideTabBar 时的 header 设置入口
+
     var rightButtons: [AnyComponentWithIdentity<NavigationButtonComponentEnvironment>] {
         var result: [AnyComponentWithIdentity<NavigationButtonComponentEnvironment>] = []
         if let rightButton = self.rightButton {
             result.append(rightButton)
+        }
+        if let settingsButton = self.settingsButton { // MARK: NAGRAM
+            result.append(settingsButton)
         }
         if let storyButton = self.storyButton {
             result.append(storyButton)
@@ -6838,12 +6873,14 @@ private final class ChatListLocationContext {
                     isReorderingTabs,
                     peerStatus,
                     parentController.updatedPresentationData.1,
-                    storyPostingAvailable
-                ).startStrict(next: { [weak self] networkState, proxy, passcode, stateAndFilterId, isReorderingTabs, peerStatus, presentationData, storyPostingAvailable in
+                    // MARK: NAGRAM — 合并 hideStories signal，使其变化即时触发 header 重算(同步隐藏发布动态按钮)
+                    combineLatest(storyPostingAvailable, nagramBoolSignal("nagram.hideStories", defaultValue: false))
+                ).startStrict(next: { [weak self] networkState, proxy, passcode, stateAndFilterId, isReorderingTabs, peerStatus, presentationData, storyPostingAvailableAndHideStories in
                     guard let self else {
                         return
                     }
-                    
+                    let storyPostingAvailable = storyPostingAvailableAndHideStories.0
+
                     self.updateChatList(
                         networkState: networkState,
                         proxy: proxy,
@@ -7190,7 +7227,7 @@ private final class ChatListLocationContext {
                     }
                 }
                 
-                if storyPostingAvailable {
+                if storyPostingAvailable && !NagramSettings.shared.hideStories { // MARK: NAGRAM — 隐藏动态时同步隐藏顶部发布动态按钮
                     self.storyButton = AnyComponentWithIdentity(id: "story", component: AnyComponent(NavigationButtonComponent(
                         content: .icon(imageName: "Chat List/AddStoryIcon"),
                         pressed: { [weak self] _ in
@@ -7207,6 +7244,17 @@ private final class ChatListLocationContext {
                     )))
                 } else {
                     self.storyButton = nil
+                }
+                // MARK: NAGRAM — hideTabBar 时补 header 设置入口(隐藏 tab bar 后唯一进设置途径,防锁死)
+                if NagramSettings.shared.hideTabBar {
+                    self.settingsButton = AnyComponentWithIdentity(id: "settings", component: AnyComponent(NavigationButtonComponent(
+                        content: .more,
+                        pressed: { [weak self] _ in
+                            self?.parentController?.settingsPressed()
+                        }
+                    )))
+                } else {
+                    self.settingsButton = nil
                 }
             } else {
                 let parentController = self.parentController

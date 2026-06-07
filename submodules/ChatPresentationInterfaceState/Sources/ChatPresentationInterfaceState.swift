@@ -9,6 +9,8 @@ import AccountContext
 import ChatInterfaceState
 import ChatContextQuery
 import AudioWaveform
+// MARK: NAGRAM
+import NagramSettings
 
 public enum ChatMediaInputMode {
     case gif
@@ -844,8 +846,14 @@ public final class ChatPresentationInterfaceState: Equatable {
         self.reportReason = reportReason
         self.showCommands = showCommands
         self.hasBotCommands = hasBotCommands
-        self.showSendAsPeers = showSendAsPeers
-        self.sendAsPeers = sendAsPeers
+        // MARK: NAGRAM
+        if NagramSettings.shared.disableSendAsButton {
+            self.showSendAsPeers = false
+            self.sendAsPeers = nil
+        } else {
+            self.showSendAsPeers = showSendAsPeers
+            self.sendAsPeers = sendAsPeers
+        }
         self.botMenuButton = botMenuButton
         self.showWebView = showWebView
         self.currentSendAsPeerId = currentSendAsPeerId

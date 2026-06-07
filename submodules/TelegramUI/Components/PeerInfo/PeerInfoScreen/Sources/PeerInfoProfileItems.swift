@@ -16,6 +16,8 @@ import WebUI
 import AvatarNode
 import PeerNameColorItem
 import BoostLevelIconComponent
+import NagramSettings
+import NagramStrings
 
 private let enabledPublicBioEntities: EnabledEntityTypes = [.allUrl, .mention, .hashtag]
 private let enabledPrivateBioEntities: EnabledEntityTypes = [.internalUrl, .mention, .hashtag]
@@ -33,6 +35,7 @@ enum InfoSection: Int, CaseIterable {
     case peerMembers
     case channelMonoforum
     case botAffiliateProgram
+    case nagram // MARK: NAGRAM — 资料页 ID/DC/注册日期分组
 }
 
 func infoItems(
@@ -526,6 +529,19 @@ func infoItems(
                         items[currentPeerInfoSection]!.append(PeerInfoScreenCommentItem(id: ItemBotAddToChatInfo, text: presentationData.strings.Bot_AddToChatInfo))
                     }
                 }
+            }
+        }
+        // MARK: NAGRAM — 资料页 ID / 数据中心 / 注册日期(仅个人资料)
+        if NagramSettings.shared.showProfileId {
+            items[.nagram]!.append(PeerInfoScreenLabeledValueItem(id: 0, label: ngI18n("Nagram.ProfileId", presentationData.strings.baseLanguageCode), text: "\(user.id.id._internalGetInt64Value())", textColor: .primary, action: nil, requestLayout: { _ in interaction.requestLayout(false) }))
+        }
+        if NagramSettings.shared.showDC, let smallProfileImage = user.smallProfileImage, let cloudResource = smallProfileImage.resource as? CloudPeerPhotoSizeMediaResource {
+            items[.nagram]!.append(PeerInfoScreenLabeledValueItem(id: 1, label: ngI18n("Nagram.DataCenter", presentationData.strings.baseLanguageCode), text: "DC\(cloudResource.datacenterId)", textColor: .primary, action: nil, requestLayout: { _ in interaction.requestLayout(false) }))
+        }
+        if NagramSettings.shared.showRegDate, let cachedData = data.cachedData as? CachedUserData, let registrationDate = cachedData.peerStatusSettings?.registrationDate {
+            let components = registrationDate.components(separatedBy: ".")
+            if components.count == 2, let first = Int32(components[0]), let second = Int32(components[1]) {
+                items[.nagram]!.append(PeerInfoScreenLabeledValueItem(id: 2, label: ngI18n("Nagram.RegDate", presentationData.strings.baseLanguageCode), text: stringForMonth(strings: presentationData.strings, month: first - 1, ofYear: second - 1900), textColor: .primary, action: nil, requestLayout: { _ in interaction.requestLayout(false) }))
             }
         }
     } else if case let .channel(channel) = data.peer {

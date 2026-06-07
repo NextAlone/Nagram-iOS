@@ -117,7 +117,9 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
     private let disposables = DisposableSet()
 
     private var viaBotNode: TextNode?
-    private let dateAndStatusNode: ChatMessageDateAndStatusNode
+    // MARK: NAGRAM — 贴纸尺寸系数（默认 1.0 = 原生）；dateAndStatusNode 放开可见性供 ChatMessageItemImpl 控制时间戳显隐
+    public var sizeCoefficient: Float = 1.0
+    public let dateAndStatusNode: ChatMessageDateAndStatusNode
     private var threadInfoNode: ChatMessageThreadInfoNode?
     private var replyInfoNode: ChatMessageReplyInfoNode?
     private var replyBackgroundContent: WallpaperBubbleBackgroundNode?
@@ -832,7 +834,9 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
     }
         
     override public func asyncLayout() -> (_ item: ChatMessageItem, _ params: ListViewItemLayoutParams, _ mergedTop: ChatMessageMerge, _ mergedBottom: ChatMessageMerge, _ dateHeaderAtBottom: ChatMessageHeaderSpec) -> (ListViewItemNodeLayout, (ListViewItemUpdateAnimation, ListViewItemApply, Bool) -> Void) {
-        var displaySize = CGSize(width: 180.0, height: 180.0)
+        // MARK: NAGRAM — 贴纸尺寸系数缩放（本地变量，供下方视频缩略图分支复用）
+        let stickerSizeCoefficient = CGFloat(self.sizeCoefficient)
+        var displaySize = CGSize(width: 180.0 * stickerSizeCoefficient, height: 180.0 * stickerSizeCoefficient)
         let telegramFile = self.telegramFile
         let emojiFile = self.emojiFile
         let telegramDice = self.telegramDice
@@ -869,7 +873,7 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
             var imageBottomPadding: CGFloat = 0.0
             var imageHorizontalOffset: CGFloat = 0.0
             if !(telegramFile?.videoThumbnails.isEmpty ?? true) {
-                displaySize = CGSize(width: 240.0, height: 240.0)
+                displaySize = CGSize(width: 240.0 * stickerSizeCoefficient, height: 240.0 * stickerSizeCoefficient) // MARK: NAGRAM
                 imageVerticalInset = -20.0
                 imageHorizontalOffset = 12.0
             }

@@ -20,6 +20,8 @@ swift_library(
         "//submodules/Components/ComponentDisplayAdapters",
         "//submodules/TelegramUI/Components/TabBarComponent",
         "//submodules/TelegramUI/Components/GlassControls",
+        # MARK: NAGRAM
+        "//Nagram/Settings:NagramSettings",
     ],
     visibility = [
         "//visibility:public",

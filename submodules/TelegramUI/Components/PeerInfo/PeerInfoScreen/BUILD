@@ -97,6 +97,10 @@ swift_library(
         "//submodules/SearchUI",
         "//submodules/TelegramUI/Components/SendInviteLinkScreen",
         "//submodules/SettingsUI",
+        # MARK: NAGRAM — 增强设置页 UI 模块
+        "//Nagram/SettingsUI:NagramSettingsUI",
+        "//Nagram/Settings:NagramSettings",
+        "//Nagram/Strings:NagramStrings",
         "//submodules/ShareController",
         "//submodules/TelegramUI/Components/ShareWithPeersScreen",
         "//submodules/StatisticsUI",

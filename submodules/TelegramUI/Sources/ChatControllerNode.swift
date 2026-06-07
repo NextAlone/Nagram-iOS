@@ -68,6 +68,8 @@ import TextProcessingScreen
 import Pasteboard
 import UndoUI
 import BrowserUI
+// MARK: NAGRAM
+import NagramSettings
 
 final class VideoNavigationControllerDropContentItem: NavigationControllerDropContentItem {
     let itemNode: OverlayMediaItemNode
@@ -1783,7 +1785,18 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         var dismissedInputContextPanelNode: ChatInputContextPanelNode?
         var dismissedOverlayContextPanelNode: ChatInputContextPanelNode?
         
-        let inputPanelNodes = inputPanelForChatPresentationIntefaceState(self.chatPresentationInterfaceState, context: self.context, currentPanel: self.inputPanelNode, currentSecondaryPanel: self.secondaryInputPanelNode, textInputPanelNode: self.textInputPanelNode, chatControllerInteraction: self.controllerInteraction, interfaceInteraction: self.interfaceInteraction)
+        // MARK: NAGRAM — 隐藏频道底部面板（加入但禁言/未加入的频道）
+        var inputPanelNodes = inputPanelForChatPresentationIntefaceState(self.chatPresentationInterfaceState, context: self.context, currentPanel: self.inputPanelNode, currentSecondaryPanel: self.secondaryInputPanelNode, textInputPanelNode: self.textInputPanelNode, chatControllerInteraction: self.controllerInteraction, interfaceInteraction: self.interfaceInteraction)
+        if NagramSettings.shared.hideChannelBottomButton {
+            if self.chatPresentationInterfaceState.interfaceState.selectionState != nil || self.chatPresentationInterfaceState.search != nil {
+                self.inputPanelBackgroundNode.isHidden = false
+            } else if inputPanelNodes.primary != nil || inputPanelNodes.secondary != nil {
+                inputPanelNodes = inputPanelForChatPresentationIntefaceState(self.chatPresentationInterfaceState, context: self.context, currentPanel: self.inputPanelNode, currentSecondaryPanel: self.secondaryInputPanelNode, textInputPanelNode: self.textInputPanelNode, chatControllerInteraction: self.controllerInteraction, interfaceInteraction: self.interfaceInteraction, forceHideChannelButton: true)
+                if inputPanelNodes.primary == nil && inputPanelNodes.secondary == nil {
+                    self.inputPanelBackgroundNode.isHidden = true
+                }
+            }
+        }
         
         let inputPanelBottomInset = max(insets.bottom, inputPanelBottomInsetTerm)
         

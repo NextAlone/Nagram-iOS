@@ -6,6 +6,7 @@ import Postbox
 import TelegramCore
 import SwiftSignalKit
 import AccountContext
+import NagramSettings
 import TelegramPresentationData
 import TelegramUIPreferences
 import AvatarNode
@@ -188,6 +189,8 @@ enum PeerInfoSettingsSection {
     case premiumManagement
     case stars
     case ton
+    // MARK: NAGRAM — 增强设置入口
+    case nagram
 }
 
 enum PeerInfoReportType {
@@ -2037,7 +2040,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
                     UIView.transition(with: strongSelf.view, duration: 0.3, options: [.transitionCrossDissolve], animations: {
                     }, completion: nil)
                 }
-                (strongSelf.controller?.parent as? TabBarController)?.updateIsTabBarHidden(false, transition: .animated(duration: 0.3, curve: .linear))
+                (strongSelf.controller?.parent as? TabBarController)?.updateIsTabBarHidden(NagramSettings.shared.hideTabBar ? true : false, transition: .animated(duration: 0.3, curve: .linear)) // MARK: NAGRAM
             case .select:
                 strongSelf.state = strongSelf.state.withSelectedMessageIds(Set())
                 if let (layout, navigationHeight) = strongSelf.validLayout {
@@ -5114,7 +5117,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
         controller.dismissAllTooltips()
         
         if self.isSettings {
-            (self.controller?.parent as? TabBarController)?.updateIsTabBarHidden(false, transition: .animated(duration: 0.4, curve: .spring))
+            (self.controller?.parent as? TabBarController)?.updateIsTabBarHidden(NagramSettings.shared.hideTabBar ? true : false, transition: .animated(duration: 0.4, curve: .spring)) // MARK: NAGRAM
             controller.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .animated(duration: 0.4, curve: .spring))
         }
         
@@ -5846,6 +5849,10 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             } else {
                 if self.isSettings {
                     leftNavigationButtons.append(PeerInfoHeaderNavigationButtonSpec(key: .qrCode, isForExpandedView: false))
+                    // MARK: NAGRAM — hideTabBar 时设置页经 header push 进来,补 back 按钮(顺序严格对齐 SG:qrCode 之后)
+                    if NagramSettings.shared.hideTabBar {
+                        leftNavigationButtons.append(PeerInfoHeaderNavigationButtonSpec(key: .back, isForExpandedView: false))
+                    }
                     rightNavigationButtons.append(PeerInfoHeaderNavigationButtonSpec(key: .edit, isForExpandedView: false))
                 } else if self.isMyProfile {
                     rightNavigationButtons.append(PeerInfoHeaderNavigationButtonSpec(key: .edit, isForExpandedView: false))

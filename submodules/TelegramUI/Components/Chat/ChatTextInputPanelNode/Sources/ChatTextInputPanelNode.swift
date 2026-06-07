@@ -57,6 +57,8 @@ import ChatRecordingViewOnceButtonNode
 import ChatRecordingPreviewInputPanelNode
 import ChatInputContextPanelNode
 import RasterizedCompositionComponent
+// MARK: NAGRAM
+import NagramSettings
 
 private let counterFont = Font.with(size: 14.0, design: .regular, traits: [.monospacedNumbers])
 
@@ -1067,6 +1069,8 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         textInputNode.keyboardAppearance = keyboardAppearance
         textInputNode.tintColor = tintColor
         textInputNode.textView.scrollIndicatorInsets = UIEdgeInsets(top: 9.0, left: 0.0, bottom: 9.0, right: -13.0)
+        // MARK: NAGRAM — 回车发送开启时 return 键显示「发送」样式
+        textInputNode.textView.returnKeyType = NagramSettings.shared.sendWithReturnKey ? .send : .default
         self.textInputNodeClippingContainer.addSubnode(textInputNode)
         textInputNode.view.disablesInteractiveTransitionGestureRecognizer = true
         textInputNode.isUserInteractionEnabled = !self.sendingTextDisabled
@@ -2422,7 +2426,7 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         if additionalSideInsets.right > 0.0 {
             textFieldInsets.right += additionalSideInsets.right / 3.0
         }
-        if inputHasText || self.extendedSearchLayout || hasMediaDraft || hasForward || hasSlowmodeButton || isEditingMedia {
+        if NagramSettings.shared.hideRecordingButton || inputHasText || self.extendedSearchLayout || hasMediaDraft || hasForward || hasSlowmodeButton || isEditingMedia { // MARK: NAGRAM
         } else {
             if let customRightAction = self.customRightAction, case .empty = customRightAction {
                 textFieldInsets.right = 8.0
@@ -4496,8 +4500,8 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         let blurTransitionOut: ComponentTransition = transition.isAnimated ? .easeInOut(duration: 0.18) : .immediate
         let sendButtonBlurOut: CGFloat = 4.0
         
-        var hideMicButton = false
-        var hideMicButtonBackground = false
+        var hideMicButton = NagramSettings.shared.hideRecordingButton // MARK: NAGRAM
+        var hideMicButtonBackground = NagramSettings.shared.hideRecordingButton // MARK: NAGRAM
         
         if self.customRightAction != nil {
             self.mediaActionButtons.isHidden = true
@@ -4580,7 +4584,7 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
                 }
             }
             
-            if (hasText || keepSendButtonEnabled && !mediaInputIsActive && !hasSlowModeButton) {
+            if (NagramSettings.shared.hideRecordingButton || hasText || keepSendButtonEnabled && !mediaInputIsActive && !hasSlowModeButton) { // MARK: NAGRAM
                 if self.sendActionButtons.sendContainerNode.alpha.isZero && self.rightSlowModeInset.isZero {
                     alphaTransition.updateAlpha(node: self.sendActionButtons.sendContainerNode, alpha: 1.0)
                     blurTransitionIn.setBlur(layer: self.sendActionButtons.sendContainerNode.layer, radius: 0.0)
@@ -5204,6 +5208,11 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         }
         
         self.updateActivity()
+        // MARK: NAGRAM — 回车发送：输入换行符时直接发送，不插入换行
+        if NagramSettings.shared.sendWithReturnKey && text == "\n" {
+            self.sendButtonPressed()
+            return false
+        }
         var cleanText = text
         let removeSequences: [String] = ["\u{202d}", "\u{202c}"]
         for sequence in removeSequences {

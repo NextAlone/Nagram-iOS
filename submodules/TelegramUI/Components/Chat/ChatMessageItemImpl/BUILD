@@ -37,6 +37,8 @@ swift_library(
         "//submodules/AvatarVideoNode",
         "//submodules/ComponentFlow",
         "//submodules/TelegramUI/Components/EmojiStatusComponent",
+        # MARK: NAGRAM
+        "//Nagram/Settings:NagramSettings",
     ],
     visibility = [
         "//visibility:public",

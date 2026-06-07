@@ -39,6 +39,8 @@ import BundleIconComponent
 import VideoPlaybackControlsComponent
 import PhotoResources
 import GlassBackgroundComponent
+// MARK: NAGRAM
+import NagramSettings
 
 public enum UniversalVideoGalleryItemContentInfo {
     case message(Message, GalleryMediaSubject?)
@@ -2940,6 +2942,10 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
     }
     
     override func maybePerformActionForSwipeDismiss() -> Bool {
+        // MARK: NAGRAM — 关闭「上滑打开画中画」时不触发
+        if NagramSettings.shared.videoPIPSwipeDirection != "up" {
+            return false
+        }
         if let data = self.context.currentAppConfiguration.with({ $0 }).data {
             if let _ = data["ios_killswitch_disable_swipe_pip"] {
                 return false

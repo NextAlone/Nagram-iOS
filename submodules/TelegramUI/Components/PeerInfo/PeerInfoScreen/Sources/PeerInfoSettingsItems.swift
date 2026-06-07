@@ -13,11 +13,13 @@ import DeviceAccess
 import TelegramStringFormatting
 import PeerNameColorItem
 
+// MARK: NAGRAM — nagram 为独立设置分组，排在「我的资料」之后
 enum SettingsSection: Int, CaseIterable {
     case edit
     case phone
     case accounts
     case myProfile
+    case nagram
     case proxy
     case apps
     case shortcuts
@@ -150,7 +152,9 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
         items[.myProfile]!.append(PeerInfoScreenDisclosureItem(id: 0, text: presentationData.strings.Settings_MyProfile, icon: PresentationResourcesSettings.myProfile, action: {
             interaction.openSettings(.profile)
         }))
-        
+    }
+
+    if let settings = data.globalSettings {
         if !settings.proxySettings.servers.isEmpty {
             let proxyType: String
             if settings.proxySettings.enabled, let activeServer = settings.proxySettings.activeServer {
@@ -220,7 +224,12 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
     items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 4, text: presentationData.strings.Settings_ChatFolders, icon: PresentationResourcesSettings.chatFolders, action: {
         interaction.openSettings(.chatFolders)
     }))
-    
+
+    // MARK: NAGRAM — 增强设置入口
+    items[.nagram]!.append(PeerInfoScreenDisclosureItem(id: 50, text: "Nagram", icon: PresentationResourcesSettings.settings, action: {
+        interaction.openSettings(.nagram)
+    }))
+
     let notificationsWarning: Bool
     if let settings = data.globalSettings {
         notificationsWarning = shouldDisplayNotificationsPermissionWarning(status: settings.notificationAuthorizationStatus, suppressed:  settings.notificationWarningSuppressed)

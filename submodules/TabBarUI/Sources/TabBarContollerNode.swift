@@ -7,6 +7,7 @@ import ComponentFlow
 import ComponentDisplayAdapters
 import TabBarComponent
 import GlassControls
+import NagramSettings
 
 final class TabBarControllerNode: ASDisplayNode {
     private struct Params: Equatable {
@@ -168,7 +169,7 @@ final class TabBarControllerNode: ASDisplayNode {
         transition.updateAlpha(node: self.disabledOverlayNode, alpha: value ? 0.0 : 1.0)
     }
     
-    var tabBarHidden = false {
+    var tabBarHidden = NagramSettings.shared.hideTabBar { // MARK: NAGRAM — 初值读开关
         didSet {
             if self.tabBarHidden != oldValue {
                 self.requestUpdate()

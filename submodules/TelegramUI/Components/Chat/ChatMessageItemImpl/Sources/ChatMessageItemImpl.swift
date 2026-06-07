@@ -16,6 +16,7 @@ import ChatMessageItemView
 import ChatMessageStickerItemNode
 import ChatMessageAnimatedStickerItemNode
 import ChatMessageBubbleItemNode
+import NagramSettings
 
 private func mediaMergeableStyle(_ media: EngineRawMedia) -> ChatMessageMerge {
     if let story = media as? TelegramMediaStory, story.isMention {
@@ -566,6 +567,18 @@ public final class ChatMessageItemImpl: ChatMessageItem, CustomStringConvertible
         
         let configure = {
             let node = (viewClassName as! ChatMessageItemView.Type).init(rotated: self.controllerInteraction.chatIsRotated)
+            // MARK: NAGRAM — 贴纸尺寸 + 贴纸时间戳显隐
+            if let node = node as? ChatMessageStickerItemNode {
+                node.sizeCoefficient = Float(NagramSettings.shared.stickerSize) / 100.0
+                if !NagramSettings.shared.stickerTimestamp {
+                    node.dateAndStatusNode.isHidden = true
+                }
+            } else if let node = node as? ChatMessageAnimatedStickerItemNode {
+                node.sizeCoefficient = Float(NagramSettings.shared.stickerSize) / 100.0
+                if !NagramSettings.shared.stickerTimestamp {
+                    node.dateAndStatusNode.isHidden = true
+                }
+            }
             node.setupItem(self, synchronousLoad: synchronousLoads)
             
             let nodeLayout = node.asyncLayout()

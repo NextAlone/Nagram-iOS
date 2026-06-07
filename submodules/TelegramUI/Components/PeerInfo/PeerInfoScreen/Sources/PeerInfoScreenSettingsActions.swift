@@ -5,6 +5,8 @@ import AccountContext
 import SwiftSignalKit
 import TelegramCore
 import SettingsUI
+// MARK: NAGRAM — 增强设置页 UI 模块
+import NagramSettingsUI
 import PeerInfoStoryGridScreen
 import CallListUI
 import PassportUI
@@ -141,6 +143,9 @@ extension PeerInfoScreenNode {
             push(controller)
         case .dataAndStorage:
             push(dataAndStorageController(context: self.context))
+        // MARK: NAGRAM — 增强设置入口
+        case .nagram:
+            push(nagramSettingsController(context: self.context))
         case .appearance:
             push(themeSettingsController(context: self.context))
         case .language:
