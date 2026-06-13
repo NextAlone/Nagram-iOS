@@ -21,6 +21,15 @@
 
 通过 Bazel 构建,统一用 `build-system/Make/Make.py` 包装脚本;不支持分模块构建,只能整体编译 `Telegram/Telegram` target。命令末尾的 `--continueOnError` 会透传 bazel 的 `--keep_going`,验证大范围改动时让全部错误一次暴露。
 
+当前打包问题、Xcode/Bazel 环境约束和 2026-06-14 rebase 后编译记录见 [`docs/build.md`](docs/build.md)。
+
+**每次 rebase / checkout 上游后先同步 submodule**，否则会出现 `tgcalls` 缺文件、WebRTC/FFmpeg API 不匹配等假错误：
+
+```sh
+git submodule update --init --recursive
+git submodule status --recursive   # 确认没有 + / - / U 前缀
+```
+
 ### 模拟器(免签,验证最快)
 
 免签名 + 免扩展靠项目根的 `local.bazelrc`(已 gitignore 不入库,`.bazelrc` 末尾 `try-import %workspace%/local.bazelrc` 会加载它)注入两个 flag:
@@ -100,14 +109,26 @@ build --//Telegram:disableExtensions
 
 **5. 编译并安装**:
 
-```sh
-python3 build-system/Make/Make.py --overrideXcodeVersion \
-  --cacheDir ~/telegram-bazel-cache \
-  build \
-  --configurationPath build-input/local-configuration.json \
-  --xcodeManagedCodesigning --buildNumber=1 \
-  --configuration=debug_arm64 --continueOnError
+当前 `Make.py` 的 debug 配置会把 Swift `-j <n>` 当成输入文件传给编译器，真机 debug 包先走 direct Bazel。这个命令依赖 `build-input/configuration-repository/variables.bzl` 已由 `build-input/local-configuration.json` 生成；只改代码、不改本地配置时不用重新生成。
 
+```sh
+source ~/.zshrc 2>/dev/null
+build-input/bazel-8.4.2-darwin-arm64 build Telegram/Telegram \
+  --keep_going \
+  --announce_rc \
+  --features=swift.use_global_module_cache \
+  --verbose_failures \
+  --remote_cache_async \
+  --define=buildNumber=1 \
+  --disk_cache="$HOME/telegram-bazel-cache" \
+  -c dbg \
+  --ios_multi_cpus=arm64 \
+  --watchos_cpus=arm64_32
+```
+
+产物为 `bazel-bin/Telegram/Telegram.ipa`。安装到真机:
+
+```sh
 xcrun devicectl list devices        # 查设备 UDID
 unzip -o bazel-bin/Telegram/Telegram.ipa -d /tmp/tg-device
 xcrun devicectl device install app --device <DEVICE_UDID> /tmp/tg-device/Payload/Telegram.app
