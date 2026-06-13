@@ -160,7 +160,7 @@ genrule(
     ],
 )
 
-minimum_os_version = "13.0"
+minimum_os_version = "17.0"
 
 notificationServiceExtensionVersion = "v1"
 
