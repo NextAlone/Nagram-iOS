@@ -34,6 +34,9 @@ public class ItemListSwitchItem: ListViewItem, ItemListItem {
     let disableLeadingInset: Bool
     let maximumNumberOfLines: Int
     let noCorners: Bool
+    // MARK: NAGRAM — Allow switch rows to participate in ItemList drag sorting.
+    let editing: Bool
+    let reorderable: Bool
     public let sectionId: ItemListSectionId
     let style: ItemListStyle
     let updated: (Bool) -> Void
@@ -41,7 +44,7 @@ public class ItemListSwitchItem: ListViewItem, ItemListItem {
     let action: (() -> Void)?
     public let tag: ItemListItemTag?
     
-    public init(presentationData: ItemListPresentationData, systemStyle: ItemListSystemStyle = .legacy, icon: UIImage? = nil, title: String, text: String? = nil, textColor: TextColor = .primary, titleBadgeComponent: AnyComponent<Empty>? = nil, value: Bool, type: ItemListSwitchItemNodeType = .regular, enableInteractiveChanges: Bool = true, enabled: Bool = true, displayLocked: Bool = false, disableLeadingInset: Bool = false, maximumNumberOfLines: Int = 1, noCorners: Bool = false, sectionId: ItemListSectionId, style: ItemListStyle, updated: @escaping (Bool) -> Void, activatedWhileDisabled: @escaping () -> Void = {}, action: (() -> Void)? = nil, tag: ItemListItemTag? = nil) {
+    public init(presentationData: ItemListPresentationData, systemStyle: ItemListSystemStyle = .legacy, icon: UIImage? = nil, title: String, text: String? = nil, textColor: TextColor = .primary, titleBadgeComponent: AnyComponent<Empty>? = nil, value: Bool, type: ItemListSwitchItemNodeType = .regular, enableInteractiveChanges: Bool = true, enabled: Bool = true, displayLocked: Bool = false, disableLeadingInset: Bool = false, maximumNumberOfLines: Int = 1, noCorners: Bool = false, editing: Bool = false, reorderable: Bool = false, sectionId: ItemListSectionId, style: ItemListStyle, updated: @escaping (Bool) -> Void, activatedWhileDisabled: @escaping () -> Void = {}, action: (() -> Void)? = nil, tag: ItemListItemTag? = nil) {
         self.presentationData = presentationData
         self.systemStyle = systemStyle
         self.icon = icon
@@ -57,6 +60,8 @@ public class ItemListSwitchItem: ListViewItem, ItemListItem {
         self.disableLeadingInset = disableLeadingInset
         self.maximumNumberOfLines = maximumNumberOfLines
         self.noCorners = noCorners
+        self.editing = editing
+        self.reorderable = reorderable
         self.sectionId = sectionId
         self.style = style
         self.updated = updated
@@ -163,6 +168,8 @@ public class ItemListSwitchItemNode: ListViewItemNode, ItemListItemNode {
     private var titleBadgeComponentView: ComponentView<Empty>?
     
     private var lockedIconNode: ASImageNode?
+    // MARK: NAGRAM — Optional reorder handle for switch rows.
+    private var reorderControlNode: ItemListEditableReorderControlNode?
     
     private let activateArea: AccessibilityAreaNode
     
@@ -273,6 +280,8 @@ public class ItemListSwitchItemNode: ListViewItemNode, ItemListItemNode {
     func asyncLayout() -> (_ item: ItemListSwitchItem, _ params: ListViewItemLayoutParams, _ insets: ItemListNeighbors) -> (ListViewItemNodeLayout, (Bool) -> Void) {
         let makeTitleLayout = TextNode.asyncLayout(self.titleNode)
         let makeTextLayout = TextNode.asyncLayout(self.textNode)
+        // MARK: NAGRAM — Optional reorder handle for switch rows.
+        let reorderControlLayout = ItemListEditableReorderControlNode.asyncLayout(self.reorderControlNode)
         
         let currentItem = self.item
         var currentDisabledOverlayNode = self.disabledOverlayNode
@@ -340,7 +349,16 @@ public class ItemListSwitchItemNode: ListViewItemNode, ItemListItemNode {
                 insets.bottom = 0.0
             }
             
-            let (titleLayout, titleApply) = makeTitleLayout(TextNodeLayoutArguments(attributedString: NSAttributedString(string: item.title, font: titleFont, textColor: item.presentationData.theme.list.itemPrimaryTextColor), backgroundColor: nil, maximumNumberOfLines: item.maximumNumberOfLines, truncationType: .end, constrainedSize: CGSize(width: params.width - leftInset - params.rightInset - 64.0, height: CGFloat.greatestFiniteMagnitude), alignment: .natural, cutout: nil, insets: UIEdgeInsets()))
+            // MARK: NAGRAM — Reserve space for the reorder handle when editing.
+            var reorderControlSizeAndApply: (CGFloat, (CGFloat, Bool, ContainedViewLayoutTransition) -> ItemListEditableReorderControlNode)?
+            var reorderInset: CGFloat = 0.0
+            if item.editing && item.reorderable {
+                let reorderSizeAndApply = reorderControlLayout(item.presentationData.theme)
+                reorderControlSizeAndApply = reorderSizeAndApply
+                reorderInset = reorderSizeAndApply.0
+            }
+            
+            let (titleLayout, titleApply) = makeTitleLayout(TextNodeLayoutArguments(attributedString: NSAttributedString(string: item.title, font: titleFont, textColor: item.presentationData.theme.list.itemPrimaryTextColor), backgroundColor: nil, maximumNumberOfLines: item.maximumNumberOfLines, truncationType: .end, constrainedSize: CGSize(width: params.width - leftInset - params.rightInset - 64.0 - reorderInset, height: CGFloat.greatestFiniteMagnitude), alignment: .natural, cutout: nil, insets: UIEdgeInsets()))
             
             contentSize.height = max(contentSize.height, titleLayout.size.height + topInset * 2.0)
             
@@ -544,7 +562,7 @@ public class ItemListSwitchItemNode: ListViewItemNode, ItemListItemNode {
                         }
                         let switchSize = switchView.bounds.size
                         
-                        transition.updateFrame(node: strongSelf.switchNode, frame: CGRect(origin: CGPoint(x: params.width - params.rightInset - switchSize.width - 15.0, y: floor((contentSize.height - switchSize.height) / 2.0)), size: switchSize))
+                        transition.updateFrame(node: strongSelf.switchNode, frame: CGRect(origin: CGPoint(x: params.width - params.rightInset - switchSize.width - 15.0 - reorderInset, y: floor((contentSize.height - switchSize.height) / 2.0)), size: switchSize))
                         strongSelf.switchGestureNode.frame = strongSelf.switchNode.frame
                         if switchView.isOn != item.value {
                             switchView.setOn(item.value, animated: animated)
@@ -552,6 +570,20 @@ public class ItemListSwitchItemNode: ListViewItemNode, ItemListItemNode {
                         switchView.isUserInteractionEnabled = item.enableInteractiveChanges
                     }
                     strongSelf.switchGestureNode.isHidden = item.enableInteractiveChanges && item.enabled
+                    
+                    // MARK: NAGRAM — Show the same reorder affordance used by folder editing.
+                    if let reorderControlSizeAndApply {
+                        let reorderControlNode = reorderControlSizeAndApply.1(layout.contentSize.height, false, transition)
+                        if reorderControlNode !== strongSelf.reorderControlNode {
+                            strongSelf.reorderControlNode?.removeFromSupernode()
+                            strongSelf.reorderControlNode = reorderControlNode
+                            strongSelf.addSubnode(reorderControlNode)
+                        }
+                        transition.updateFrame(node: reorderControlNode, frame: CGRect(origin: CGPoint(x: params.width - params.rightInset - reorderControlSizeAndApply.0, y: 0.0), size: CGSize(width: reorderControlSizeAndApply.0, height: layout.contentSize.height)))
+                    } else if let reorderControlNode = strongSelf.reorderControlNode {
+                        strongSelf.reorderControlNode = nil
+                        reorderControlNode.removeFromSupernode()
+                    }
                     
                     if item.displayLocked {
                         var lockedIconTransition = transition
@@ -651,6 +683,13 @@ public class ItemListSwitchItemNode: ListViewItemNode, ItemListItemNode {
             item.updated(switchNode.isOn)
         }
         return true
+    }
+    
+    override public func isReorderable(at point: CGPoint) -> Bool {
+        if let reorderControlNode = self.reorderControlNode, reorderControlNode.frame.contains(point) {
+            return true
+        }
+        return false
     }
     
     override public func setHighlighted(_ highlighted: Bool, at point: CGPoint, animated: Bool) {

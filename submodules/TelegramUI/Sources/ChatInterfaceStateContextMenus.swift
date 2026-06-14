@@ -26,6 +26,7 @@ import ReactionListContextMenuContent
 import TelegramUIPreferences
 // MARK: NAGRAM — force-copy 增强开关模块
 import NagramSettings
+import NagramStrings
 import TranslateUI
 import DebugSettingsUI
 import ChatPresentationInterfaceState
@@ -48,6 +49,79 @@ private struct MessageContextMenuData {
     let canSelect: Bool
     let resourceStatus: EngineMediaResource.FetchStatus?
     let messageActions: ChatAvailableMessageActions
+}
+
+// MARK: NAGRAM — 消息菜单管理：为原生/Nagram 菜单项绑定稳定 id，统一过滤与排序。
+private struct NagramManagedMessageMenuItem {
+    let id: NagramMessageMenuItemId?
+    let item: ContextMenuItem
+}
+
+private extension Array where Element == NagramManagedMessageMenuItem {
+    mutating func append(_ item: ContextMenuItem) {
+        self.append(NagramManagedMessageMenuItem(id: nil, item: item))
+    }
+
+    mutating func append(_ id: NagramMessageMenuItemId, _ item: ContextMenuItem) {
+        self.append(NagramManagedMessageMenuItem(id: id, item: item))
+    }
+
+    mutating func insert(_ item: ContextMenuItem, at index: Int) {
+        self.insert(NagramManagedMessageMenuItem(id: nil, item: item), at: index)
+    }
+}
+
+private func nagramManagedMessageMenuItems(_ items: [NagramManagedMessageMenuItem]) -> [ContextMenuItem] {
+    let settings = NagramSettings.shared
+    let order = settings.messageMenuItemOrder
+    let orderIndex = Dictionary(uniqueKeysWithValues: order.enumerated().map { ($0.element, $0.offset) })
+    var managedItems = items.compactMap { entry -> (NagramMessageMenuItemId, ContextMenuItem)? in
+        guard let id = entry.id, settings.isMessageMenuItemEnabled(id) else {
+            return nil
+        }
+        return (id, entry.item)
+    }
+    managedItems.sort { lhs, rhs in
+        let lhsIndex = orderIndex[lhs.0] ?? Int.max
+        let rhsIndex = orderIndex[rhs.0] ?? Int.max
+        if lhsIndex != rhsIndex {
+            return lhsIndex < rhsIndex
+        }
+        return lhs.0.rawValue < rhs.0.rawValue
+    }
+    var managedIndex = 0
+    var result: [ContextMenuItem] = []
+    for entry in items {
+        if entry.id != nil {
+            if managedIndex < managedItems.count {
+                result.append(managedItems[managedIndex].1)
+                managedIndex += 1
+            }
+        } else {
+            result.append(entry.item)
+        }
+    }
+    return nagramCleanMessageMenuSeparators(result)
+}
+
+private func nagramCleanMessageMenuSeparators(_ items: [ContextMenuItem]) -> [ContextMenuItem] {
+    var result: [ContextMenuItem] = []
+    var previousWasSeparator = true
+    for item in items {
+        if case .separator = item {
+            if !previousWasSeparator {
+                result.append(item)
+                previousWasSeparator = true
+            }
+        } else {
+            result.append(item)
+            previousWasSeparator = false
+        }
+    }
+    if let last = result.last, case .separator = last {
+        result.removeLast()
+    }
+    return result
 }
 
 func canEditMessage(context: AccountContext, limitsConfiguration: EngineConfiguration.Limits, message: EngineRawMessage) -> Bool {
@@ -952,10 +1026,10 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
     |> map { data, updatingMessageMedia, infoSummaryData, appConfig, isMessageRead, messageViewsPrivacyTips, availableReactions, translationSettings, loggingSettings, notificationSoundList, accountPeer -> ContextController.Items in
         let isPremium = accountPeer?.isPremium ?? false
 
-        var actions: [ContextMenuItem] = []
+        var actions: [NagramManagedMessageMenuItem] = []
 
         if isSharedMediaPolls && messages.count == 1 {
-            actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.SharedMedia_ViewInChat, icon: { theme in
+            actions.append(.viewInChat, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.SharedMedia_ViewInChat, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/GoToMessage"), color: theme.actionSheet.primaryTextColor)
             }, action: { c, _ in
                 c?.dismiss(completion: {
@@ -995,7 +1069,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 }
             }
             if !isPremiumSticker || chatPresentationInterfaceState.isPremium {
-                actions.append(.action(ContextMenuActionItem(text: starStatus ? chatPresentationInterfaceState.strings.Stickers_RemoveFromFavorites : chatPresentationInterfaceState.strings.Stickers_AddToFavorites, icon: { theme in
+                actions.append(.favoriteSticker, .action(ContextMenuActionItem(text: starStatus ? chatPresentationInterfaceState.strings.Stickers_RemoveFromFavorites : chatPresentationInterfaceState.strings.Stickers_AddToFavorites, icon: { theme in
                     return generateTintedImage(image: starStatus ? UIImage(bundleImageName: "Chat/Context Menu/Unfave") : UIImage(bundleImageName: "Chat/Context Menu/Fave"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in
                     interfaceInteraction.toggleMessageStickerStarred(messages[0].id)
@@ -1026,7 +1100,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                                 callId = CallId(id: id, accessHash: accessHash)
                             }
                             
-                            actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Call_ShareStats, icon: { theme in
+                            actions.append(.shareCallStats, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Call_ShareStats, icon: { theme in
                                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Forward"), color: theme.actionSheet.primaryTextColor)
                             }, action: { _, f in
                                 f(.dismissWithoutContent)
@@ -1053,7 +1127,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 }
             }
             if let callId = callId {
-                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Call_RateCall, icon: { theme in
+                actions.append(.rateCall, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Call_RateCall, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Rate"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in
                     let _ = controllerInteraction.rateCall(message, callId, isVideo)
@@ -1101,7 +1175,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     
                     if !isAlreadyAdded {
                         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-                        actions.append(.action(ContextMenuActionItem(text: presentationData.strings.Chat_SaveForNotifications, icon: { theme in
+                        actions.append(.saveNotificationSound, .action(ContextMenuActionItem(text: presentationData.strings.Chat_SaveForNotifications, icon: { theme in
                             return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/DownloadTone"), color: theme.actionSheet.primaryTextColor)
                         }, action: { _, f in
                             f(.default)
@@ -1154,7 +1228,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 }
             }
             if isLargeFile {
-                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_IncreaseSpeed, icon: { theme in
+                actions.append(.increaseSpeed, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_IncreaseSpeed, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Speed"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in
                     let context = context
@@ -1191,7 +1265,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             } else {
                 sendGiftTitle = chatPresentationInterfaceState.strings.Conversation_ContextMenuSendAnotherGift
             }
-            actions.append(.action(ContextMenuActionItem(text: sendGiftTitle, icon: { theme in
+            actions.append(.sendGift, .action(ContextMenuActionItem(text: sendGiftTitle, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Gift"), color: theme.actionSheet.primaryTextColor)
             }, action: { _, f in
                 let _ = controllerInteraction.sendGift(message.id.peerId)
@@ -1205,7 +1279,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         }
         
         if !isPinnedMessages, !isReplyThreadHead, data.canReply {
-            actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuReply, icon: { theme in
+            actions.append(.reply, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuReply, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Reply"), color: theme.actionSheet.primaryTextColor)
             }, action: { c, _ in
                 interfaceInteraction.setupReplyMessage(messages[0].id, nil, { transition, completed in
@@ -1217,7 +1291,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         }
         
         if data.messageActions.options.contains(.sendScheduledNow) {
-            actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.ScheduledMessages_SendNow, icon: { theme in
+            actions.append(.sendScheduledNow, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.ScheduledMessages_SendNow, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Resend"), color: theme.actionSheet.primaryTextColor)
             }, action: { c, _ in
                 if messages.contains(where: { $0.pendingProcessingAttribute != nil }) {
@@ -1245,7 +1319,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         }
         
         if data.messageActions.options.contains(.editScheduledTime) {
-            actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.ScheduledMessages_EditTime, icon: { theme in
+            actions.append(.editScheduledTime, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.ScheduledMessages_EditTime, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Schedule"), color: theme.actionSheet.primaryTextColor)
             }, action: { _, f in
                 controllerInteraction.editScheduledMessagesTime(selectAll ? messages.map { $0.id } : [message.id])
@@ -1311,11 +1385,24 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         
         // MARK: NAGRAM force-copy — 原条件追加 && !forceCopyEnabled，开启后无视 content protection 允许复制
         let isCopyProtected = (chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !NagramSettings.shared.forceCopyEnabled
+        // MARK: NAGRAM — 复读：参考 Android Nagram 的 Repeat，按原消息转发回当前会话
+        if !isScheduled, data.messageActions.options.contains(.forward), !isCopyProtected, canSendMessagesToChat(chatPresentationInterfaceState), let peerId = chatPresentationInterfaceState.chatLocation.peerId {
+            actions.append(.repeat, .action(ContextMenuActionItem(text: ngI18n("Nagram.MessageMenu.Item.repeat", context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode), icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/RepeatPlusOne"), color: theme.actionSheet.primaryTextColor)
+            }, action: { _, f in
+                let repeatedMessages = (selectAll ? messages : [message]).map { message -> EnqueueMessage in
+                    return .forward(source: message.id, threadId: chatPresentationInterfaceState.chatLocation.threadId, grouping: .auto, attributes: [], correlationId: nil)
+                }
+                let _ = enqueueMessages(account: context.account, peerId: peerId, messages: repeatedMessages).startStandalone()
+                f(.dismissWithoutContent)
+            })))
+        }
+
         if !messageText.isEmpty || richMessageMarkdown != nil || (resourceAvailable && isImage) || diceEmoji != nil {
             if !isExpired {
                 if !isPoll {
                     if !isCopyProtected {
-                        actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuCopy, icon: { theme in
+                        actions.append(.copy, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuCopy, icon: { theme in
                             return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Copy"), color: theme.actionSheet.primaryTextColor)
                         }, action: { _, f in
                             if let diceEmoji = diceEmoji {
@@ -1416,7 +1503,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     canTranslate = false
                 }
                 if canTranslate {
-                    actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuTranslate, icon: { theme in
+                    actions.append(.translate, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuTranslate, icon: { theme in
                         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Translate"), color: theme.actionSheet.primaryTextColor)
                     }, action: { _, f in
                         var messageEntities: [MessageTextEntity]?
@@ -1432,7 +1519,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 }
                 
                 if isSpeakSelectionEnabled() && !messageText.isEmpty {
-                    actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuSpeak, icon: { theme in
+                    actions.append(.speak, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuSpeak, icon: { theme in
                         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Message"), color: theme.actionSheet.primaryTextColor)
                     }, action: { _, f in
                         var text = messageText
@@ -1468,7 +1555,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 }
             }
             if let mediaReference = mediaReference {
-                actions.append(.action(ContextMenuActionItem(text: isVideo ? chatPresentationInterfaceState.strings.Gallery_SaveVideo : chatPresentationInterfaceState.strings.Gallery_SaveImage, icon: { theme in
+                actions.append(.saveMedia, .action(ContextMenuActionItem(text: isVideo ? chatPresentationInterfaceState.strings.Gallery_SaveVideo : chatPresentationInterfaceState.strings.Gallery_SaveImage, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Save"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in
                     let _ = (saveToCameraRoll(context: context, userLocation: .peer(message.id.peerId), mediaReference: mediaReference)
@@ -1502,7 +1589,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             for media in message.effectiveMedia {
                 if let file = media as? TelegramMediaFile {
                     if file.isMusic {
-                        actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_SaveToFiles, icon: { theme in
+                        actions.append(.saveToFiles, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_SaveToFiles, icon: { theme in
                             return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Save"), color: theme.actionSheet.primaryTextColor)
                         }, action: { _, f in
                             controllerInteraction.saveMediaToFiles(message.id)
@@ -1515,7 +1602,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         }
         
         if (loggingSettings.logToFile || loggingSettings.logToConsole) && !downloadableMediaResourceInfos.isEmpty {
-            actions.append(.action(ContextMenuActionItem(text: "Send Logs", icon: { theme in
+            actions.append(.sendLogs, .action(ContextMenuActionItem(text: "Send Logs", icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Message"), color: theme.actionSheet.primaryTextColor)
             }, action: { _, f in
                 triggerDebugSendLogsUI(context: context, additionalInfo: "User has requested download logs for \(downloadableMediaResourceInfos)", pushController: { c in
@@ -1556,7 +1643,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             } else {
                 text = chatPresentationInterfaceState.strings.Conversation_ContextViewThread
             }
-            actions.append(.action(ContextMenuActionItem(text: text, icon: { theme in
+            actions.append(.viewReplies, .action(ContextMenuActionItem(text: text, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Replies"), color: theme.actionSheet.primaryTextColor)
             }, action: { c, _ in
                 c?.dismiss(completion: {
@@ -1585,7 +1672,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         }
         
         if data.canEdit && !isPinnedMessages && !isMigrated {
-            actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_MessageDialogEdit, icon: { theme in
+            actions.append(.edit, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_MessageDialogEdit, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Edit"), color: theme.actionSheet.primaryTextColor)
             }, action: { c, f in
                 if let _ = activeTodo {
@@ -1609,21 +1696,21 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             
             if canSuggestPost {
                 if message.attributes.contains(where: { $0 is SuggestedPostMessageAttribute }) {
-                    actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Chat_ContextMenu_SuggestedPost_EditMessage, icon: { theme in
+                    actions.append(.editSuggestedPostMessage, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Chat_ContextMenu_SuggestedPost_EditMessage, icon: { theme in
                         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Edit"), color: theme.actionSheet.primaryTextColor)
                     }, action: { c, _ in
                         c?.dismiss(completion: {
                             interfaceInteraction.openSuggestPost(message, .editMessage)
                         })
                     })))
-                    actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Chat_ContextMenu_SuggestedPost_EditTime, icon: { theme in
+                    actions.append(.editSuggestedPostTime, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Chat_ContextMenu_SuggestedPost_EditTime, icon: { theme in
                         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Calendar"), color: theme.actionSheet.primaryTextColor)
                     }, action: { c, _ in
                         c?.dismiss(completion: {
                             interfaceInteraction.openSuggestPost(message, .editTime)
                         })
                     })))
-                    actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Chat_ContextMenu_SuggestedPost_EditPrice, icon: { theme in
+                    actions.append(.editSuggestedPostPrice, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Chat_ContextMenu_SuggestedPost_EditPrice, icon: { theme in
                         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/PriceTag"), color: theme.actionSheet.primaryTextColor)
                     }, action: { c, _ in
                         c?.dismiss(completion: {
@@ -1631,7 +1718,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                         })
                     })))
                 } else {
-                    actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Chat_ContextMenu_SuggestedPost_Create, icon: { theme in
+                    actions.append(.createSuggestedPost, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Chat_ContextMenu_SuggestedPost_Create, icon: { theme in
                         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Customize"), color: theme.actionSheet.primaryTextColor)
                     }, action: { c, _ in
                         c?.dismiss(completion: {
@@ -1650,7 +1737,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 }
             }
             if hasSelected, !activePoll.revotingDisabled {
-                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_UnvotePoll, icon: { theme in
+                actions.append(.unvotePoll, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_UnvotePoll, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Unvote"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in
                     interfaceInteraction.requestUnvoteInMessage(messages[0].id)
@@ -1672,7 +1759,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 canAppend = true
             }
             if canAppend {
-                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Chat_Todo_ContextMenu_AddTask, icon: { theme in
+                actions.append(.addTodoTask, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Chat_Todo_ContextMenu_AddTask, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/AddCircle"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in
                     interfaceInteraction.editTodoMessage(messages[0].id, nil, true)
@@ -1701,13 +1788,13 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             }
             
             if let pinnedSelectedMessageId = pinnedSelectedMessageId {
-                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_Unpin, icon: { theme in
+                actions.append(.unpin, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_Unpin, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Unpin"), color: theme.actionSheet.primaryTextColor)
                 }, action: { c, _ in
                     interfaceInteraction.unpinMessage(pinnedSelectedMessageId, false, c)
                 })))
             } else {
-                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_Pin, icon: { theme in
+                actions.append(.pin, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_Pin, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Pin"), color: theme.actionSheet.primaryTextColor)
                 }, action: { c, _ in
                     interfaceInteraction.pinMessage(messages[0].id, c)
@@ -1748,7 +1835,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 case .quiz:
                     stopPollAction = chatPresentationInterfaceState.strings.Conversation_StopQuiz
                 }
-                actions.append(.action(ContextMenuActionItem(text: stopPollAction, icon: { theme in
+                actions.append(.stopPoll, .action(ContextMenuActionItem(text: stopPollAction, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/StopPoll"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in
                     interfaceInteraction.requestStopPollInMessage(messages[0].id)
@@ -1758,7 +1845,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         }
         
         if let message = messages.first, message.id.namespace == Namespaces.Message.Cloud, let channel = message.peers[message.id.peerId] as? TelegramChannel, !channel.isMonoForum, !(message.media.first is TelegramMediaAction), !isReplyThreadHead, !isMigrated {
-            actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuCopyLink, icon: { theme in
+            actions.append(.copyLink, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuCopyLink, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Link"), color: theme.actionSheet.primaryTextColor)
             }, action: { _, f in
                 var threadMessageId: EngineMessage.Id?
@@ -1831,7 +1918,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     } else if let file = media as? TelegramMediaFile, !isCopyProtected {
                         if file.isVideo {
                             if file.isAnimated && !file.isVideoSticker {
-                                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_SaveGif, icon: { theme in
+                                actions.append(.saveGif, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_SaveGif, icon: { theme in
                                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Save"), color: theme.actionSheet.primaryTextColor)
                                 }, action: { _, f in
                                     let presentationData = context.sharedContext.currentPresentationData.with { $0 }
@@ -1879,7 +1966,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             }
         }
         if let editStickerFile {
-            actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Stickers_EditSticker, icon: { theme in
+            actions.append(.editSticker, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Stickers_EditSticker, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Draw"), color: theme.actionSheet.primaryTextColor)
             }, action: { _, f in
                 f(.dismissWithoutContent)
@@ -1888,7 +1975,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         }
         
         if data.messageActions.options.contains(.viewStickerPack) {
-            actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.StickerPack_ViewPack, icon: { theme in
+            actions.append(.viewStickerPack, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.StickerPack_ViewPack, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Sticker"), color: theme.actionSheet.primaryTextColor)
             }, action: { _, f in
                 let _ = controllerInteraction.openMessage(message, OpenMessageParams(mode: .default))
@@ -1898,7 +1985,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
 
         if data.messageActions.options.contains(.forward) {
             if !isCopyProtected {
-                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuForward, icon: { theme in
+                actions.append(.forward, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuForward, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Forward"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in
                     interfaceInteraction.forwardMessages(selectAll || isImage ? messages : [message])
@@ -1908,13 +1995,13 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         }
         
         if data.messageActions.options.contains(.report) {
-            actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuReport, icon: { theme in
+            actions.append(.report, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuReport, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Report"), color: theme.actionSheet.primaryTextColor)
             }, action: { controller, f in
                 interfaceInteraction.reportMessages(messages, controller)
             })))
         } else if message.id.peerId.isReplies {
-            actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuBlock, textColor: .destructive, icon: { theme in
+            actions.append(.block, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuBlock, textColor: .destructive, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Restrict"), color: theme.actionSheet.destructiveActionTextColor)
             }, action: { controller, f in
                 interfaceInteraction.blockMessageAuthor(message, controller)
@@ -1936,7 +2023,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             }
             
             if infoSummaryData.canViewStats, forwards >= 1 || views >= 100 {
-                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextViewStats, icon: { theme in
+                actions.append(.viewStats, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextViewStats, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Statistics"), color: theme.actionSheet.primaryTextColor)
                 }, action: { c, _ in
                     c?.dismiss(completion: {
@@ -1952,7 +2039,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         if !hasViewStats, messages[0].forwardInfo == nil {
             for media in message.media {
                 if let poll = media as? TelegramMediaPoll, message.id.namespace == Namespaces.Message.Cloud, poll.pollId.namespace == Namespaces.Media.CloudPoll, poll.results.canViewStats {
-                    actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ViewPollStats, icon: { theme in
+                    actions.append(.viewPollStats, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ViewPollStats, icon: { theme in
                         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Statistics"), color: theme.actionSheet.primaryTextColor)
                     }, action: { c, _ in
                         c?.dismiss(completion: {
@@ -1980,7 +2067,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 } else {
                     title = chatPresentationInterfaceState.strings.Conversation_ContextMenuAddFactCheck
                 }
-                actions.append(.action(ContextMenuActionItem(text: title, icon: { theme in
+                actions.append(.factCheck, .action(ContextMenuActionItem(text: title, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/FactCheck"), color: theme.actionSheet.primaryTextColor)
                 }, action: { c, f in
                     c?.dismiss(completion: {
@@ -1991,7 +2078,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         }
         
         if isReplyThreadHead {
-            actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ViewInChannel, icon: { theme in
+            actions.append(.viewInChannel, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ViewInChannel, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/GoToMessage"), color: theme.actionSheet.primaryTextColor)
             }, action: { c, _ in
                 c?.dismiss(completion: {
@@ -2050,7 +2137,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     iconName = "Chat/Context Menu/DeletePaid"
                 }
                 
-                actions.append(.action(ContextMenuActionItem(text: title, textColor: .destructive, icon: { theme in
+                actions.append(.delete, .action(ContextMenuActionItem(text: title, textColor: .destructive, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: iconName), color: theme.actionSheet.destructiveActionTextColor)
                 }, action: { controller, f in
                     if isEditing {
@@ -2071,7 +2158,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     actions.append(.separator)
                 }
 
-                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuSelect, icon: { theme in
+                actions.append(.select, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuSelect, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Select"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in
                     interfaceInteraction.beginMessageSelection(selectAll ? messages.map { $0.id } : [message.id], { transition in
@@ -2086,7 +2173,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     actions.append(.separator)
                 }
 
-                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuSelectAll(Int32(messages.count)), icon: { theme in
+                actions.append(.selectAll, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuSelectAll(Int32(messages.count)), icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/SelectAll"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in
                     interfaceInteraction.beginMessageSelection(messages.map { $0.id }, { transition in
@@ -2272,7 +2359,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             actions.insert(.custom(ChatReadReportContextItem(context: context, message: message, hasReadReports: false, isEdit: true, stats: MessageReadStats(reactionCount: 0, peers: [], readTimestamps: [:]), action: nil), false), at: 0)
         }
         
-        if !actions.isEmpty, case .separator = actions[0] {
+        if !actions.isEmpty, case .separator = actions[0].item {
             actions.removeFirst()
         }
         
@@ -2403,7 +2490,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             }
         }
         
-        return ContextController.Items(content: .list(actions), tip: nil)
+        return ContextController.Items(content: .list(nagramManagedMessageMenuItems(actions)), tip: nil)
     }
 }
 

@@ -36,6 +36,7 @@ private enum NagramRow {
     case toggleWithEnabled(titleKey: String, get: () -> Bool, set: (Bool) -> Void, enabled: () -> Bool)
     case choice(titleKey: String, prefix: String, options: [String], current: () -> String, set: (String) -> Void)
     case slider(minValue: Int32, maxValue: Int32, get: () -> Int32, set: (Int32) -> Void)
+    case navigation(titleKey: String, action: () -> Void)
 }
 
 private struct NagramGroup {
@@ -45,7 +46,7 @@ private struct NagramGroup {
     let rows: [NagramRow]
 }
 
-private func nagramGroups(hideCalls: @escaping () -> Bool, setHideCalls: @escaping (Bool) -> Void) -> [NagramGroup] {
+private func nagramGroups(hideCalls: @escaping () -> Bool, setHideCalls: @escaping (Bool) -> Void, messageMenuAction: @escaping () -> Void) -> [NagramGroup] {
     let tabBarSubitemEnabled: () -> Bool = {
         return !NagramSettings.shared.hideTabBar
     }
@@ -74,6 +75,9 @@ private func nagramGroups(hideCalls: @escaping () -> Bool, setHideCalls: @escapi
             .toggle(titleKey: "Nagram.SecondsInMessages", get: { NagramSettings.shared.secondsInMessages }, set: { NagramSettings.shared.secondsInMessages = $0 }),
             .toggle(titleKey: "Nagram.HideReactions", get: { NagramSettings.shared.hideReactions }, set: { NagramSettings.shared.hideReactions = $0 }),
             .toggle(titleKey: "Nagram.HideChannelBottomButton", get: { NagramSettings.shared.hideChannelBottomButton }, set: { NagramSettings.shared.hideChannelBottomButton = $0 }),
+        ]),
+        NagramGroup(tab: .chat, headerKey: "Nagram.Section.MessageMenu", footerKey: nil, rows: [
+            .navigation(titleKey: "Nagram.MessageMenu", action: messageMenuAction),
         ]),
         // 贴纸尺寸:单独成段,header 即标题,行内滑杆中央显示当前 %。
         NagramGroup(tab: .chat, headerKey: "Nagram.StickerSize", footerKey: nil, rows: [
@@ -194,6 +198,7 @@ private enum NagramSettingsEntry: ItemListNodeEntry {
 
 public func nagramSettingsController(context: AccountContext) -> ViewController {
     var currentShowCallsTab = CallListSettings.defaultSettings.showTab
+    var pushControllerImpl: ((ViewController) -> Void)?
     let groups = nagramGroups(hideCalls: {
         return !currentShowCallsTab
     }, setHideCalls: { hidden in
@@ -201,6 +206,8 @@ public func nagramSettingsController(context: AccountContext) -> ViewController 
         let _ = updateCallListSettingsInteractively(accountManager: context.sharedContext.accountManager, {
             $0.withUpdatedShowTab(!hidden)
         }).startStandalone()
+    }, messageMenuAction: {
+        pushControllerImpl?(nagramMessageMenuSettingsController(context: context))
     })
     let flatRows: [NagramRow] = groups.flatMap { $0.rows }
 
@@ -247,6 +254,8 @@ public func nagramSettingsController(context: AccountContext) -> ViewController 
                 ActionSheetItemGroup(items: [ActionSheetButtonItem(title: presentationData.strings.Common_Cancel, action: { dismissAction() })])
             ])
             presentControllerImpl?(actionSheet, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
+        } else if case let .navigation(_, action) = row {
+            action()
         }
     }, sliderUpdated: { index, value in
         // 只写值,不 bump:滑杆节点拖动时自更新中央「X%」,无需重建列表 → 避开重入崩溃。
@@ -299,6 +308,8 @@ public func nagramSettingsController(context: AccountContext) -> ViewController 
                         entries.append(.disclosure(stableId: rowStableId, section: sectionId, title: ngI18n(titleKey, lang), label: ngI18n("\(prefix).\(current())", lang), index: rowIndex))
                     case let .slider(minValue, maxValue, get, _):
                         entries.append(.slider(stableId: rowStableId, section: sectionId, minValue: minValue, maxValue: maxValue, value: get(), index: rowIndex))
+                    case let .navigation(titleKey, _):
+                        entries.append(.disclosure(stableId: rowStableId, section: sectionId, title: ngI18n(titleKey, lang), label: "", index: rowIndex))
                     }
                 }
             }
@@ -324,6 +335,9 @@ public func nagramSettingsController(context: AccountContext) -> ViewController 
     }
     presentControllerImpl = { [weak controller] c, presentationArguments in
         controller?.present(c, in: .window(.root), with: presentationArguments)
+    }
+    pushControllerImpl = { [weak controller] c in
+        (controller?.navigationController as? NavigationController)?.pushViewController(c, animated: true)
     }
     return controller
 }
