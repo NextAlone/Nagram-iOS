@@ -106,6 +106,26 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
     
     var initialScrollingOffset: CGFloat?
     
+    func currentScrollHeightTopInset() -> CGFloat {
+        var result: CGFloat = 0.0
+        
+        let hasTopSearch: Bool
+        if case .chatList(groupId: .root) = self.location {
+            hasTopSearch = !NagramSettings.shared.showTabBarSearch // MARK: NAGRAM
+        } else {
+            hasTopSearch = true
+        }
+        if hasTopSearch {
+            result += ChatListNavigationBar.searchScrollHeight
+        }
+        
+        if let controller = self.controller, let storySubscriptions = controller.orderedStorySubscriptions, shouldDisplayStoriesInChatListHeader(storySubscriptions: storySubscriptions, isHidden: controller.location == .chatList(groupId: .archive)) {
+            result += ChatListNavigationBar.storiesScrollHeight
+        }
+        
+        return result
+    }
+    
     public private(set) var transitionFraction: CGFloat = 0.0
     private var transitionFractionOffset: CGFloat = 0.0
     private var disableItemNodeOperationsWhileAnimating: Bool = false
@@ -527,6 +547,7 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
         }, openArchiveSettings: { [weak self] in
             self?.openArchiveSettings()
         }, autoSetReady: true, isMainTab: nil)
+        itemNode.listNode.scrollHeightTopInset = self.currentScrollHeightTopInset()
         self.itemNodes[.all] = itemNode
         self.addSubnode(itemNode)
         
@@ -892,6 +913,7 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
                 }, openArchiveSettings: { [weak self] in
                     self?.openArchiveSettings()
                 }, autoSetReady: !animated, isMainTab: index == 0)
+                itemNode.listNode.scrollHeightTopInset = self.currentScrollHeightTopInset()
                 self.pendingItemNode?.2.dispose()
                 let disposable = MetaDisposable()
                 self.pendingItemNode = (id, itemNode, disposable)
@@ -912,6 +934,7 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
                     strongSelf.pendingItemNode?.2.dispose()
                     strongSelf.pendingItemNode = nil
                     itemNode.listNode.tempTopInset = strongSelf.tempTopInset
+                    itemNode.listNode.scrollHeightTopInset = strongSelf.currentScrollHeightTopInset()
                     
                     if let controller = strongSelf.controller, let chatListDisplayNode = controller.displayNode as? ChatListControllerNode, let navigationBarComponentView = chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View, let clippedScrollOffset = navigationBarComponentView.clippedScrollOffset {
                         let scrollOffset = clippedScrollOffset
@@ -1043,6 +1066,7 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
                         self?.openArchiveSettings()
                     }, autoSetReady: false, isMainTab: i == 0)
                     itemNode.listNode.tempTopInset = self.tempTopInset
+                    itemNode.listNode.scrollHeightTopInset = self.currentScrollHeightTopInset()
                     self.itemNodes[id] = itemNode
                 }
             }
@@ -1081,6 +1105,7 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
                 }
                 
                 itemNode.listNode.isMainTab.set(self.availableFilters.firstIndex(where: { $0.id == id }) == 0)
+                itemNode.listNode.scrollHeightTopInset = self.currentScrollHeightTopInset()
                 itemNode.updateLayout(size: layout.size, insets: insets, visualNavigationHeight: visualNavigationHeight, originalNavigationHeight: originalNavigationHeight, inlineNavigationLocation: inlineNavigationLocation, inlineNavigationTransitionFraction: itemInlineNavigationTransitionFraction, storiesInset: storiesInset, transition: nodeTransition)
                 if let scrollingOffset = self.scrollingOffset {
                     itemNode.updateScrollingOffset(navigationHeight: scrollingOffset.navigationHeight, offset: scrollingOffset.offset, transition: nodeTransition)
@@ -1834,7 +1859,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         var storiesInset = storiesInset
         
         let navigationBarLayout = self.updateNavigationBar(layout: layout, deferScrollApplication: true, transition: ComponentTransition(transition))
-        self.mainContainerNode.initialScrollingOffset = ChatListNavigationBar.searchScrollHeight + navigationBarLayout.storiesInset
+        self.mainContainerNode.initialScrollingOffset = self.mainContainerNode.currentScrollHeightTopInset()
         
         navigationBarHeight = navigationBarLayout.navigationHeight
         visualNavigationHeight = navigationBarLayout.navigationHeight
