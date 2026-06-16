@@ -12,7 +12,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "copy-webpack-plugin": "^11.0.0",
+    "copy-webpack-plugin": "^14.0.0",
     "css-loader": "^6.8.1",
     "expose-loader": "^5.0.0",
     "express": "^4.18.2",
