@@ -567,6 +567,229 @@ def patch_generated_xcodeproj_bazel_build_script(xcodeproj_path):
         file.write(contents)
 
 
+def patch_generated_xcodeproj_copy_outputs_script(xcodeproj_path):
+    copy_outputs_path = os.path.join(xcodeproj_path, "rules_xcodeproj/bazel/copy_outputs.sh")
+    if not os.path.isfile(copy_outputs_path):
+        return
+
+    with open(copy_outputs_path, "r") as file:
+        contents = file.read()
+
+    marker = "# MARK: NAGRAM\n"
+    if marker not in contents:
+        contents = contents.replace(
+            "      if [[ -n \"${TEST_HOST:-}\" ]]; then\n",
+            marker
+            + "      chmod -R u+w \"$TARGET_BUILD_DIR/$BAZEL_OUTPUTS_PRODUCT_BASENAME\" || true\n\n"
+            + "      if [[ \"${WRAPPER_EXTENSION:-}\" == \"framework\" && -n \"${PRODUCT_MODULE_NAME:-}\" ]]; then\n"
+            + "        mkdir -p \"$TARGET_BUILD_DIR/$WRAPPER_NAME/Modules/$PRODUCT_MODULE_NAME.swiftmodule\"\n"
+            + "      fi\n\n"
+            + "      if [[ -n \"${TEST_HOST:-}\" ]]; then\n",
+            1
+        )
+
+    os.chmod(copy_outputs_path, os.stat(copy_outputs_path).st_mode | 0o200)
+    with open(copy_outputs_path, "w") as file:
+        file.write(contents)
+
+
+def patch_generated_xcodeproj_calculate_output_groups_script(xcodeproj_path):
+    calculate_output_groups_path = os.path.join(xcodeproj_path, "rules_xcodeproj/bazel/calculate_output_groups.py")
+    if not os.path.isfile(calculate_output_groups_path):
+        return
+
+    with open(calculate_output_groups_path, "r") as file:
+        contents = file.read()
+
+    marker = "# MARK: NAGRAM\n"
+    if marker not in contents:
+        contents = contents.replace(
+            "\n\ndef _calculate_guid_labels_and_target_ids(base_objroot):\n",
+            "\n\n"
+            + marker
+            + "def _resolve_pif_base_objroot(base_objroot):\n"
+            + "    pif_cache = f\"{base_objroot}/XCBuildData/PIFCache\"\n"
+            + "    if os.path.exists(f\"{pif_cache}/project\") and os.path.exists(f\"{pif_cache}/target\"):\n"
+            + "        return base_objroot\n"
+            + "\n"
+            + "    archive_marker = \"/ArchiveIntermediates/\"\n"
+            + "    if archive_marker in base_objroot:\n"
+            + "        fallback_base_objroot = base_objroot.split(archive_marker, 1)[0]\n"
+            + "        fallback_pif_cache = f\"{fallback_base_objroot}/XCBuildData/PIFCache\"\n"
+            + "        if os.path.exists(f\"{fallback_pif_cache}/project\") and os.path.exists(f\"{fallback_pif_cache}/target\"):\n"
+            + "            print(\n"
+            + "                f\"note: PIFCache not found at {pif_cache}; using {fallback_pif_cache}\",\n"
+            + "                file = sys.stderr,\n"
+            + "            )\n"
+            + "            return fallback_base_objroot\n"
+            + "\n"
+            + "    return base_objroot\n"
+            + "\n\n"
+            + "def _calculate_guid_labels_and_target_ids(base_objroot):\n"
+            + "    base_objroot = _resolve_pif_base_objroot(base_objroot)\n",
+            1
+        )
+
+    os.chmod(calculate_output_groups_path, os.stat(calculate_output_groups_path).st_mode | 0o200)
+    with open(calculate_output_groups_path, "w") as file:
+        file.write(contents)
+
+
+def patch_generated_xcodeproj_generate_dependencies_script(xcodeproj_path):
+    generate_dependencies_path = os.path.join(xcodeproj_path, "rules_xcodeproj/bazel/generate_bazel_dependencies.sh")
+    if not os.path.isfile(generate_dependencies_path):
+        return
+
+    with open(generate_dependencies_path, "r") as file:
+        contents = file.read()
+
+    marker = "# MARK: NAGRAM\n"
+    if marker not in contents:
+        contents = contents.replace(
+            "# Async actions\n",
+            marker
+            + "swift_debug_settings_input=\"$BAZEL_INTEGRATION_DIR/$CONFIGURATION-swift_debug_settings.py\"\n"
+            + "swift_debug_settings_output=\"$OBJROOT/$CONFIGURATION/swift_debug_settings.py\"\n"
+            + "if [[ -f \"$swift_debug_settings_input\" ]]; then\n"
+            + "  mkdir -p \"${swift_debug_settings_output%/*}\"\n"
+            + "  perl -pe '\n"
+            + "    s/__BAZEL_XCODE_DEVELOPER_DIR__/\\$(DEVELOPER_DIR)/g;\n"
+            + "    s/__BAZEL_XCODE_SDKROOT__/\\$(SDKROOT)/g;\n"
+            + "    s/\n"
+            + "      \\$             # Match a dollar sign\n"
+            + "      (\\()?          # Optionally match an opening parenthesis and capture it\n"
+            + "      ([a-zA-Z_]\\w*) # Match a variable name and capture it\n"
+            + "      (?(1)\\))       # If an opening parenthesis was captured, match a closing parenthesis\n"
+            + "    /$ENV{$2}/gx;\n"
+            + "  ' \"$swift_debug_settings_input\" > \"$swift_debug_settings_output\"\n"
+            + "fi\n\n"
+            + "# Async actions\n",
+            1
+        )
+
+    os.chmod(generate_dependencies_path, os.stat(generate_dependencies_path).st_mode | 0o200)
+    with open(generate_dependencies_path, "w") as file:
+        file.write(contents)
+
+
+def patch_generated_xcodeproj_swift_debug_settings_phase(xcodeproj_path):
+    pbxproj_path = os.path.join(xcodeproj_path, "project.pbxproj")
+    if not os.path.isfile(pbxproj_path):
+        return
+
+    with open(pbxproj_path, "r") as file:
+        contents = file.read()
+
+    contents = contents.replace(
+        "\t\t\tbuildPhases = (\n"
+        "\t\t\t\tFF0100000000000000000004 /* Generate Bazel Dependencies */,\n"
+        "\t\t\t\tFF0100000000000000000005 /* Create swift_debug_settings.py */,\n"
+        "\t\t\t);\n",
+        "\t\t\tbuildPhases = (\n"
+        "\t\t\t\tFF0100000000000000000004 /* Generate Bazel Dependencies */,\n"
+        "\t\t\t);\n",
+        1
+    )
+
+    os.chmod(pbxproj_path, os.stat(pbxproj_path).st_mode | 0o200)
+    with open(pbxproj_path, "w") as file:
+        file.write(contents)
+
+
+def patch_generated_xcodeproj_archive_layout(xcodeproj_path):
+    pbxproj_path = os.path.join(xcodeproj_path, "project.pbxproj")
+    if not os.path.isfile(pbxproj_path):
+        return
+
+    with open(pbxproj_path, "r") as file:
+        contents = file.read()
+
+    default_install_path = '\t\t\t\tINSTALL_PATH = "$(BAZEL_PACKAGE_BIN_DIR)/$(TARGET_NAME)/bin";\n'
+    default_skip_install = default_install_path + "\t\t\t\tSKIP_INSTALL = YES;\n"
+    if default_skip_install not in contents:
+        contents = contents.replace(default_install_path, default_skip_install)
+
+    lines = contents.splitlines(keepends=True)
+    patched_lines = []
+    index = 0
+    while index < len(lines):
+        if lines[index] != "\t\t\tbuildSettings = {\n":
+            patched_lines.append(lines[index])
+            index += 1
+            continue
+
+        block = [lines[index]]
+        index += 1
+        while index < len(lines):
+            block.append(lines[index])
+            if lines[index] == "\t\t\t};\n":
+                index += 1
+                break
+            index += 1
+
+        if any('BAZEL_LABEL = "@@//Telegram:Telegram";' in line for line in block):
+            insertions = []
+            if not any("INSTALL_PATH = " in line for line in block):
+                insertions.append("\t\t\t\tINSTALL_PATH = /Applications;\n")
+            if not any("SKIP_INSTALL = " in line for line in block):
+                insertions.append("\t\t\t\tSKIP_INSTALL = NO;\n")
+            if insertions:
+                insert_index = len(block) - 1
+                for block_index, line in enumerate(block):
+                    if "IPHONEOS_DEPLOYMENT_TARGET = " in line:
+                        insert_index = block_index + 1
+                        break
+                block[insert_index:insert_index] = insertions
+
+        patched_lines.extend(block)
+
+    contents = "".join(patched_lines)
+
+    os.chmod(pbxproj_path, os.stat(pbxproj_path).st_mode | 0o200)
+    with open(pbxproj_path, "w") as file:
+        file.write(contents)
+
+
+def patch_generated_xcodeproj_telegram_scheme(xcodeproj_path):
+    scheme_path = os.path.join(xcodeproj_path, "xcshareddata/xcschemes/Telegram.xcscheme")
+    if not os.path.isfile(scheme_path):
+        return
+
+    with open(scheme_path, "r") as file:
+        contents = file.read()
+
+    contents = contents.replace(
+        'buildForArchiving = "NO"',
+        'buildForArchiving = "YES"',
+        1
+    )
+    contents = contents.replace(
+        '<ArchiveAction\n      buildConfiguration = "Debug"',
+        '<ArchiveAction\n      buildConfiguration = "Release"',
+        1
+    )
+
+    old_script = (
+        'scriptText = "mkdir -p &quot;${BUILD_MARKER_FILE%/*}&quot;&#10;'
+        'touch &quot;$BUILD_MARKER_FILE&quot;&#10;"'
+    )
+    new_script = (
+        'scriptText = "mkdir -p &quot;${BUILD_MARKER_FILE%/*}&quot;&#10;'
+        'touch &quot;$BUILD_MARKER_FILE&quot;&#10;'
+        '# MARK: NAGRAM&#10;'
+        '# Existing Bazel-copied framework bundles can be read-only and block Xcode Archive Info.plist writes.&#10;'
+        'if [[ -d &quot;${BUILD_ROOT:-}&quot; ]]; then&#10;'
+        '  find &quot;$BUILD_ROOT&quot; -path &quot;*/bazel-out/*&quot; -exec chmod u+w {} + || true&#10;'
+        'fi&#10;"'
+    )
+    if "# MARK: NAGRAM&#10;" not in contents:
+        contents = contents.replace(old_script, new_script, 1)
+
+    os.chmod(scheme_path, os.stat(scheme_path).st_mode | 0o200)
+    with open(scheme_path, "w") as file:
+        file.write(contents)
+
+
 def generate_project(bazel, arguments):
     bazel_command_line = BazelCommandLine(
         bazel=bazel,
@@ -622,6 +845,12 @@ def generate_project(bazel, arguments):
         target_name=target_name
     )
     patch_generated_xcodeproj_bazel_build_script(xcodeproj_path)
+    patch_generated_xcodeproj_copy_outputs_script(xcodeproj_path)
+    patch_generated_xcodeproj_calculate_output_groups_script(xcodeproj_path)
+    patch_generated_xcodeproj_generate_dependencies_script(xcodeproj_path)
+    patch_generated_xcodeproj_swift_debug_settings_phase(xcodeproj_path)
+    patch_generated_xcodeproj_archive_layout(xcodeproj_path)
+    patch_generated_xcodeproj_telegram_scheme(xcodeproj_path)
 
     if target_name == "Telegram":
         run_executable_with_output('swift', arguments=[
