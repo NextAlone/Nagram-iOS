@@ -79,10 +79,7 @@ class BazelCommandLine:
         self.common_build_args = [
         ]
 
-        num_threads = max(os.cpu_count() - 2, 2)
         self.common_debug_args = [
-            '--@build_bazel_rules_swift//swift:copt="-j"',
-            f'--@build_bazel_rules_swift//swift:copt="{num_threads}"',
         ]
 
         self.common_release_args = [
