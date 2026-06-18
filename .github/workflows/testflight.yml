@@ -154,8 +154,33 @@ jobs:
             --buildNumber="$BUILD_NUMBER" \
             --configuration=release_arm64
 
-      - name: Upload to TestFlight
+      - name: Submit to TestFlight (external)
+        env:
+          # Repository VARIABLES (Settings -> Secrets and variables -> Actions -> Variables):
+          #   TESTFLIGHT_GROUPS            - name of the EXTERNAL group in App Store Connect (must already exist)
+          #   USES_NON_EXEMPT_ENCRYPTION   - export-compliance answer; "true" or "false" (see note below)
+          TESTFLIGHT_GROUPS: ${{ vars.TESTFLIGHT_GROUPS }}
+          USES_NON_EXEMPT_ENCRYPTION: ${{ vars.USES_NON_EXEMPT_ENCRYPTION || 'false' }}
         run: |
           set -euo pipefail
-          xcrun altool --upload-app -f bazel-bin/Telegram/Telegram.ipa -t ios \
-            --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
+          : "${TESTFLIGHT_GROUPS:?set the TESTFLIGHT_GROUPS repository variable to your external group name}"
+          python3 - <<'PY'
+          import json, os
+          kid = os.environ["ASC_KEY_ID"]
+          p = os.path.expanduser(f"~/.appstoreconnect/private_keys/AuthKey_{kid}.p8")
+          json.dump({"key_id": kid, "issuer_id": os.environ["ASC_ISSUER_ID"],
+                     "key": open(p).read(), "in_house": False}, open("/tmp/asc_key.json", "w"))
+          PY
+          chmod 600 /tmp/asc_key.json
+          # Uploads, waits for Apple processing, adds the build to the external group,
+          # submits for Beta App Review, and notifies external testers.
+          fastlane pilot upload \
+            --api_key_path /tmp/asc_key.json \
+            --ipa bazel-bin/Telegram/Telegram.ipa \
+            --app_identifier "$BUNDLE_ID" \
+            --distribute_external true \
+            --groups "$TESTFLIGHT_GROUPS" \
+            --notify_external_testers true \
+            --changelog "$(git log -1 --pretty=%s)" \
+            --uses_non_exempt_encryption "$USES_NON_EXEMPT_ENCRYPTION"
+          rm -f /tmp/asc_key.json
