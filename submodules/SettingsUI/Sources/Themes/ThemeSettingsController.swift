@@ -537,7 +537,8 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
     
     let availableAppIcons: Signal<[PresentationAppIcon], NoError> = .single(appIcons)
     let currentAppIconName = ValuePromise<String?>()
-    currentAppIconName.set(currentAppIcon?.name ?? "Blue")
+    // MARK: NAGRAM
+    currentAppIconName.set(currentAppIcon?.name ?? "Nagram")
     
     let cloudThemes = Promise<[TelegramTheme]>()
     let updatedCloudThemes = context.engine.themes.themes(accountManager: context.sharedContext.accountManager)

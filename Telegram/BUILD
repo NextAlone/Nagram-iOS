@@ -333,6 +333,8 @@ filegroup(
 )
 
 alternate_icon_folders = [
+    # MARK: NAGRAM — expose the Nagram primary icon in the in-app icon picker
+    "Nagram",
     "BlackIcon",
     "BlackClassicIcon",
     "BlackFilledIcon",
