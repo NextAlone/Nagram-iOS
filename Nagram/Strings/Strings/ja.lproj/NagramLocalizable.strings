@@ -25,6 +25,8 @@
 "Nagram.DisableScrollToNextTopic" = "次のトピックへのスワイプを無効化";
 "Nagram.DisableGalleryCamera" = "ギャラリー内カメラを無効化";
 "Nagram.DisableGalleryCameraPreview" = "カメラプレビューを無効化";
+"Nagram.DisableFiltering" = "センシティブ内容のフィルターを無効化";
+"Nagram.DisableFiltering.Footer" = "利用可能な場合、センシティブな内容をフィルターで隠さずに表示します。この項目は Telegram で同期されるアカウント設定です。";
 "Nagram.ForceCopy" = "強制コピー";
 "Nagram.ForceCopy.Footer" = "コンテンツ保護（コピー/転送禁止）が有効なチャットでもメッセージ本文をコピーできるようにします。";
 "Nagram.MessageMenu" = "メッセージメニュー管理";

@@ -25,6 +25,8 @@
 "Nagram.DisableScrollToNextTopic" = "禁止上滑到下一主题";
 "Nagram.DisableGalleryCamera" = "禁用图库内相机";
 "Nagram.DisableGalleryCameraPreview" = "禁用图库相机预览";
+"Nagram.DisableFiltering" = "关闭敏感内容过滤";
+"Nagram.DisableFiltering.Footer" = "可用时，显示敏感内容而不是过滤隐藏。此项是 Telegram 同步的账号设置。";
 "Nagram.ForceCopy" = "强制复制";
 "Nagram.ForceCopy.Footer" = "开启后，在设置了内容保护（禁止复制/转发）的对话中仍可复制消息文本。";
 "Nagram.MessageMenu" = "消息菜单管理";

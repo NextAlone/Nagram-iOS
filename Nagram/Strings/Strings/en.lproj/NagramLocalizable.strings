@@ -25,6 +25,8 @@
 "Nagram.DisableScrollToNextTopic" = "Disable Swipe to Next Topic";
 "Nagram.DisableGalleryCamera" = "Disable In-Gallery Camera";
 "Nagram.DisableGalleryCameraPreview" = "Disable Camera Preview";
+"Nagram.DisableFiltering" = "Disable Filtering";
+"Nagram.DisableFiltering.Footer" = "When available, show sensitive content instead of filtering it. This is an account setting synced by Telegram.";
 "Nagram.ForceCopy" = "Force Copy";
 "Nagram.ForceCopy.Footer" = "Allow copying message text even in chats with content protection (no copy / no forward) enabled.";
 "Nagram.MessageMenu" = "Message Menu";

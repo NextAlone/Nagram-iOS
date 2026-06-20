@@ -18,6 +18,7 @@ swift_library(
         "//submodules/ItemListUI:ItemListUI",
         "//submodules/PresentationDataUtils:PresentationDataUtils",
         "//submodules/AccountContext:AccountContext",
+        "//submodules/TelegramCore:TelegramCore",
         "//submodules/TelegramUIPreferences:TelegramUIPreferences",
         "//Nagram/Settings:NagramSettings",
         "//Nagram/Strings:NagramStrings",
@@ -25,6 +26,7 @@ swift_library(
         # MARK: NAGRAM — 贴纸尺寸滑杆(SliderComponent,复刻省电模式粗轨道)
         "//submodules/AsyncDisplayKit",
         "//submodules/ComponentFlow",
+        "//submodules/TelegramUI/Components/FaceScanScreen",
         "//submodules/TelegramUI/Components/SliderComponent",
     ],
     visibility = [
