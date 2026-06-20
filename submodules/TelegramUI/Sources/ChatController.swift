@@ -7485,6 +7485,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     navigationController: navigationController,
                     gesture: gesture,
                     useBackAnimation: true,
+                    excludePeerId: strongSelf.chatLocation.peerId,
                     fallback: fallback
                 )
             }

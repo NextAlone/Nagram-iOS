@@ -6947,13 +6947,18 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
     }
     
     // MARK: NAGRAM — 最近会话返回菜单
-    public static func displayNagramRecentChatsMenu(context: AccountContext, parentController: ViewController, sourceView: UIView, navigationController: NavigationController, gesture: ContextGesture, useBackAnimation: Bool, fallback: @escaping () -> Void) {
+    public static func displayNagramRecentChatsMenu(context: AccountContext, parentController: ViewController, sourceView: UIView, navigationController: NavigationController, gesture: ContextGesture, useBackAnimation: Bool, excludePeerId: EnginePeer.Id?, fallback: @escaping () -> Void) {
         guard NagramSettings.shared.recentChatsEnabled else {
             fallback()
             return
         }
         
-        let peerIds = NagramSettings.shared.recentChatIds(accountPeerId: context.account.peerId.toInt64(), limit: 25).map { EnginePeer.Id($0) }
+        let peerIds = Array(NagramSettings.shared.recentChatIds(accountPeerId: context.account.peerId.toInt64()).map(EnginePeer.Id.init).filter { peerId in
+            if let excludePeerId {
+                return peerId != excludePeerId
+            }
+            return true
+        }.prefix(25))
         guard !peerIds.isEmpty else {
             fallback()
             return
@@ -7159,6 +7164,7 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
                     navigationController: navigationController,
                     gesture: gesture,
                     useBackAnimation: true,
+                    excludePeerId: strongSelf.peerId,
                     fallback: fallback
                 )
             }
