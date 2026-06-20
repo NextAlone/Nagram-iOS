@@ -442,6 +442,7 @@ private class AdMessagesHistoryContextImpl {
     }
 
     private var isActivated: Bool = false
+    private var hasActivationRequest: Bool = false
     private let disposable = MetaDisposable()
     private let settingsDisposable = MetaDisposable()
     
@@ -468,15 +469,14 @@ private class AdMessagesHistoryContextImpl {
         |> deliverOn(queue)).start(next: { [weak self] in
             if NagramSettings.shared.hideSponsoredMessages { // MARK: NAGRAM — 开关变化后即时清空已加载赞助消息。
                 self?.clearStateForHiddenSponsoredMessages()
+            } else if let self, self.hasActivationRequest && !self.isActivated { // MARK: NAGRAM — 取消隐藏后恢复已请求过的广告加载。
+                self.activate()
             }
         }))
 
         if NagramSettings.shared.hideSponsoredMessages { // MARK: NAGRAM — 隐藏赞助消息时不读缓存、不拉取广告。
             self.clearStateForHiddenSponsoredMessages()
-            return
-        }
-
-        if messageId == nil {
+        } else if messageId == nil {
             self.state.set(CachedState.getCached(postbox: account.postbox, peerId: peerId)
             |> mapToSignal { cachedState -> Signal<State, NoError> in
                 if let cachedState = cachedState, cachedState.timestamp >= Int32(Date().timeIntervalSince1970) - 5 * 60 {
@@ -504,6 +504,7 @@ private class AdMessagesHistoryContextImpl {
 
     private func clearStateForHiddenSponsoredMessages() {
         let emptyState = State(interPostInterval: nil, messages: [])
+        self.isActivated = false
         self.disposable.set(nil)
         if self.stateValue != emptyState {
             self.stateValue = emptyState
@@ -513,6 +514,7 @@ private class AdMessagesHistoryContextImpl {
     }
     
     func activate() {
+        self.hasActivationRequest = true
         if self.isActivated {
             return
         }
