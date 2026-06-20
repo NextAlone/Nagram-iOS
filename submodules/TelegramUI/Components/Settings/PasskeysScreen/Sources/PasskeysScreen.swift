@@ -98,6 +98,8 @@ final class PasskeysScreenComponent: Component {
                                 self.passkeysData?.insert(passkey, at: 0)
                                 component.passkeysDataUpdated(self.passkeysData ?? [])
                                 self.state?.updated(transition: .easeInOut(duration: 0.25))
+                                // MARK: NAGRAM
+                                component.completion()
                             }
                         }
                     }
@@ -110,10 +112,21 @@ final class PasskeysScreenComponent: Component {
         }
         
         func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-            guard let windowScene = self.window?.windowScene else {
-                preconditionFailure()
+            // MARK: NAGRAM
+            if let window = self.window {
+                return window
             }
-            return ASPresentationAnchor(windowScene: windowScene)
+            if let window = self.environment?.controller()?.view.window {
+                return window
+            }
+            if let window = self.component?.context.sharedContext.mainWindow?.viewController?.view.window {
+                return window
+            }
+            if let windowScene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
+                return ASPresentationAnchor(windowScene: windowScene)
+            }
+            Logger.shared.log("Passkeys", "presentationAnchor requested without an attached window")
+            return ASPresentationAnchor(frame: UIScreen.main.bounds)
         }
 
         private func createPasskey() {
@@ -172,8 +185,6 @@ final class PasskeysScreenComponent: Component {
                     authController.delegate = self
                     authController.presentationContextProvider = self
                     authController.performRequests()
-                    
-                    component.completion()
                 }
             }
         }
