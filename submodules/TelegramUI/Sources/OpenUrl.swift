@@ -361,6 +361,16 @@ private func makeTelegramUrl(_ path: String, queryItems: [URLQueryItem] = []) ->
     return appendQueryItems(to: "https://t.me\(path)", items: queryItems)
 }
 
+// MARK: NAGRAM — keep tg://nasettings links compatible with https://t.me/nasettings links.
+private func makeNagramSettingsPath(pathComponents: [String], queryItems: [URLQueryItem]) -> String {
+    var result = "nagram"
+    let suffix = pathComponents.filter { $0 != "/" && !$0.isEmpty }
+    if !suffix.isEmpty {
+        result += "/" + suffix.joined(separator: "/")
+    }
+    return appendQueryItems(to: result, items: queryItems)
+}
+
 func openExternalUrlImpl(context: AccountContext, urlContext: OpenURLContext, url: String, forceExternal: Bool, presentationData: PresentationData, navigationController: NavigationController?, dismissInput: @escaping () -> Void) {
     if forceExternal || url.lowercased().hasPrefix("tel:") || url.lowercased().hasPrefix("calshow:") {
         if url.lowercased().hasPrefix("tel:+888") {
@@ -428,6 +438,20 @@ func openExternalUrlImpl(context: AccountContext, urlContext: OpenURLContext, ur
         if let scheme = parsedUrl.scheme, (scheme == "tg" || scheme == context.sharedContext.applicationBindings.appSpecificScheme) {
             var convertedUrl: String?
             let host = parsedUrl.host?.lowercased() ?? ""
+            // MARK: NAGRAM — support tg://nasettings[/section]?r=Key in addition to t.me/nasettings.
+            if host == "nasettings" {
+                let params = parsedUrl.query.flatMap(QueryParameters.init)
+                var pathComponents = parsedUrl.pathComponents.filter { $0 != "/" && !$0.isEmpty }
+                if pathComponents.isEmpty, let section = params?["section"] ?? params?["tab"], !section.isEmpty {
+                    pathComponents = [section]
+                }
+                let queryItems = (params?.items ?? []).filter { item in
+                    let name = item.name.lowercased()
+                    return name != "section" && name != "tab"
+                }
+                handleResolvedUrl(.settings(.path(makeNagramSettingsPath(pathComponents: pathComponents, queryItems: queryItems))))
+                return
+            }
             if let query = parsedUrl.query, let params = QueryParameters(query) {
                 switch host {
                 case "localpeer":

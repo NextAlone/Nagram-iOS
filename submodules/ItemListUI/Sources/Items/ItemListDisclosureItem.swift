@@ -70,6 +70,8 @@ public class ItemListDisclosureItem: ListViewItem, ItemListItem, ListItemCompone
     let disclosureStyle: ItemListDisclosureStyle
     let noInsets: Bool
     let action: (() -> Void)?
+    // MARK: NAGRAM — Optional long-press action for copying setting deep links.
+    let longTapAction: (() -> Void)?
     let clearHighlightAutomatically: Bool
     public let tag: ItemListItemTag?
     public let shimmeringIndex: Int?
@@ -97,6 +99,7 @@ public class ItemListDisclosureItem: ListViewItem, ItemListItem, ListItemCompone
         disclosureStyle: ItemListDisclosureStyle = .arrow,
         noInsets: Bool = false,
         action: (() -> Void)?,
+        longTapAction: (() -> Void)? = nil,
         clearHighlightAutomatically: Bool = true,
         tag: ItemListItemTag? = nil,
         shimmeringIndex: Int? = nil
@@ -123,6 +126,7 @@ public class ItemListDisclosureItem: ListViewItem, ItemListItem, ListItemCompone
         self.disclosureStyle = disclosureStyle
         self.noInsets = noInsets
         self.action = action
+        self.longTapAction = longTapAction
         self.clearHighlightAutomatically = clearHighlightAutomatically
         self.tag = tag
         self.shimmeringIndex = shimmeringIndex
@@ -189,6 +193,10 @@ public class ItemListDisclosureItem: ListViewItem, ItemListItem, ListItemCompone
         if lhs.label != rhs.label {
             return false
         }
+        // MARK: NAGRAM — Long-press availability can change without title/label changes.
+        if (lhs.longTapAction == nil) != (rhs.longTapAction == nil) {
+            return false
+        }
         
         return true
     }
@@ -232,6 +240,15 @@ public class ItemListDisclosureItemNode: ListViewItemNode, ItemListItemNode {
     
     public var tag: ItemListItemTag? {
         return self.item?.tag
+    }
+
+    // MARK: NAGRAM — Long-press copies per-setting deep links when provided.
+    override public var canBeLongTapped: Bool {
+        return self.item?.longTapAction != nil
+    }
+
+    override public func longTapped() {
+        self.item?.longTapAction?()
     }
 
     private var placeholderNode: ShimmerEffectNode?

@@ -42,9 +42,11 @@ public class ItemListSwitchItem: ListViewItem, ItemListItem {
     let updated: (Bool) -> Void
     let activatedWhileDisabled: () -> Void
     let action: (() -> Void)?
+    // MARK: NAGRAM — Optional long-press action for copying setting deep links.
+    let longTapAction: (() -> Void)?
     public let tag: ItemListItemTag?
     
-    public init(presentationData: ItemListPresentationData, systemStyle: ItemListSystemStyle = .legacy, icon: UIImage? = nil, title: String, text: String? = nil, textColor: TextColor = .primary, titleBadgeComponent: AnyComponent<Empty>? = nil, value: Bool, type: ItemListSwitchItemNodeType = .regular, enableInteractiveChanges: Bool = true, enabled: Bool = true, displayLocked: Bool = false, disableLeadingInset: Bool = false, maximumNumberOfLines: Int = 1, noCorners: Bool = false, editing: Bool = false, reorderable: Bool = false, sectionId: ItemListSectionId, style: ItemListStyle, updated: @escaping (Bool) -> Void, activatedWhileDisabled: @escaping () -> Void = {}, action: (() -> Void)? = nil, tag: ItemListItemTag? = nil) {
+    public init(presentationData: ItemListPresentationData, systemStyle: ItemListSystemStyle = .legacy, icon: UIImage? = nil, title: String, text: String? = nil, textColor: TextColor = .primary, titleBadgeComponent: AnyComponent<Empty>? = nil, value: Bool, type: ItemListSwitchItemNodeType = .regular, enableInteractiveChanges: Bool = true, enabled: Bool = true, displayLocked: Bool = false, disableLeadingInset: Bool = false, maximumNumberOfLines: Int = 1, noCorners: Bool = false, editing: Bool = false, reorderable: Bool = false, sectionId: ItemListSectionId, style: ItemListStyle, updated: @escaping (Bool) -> Void, activatedWhileDisabled: @escaping () -> Void = {}, action: (() -> Void)? = nil, longTapAction: (() -> Void)? = nil, tag: ItemListItemTag? = nil) {
         self.presentationData = presentationData
         self.systemStyle = systemStyle
         self.icon = icon
@@ -67,6 +69,7 @@ public class ItemListSwitchItem: ListViewItem, ItemListItem {
         self.updated = updated
         self.activatedWhileDisabled = activatedWhileDisabled
         self.action = action
+        self.longTapAction = longTapAction
         self.tag = tag
     }
     
@@ -740,6 +743,15 @@ public class ItemListSwitchItemNode: ListViewItemNode, ItemListItemNode {
     override public func animateRemoved(_ currentTimestamp: Double, duration: Double) {
         self.layer.allowsGroupOpacity = true
         self.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.15, removeOnCompletion: false)
+    }
+
+    // MARK: NAGRAM — Long-press copies per-setting deep links when provided.
+    override public var canBeLongTapped: Bool {
+        return self.item?.longTapAction != nil
+    }
+
+    override public func longTapped() {
+        self.item?.longTapAction?()
     }
     
     @objc private func switchValueChanged(_ switchView: UISwitch) {

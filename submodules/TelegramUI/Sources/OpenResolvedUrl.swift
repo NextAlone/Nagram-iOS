@@ -44,6 +44,7 @@ import ProxyServerPreviewScreen
 import AuthConfirmationScreen
 import OpenInExternalAppUI
 import CreateBotScreen
+import NagramSettingsUI // MARK: NAGRAM — open Nagram settings from nasettings deep links
 
 private func defaultNavigationForPeerId(_ peerId: PeerId?, navigation: ChatControllerInteractionNavigateToPeer) -> ChatControllerInteractionNavigateToPeer {
     if case .default = navigation {
@@ -59,6 +60,15 @@ private func defaultNavigationForPeerId(_ peerId: PeerId?, navigation: ChatContr
     } else {
         return navigation
     }
+}
+
+// MARK: NAGRAM — paths produced by t.me/nasettings and tg://nasettings.
+private func nagramSettingsDeepLinkPath(_ path: String) -> String? {
+    let normalized = path.lowercased()
+    if normalized == "nagram" || normalized.hasPrefix("nagram/") || normalized.hasPrefix("nagram?") {
+        return path
+    }
+    return nil
 }
 
 func openResolvedUrlImpl(
@@ -970,6 +980,10 @@ func openResolvedUrlImpl(
             switch section {
             case let .path(path):
                 if let navigationController {
+                    if let nagramPath = nagramSettingsDeepLinkPath(path) {
+                        navigationController.pushViewController(nagramSettingsController(context: context, deepLinkPath: nagramPath), animated: true)
+                        return
+                    }
                     if path.isEmpty {
                         if let rootController = context.sharedContext.mainWindow?.viewController as? TelegramRootController {
                             rootController.openSettings(edit: false)

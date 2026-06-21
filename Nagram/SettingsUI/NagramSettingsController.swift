@@ -10,6 +10,8 @@ import SwiftSignalKit
 import TelegramCore
 import TelegramPresentationData
 import TelegramUIPreferences
+import UIKit
+import UndoUI
 
 // MARK: NAGRAM — 增强设置页 UI。
 // 顶部 3 段(通用/消息/其他)用 ItemListControllerTitle.sectionControl;段内用 section header 分层。
@@ -30,6 +32,29 @@ private enum NagramTab: Int32, CaseIterable {
         case .other: return "Nagram.Tab.Other"
         }
     }
+
+    var deepLinkSection: String {
+        switch self {
+        case .general: return "general"
+        case .chat: return "chat"
+        case .other: return "other"
+        }
+    }
+}
+
+private final class NagramSettingsRowTag: ItemListItemTag {
+    let index: Int
+
+    init(index: Int) {
+        self.index = index
+    }
+
+    func isEqual(to other: ItemListItemTag) -> Bool {
+        if let other = other as? NagramSettingsRowTag {
+            return self.index == other.index
+        }
+        return false
+    }
 }
 
 // 行类型:开关 / 单选(disclosure + ActionSheet) / 行内滑杆。
@@ -39,6 +64,227 @@ private enum NagramRow {
     case choice(titleKey: String, prefix: String, options: [String], current: () -> String, set: (String) -> Void)
     case slider(minValue: Int32, maxValue: Int32, get: () -> Int32, set: (Int32) -> Void)
     case navigation(titleKey: String, action: () -> Void)
+}
+
+private struct NagramDeepLinkRequest {
+    let section: String?
+    let row: String?
+}
+
+private struct NagramDeepLinkTarget {
+    let tab: NagramTab
+    let rowIndex: Int?
+}
+
+private func normalizedNagramDeepLinkToken(_ value: String) -> String {
+    return String(value.lowercased().filter { $0.isLetter || $0.isNumber })
+}
+
+private func nagramRowTitleKey(_ row: NagramRow) -> String {
+    switch row {
+    case let .toggle(titleKey, _, _):
+        return titleKey
+    case let .toggleWithEnabled(titleKey, _, _, _, _):
+        return titleKey
+    case let .choice(titleKey, _, _, _, _):
+        return titleKey
+    case .slider:
+        return "Nagram.StickerSize"
+    case let .navigation(titleKey, _):
+        return titleKey
+    }
+}
+
+private func nagramRowDeepLinkAliases(titleKey: String) -> [String] {
+    switch titleKey {
+    case "Nagram.HideTabBar":
+        return ["MainTabsStyle", "TabStyle"]
+    case "Nagram.HideTabBarCalls":
+        return ["HideCallsTab", "HideCallTab"]
+    case "Nagram.HideTabBarContacts":
+        return ["HideContactsTab", "HideContactTab"]
+    case "Nagram.HideTabBarChatList":
+        return ["HideChatsTab", "HideChatListTab"]
+    case "Nagram.HideTabBarSettings":
+        return ["HideSettingsTab"]
+    case "Nagram.ShowTabBarSearch":
+        return ["ShowSearchTab", "SearchTab"]
+    case "Nagram.HideStories":
+        return ["DisableStories"]
+    case "Nagram.DisableGalleryCamera":
+        return ["DisableInAppCamera", "inappCamera"]
+    case "Nagram.DisableGalleryCameraPreview":
+        return ["DisableCameraPreview"]
+    case "Nagram.DownloadSpeedBoost":
+        return ["enhancedFileLoader", "downloadSpeedBoost"]
+    case "Nagram.UploadSpeedBoost":
+        return ["uploadSpeedBoost"]
+    case "Nagram.SecondsInMessages":
+        return ["showSeconds", "ShowSeconds"]
+    case "Nagram.HideReactions":
+        return ["disableReactionsWhenSelecting", "HideReactions"]
+    case "Nagram.HideChannelBottomButton":
+        return ["HideChannelBottomButton"]
+    case "Nagram.HideSponsoredMessages":
+        return ["HideSponsoredMessages", "DisableSponsoredMessages"]
+    case "Nagram.PanguOnReceiving":
+        return ["PanguOnReceiving", "PanguOnRecv", "PanguReceiving"]
+    case "Nagram.PanguOnSending":
+        return ["PanguOnSending", "PanguSending"]
+    case "Nagram.PanguOnEditing":
+        return ["PanguOnEditing", "PanguEditing"]
+    case "Nagram.MessageMenu":
+        return ["MessageMenu", "DisableActionBarButton"]
+    case "Nagram.StickerSize":
+        return ["stickerSize"]
+    case "Nagram.StickerTimestamp":
+        return ["StickerTimestamp", "StickerTime"]
+    case "Nagram.DisableSendAsButton":
+        return ["hideSendAsChannel", "DisableSendAsButton"]
+    case "Nagram.SendWithReturnKey":
+        return ["SendWithReturnKey", "ReturnKeySend"]
+    case "Nagram.HideRecordingButton":
+        return ["HideRecordingButton", "HideRecordButton"]
+    case "Nagram.RecentChats":
+        return ["RecentChats", "recent_dialogs", "ShowRecentChatsInSidebar"]
+    case "Nagram.ChatListSwipeAction":
+        return ["ChatListSwipeAction"]
+    case "Nagram.DisableScrollToNextChannel":
+        return ["DisableScrollToNextChannel"]
+    case "Nagram.DisableScrollToNextTopic":
+        return ["DisableScrollToNextTopic"]
+    case "Nagram.VideoPIPSwipeUp":
+        return ["VideoPIPSwipeUp", "VideoPIPSwipeDirection"]
+    case "Nagram.ShowProfileId":
+        return ["ShowProfileId", "ShowId", "ShowIdAndDc"]
+    case "Nagram.ShowDC":
+        return ["ShowDC", "ShowDataCenter", "ShowIdAndDc"]
+    case "Nagram.ShowRegDate":
+        return ["ShowRegDate", "RegistrationDate"]
+    case "Nagram.ConfirmCalls":
+        return ["AskBeforeCalling", "ConfirmCalls"]
+    case "Nagram.DisableFiltering":
+        return ["DisableFiltering"]
+    case "Nagram.ForceCopy":
+        return ["ForceCopy", "ForceCopyEnabled"]
+    default:
+        return []
+    }
+}
+
+private func nagramRowDeepLinkTokens(_ row: NagramRow) -> [String] {
+    let titleKey = nagramRowTitleKey(row)
+    var values = [titleKey]
+    if titleKey.hasPrefix("Nagram.") {
+        values.append(String(titleKey.dropFirst("Nagram.".count)))
+    }
+    values.append(contentsOf: nagramRowDeepLinkAliases(titleKey: titleKey))
+    return values.map(normalizedNagramDeepLinkToken)
+}
+
+private func nagramRowDeepLinkKey(_ row: NagramRow) -> String {
+    let titleKey = nagramRowTitleKey(row)
+    if titleKey.hasPrefix("Nagram.") {
+        return String(titleKey.dropFirst("Nagram.".count))
+    }
+    return titleKey
+}
+
+private func nagramSettingsDeepLink(tab: NagramTab, row: NagramRow) -> String {
+    var components = URLComponents()
+    components.scheme = "https"
+    components.host = "t.me"
+    components.path = "/nasettings/\(tab.deepLinkSection)"
+    components.queryItems = [
+        URLQueryItem(name: "r", value: nagramRowDeepLinkKey(row))
+    ]
+    return components.url?.absoluteString ?? "https://t.me/nasettings/\(tab.deepLinkSection)?r=\(nagramRowDeepLinkKey(row))"
+}
+
+private func nagramTabForDeepLinkSection(_ section: String?) -> NagramTab? {
+    guard let section else {
+        return nil
+    }
+    switch normalizedNagramDeepLinkToken(section) {
+    case "general", "g", "interface", "camera", "network":
+        return .general
+    case "chat", "chats", "c", "message", "messages", "stickers", "gesture":
+        return .chat
+    case "other", "o", "account", "a", "about", "privacy", "profile", "calls", "experimental", "e", "emoji":
+        return .other
+    default:
+        return nil
+    }
+}
+
+private func parseNagramDeepLinkRequest(_ deepLinkPath: String?) -> NagramDeepLinkRequest? {
+    guard var raw = deepLinkPath?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+        return nil
+    }
+    if raw.lowercased().hasPrefix("nagram") {
+        raw = String(raw.dropFirst("nagram".count))
+        if raw.hasPrefix("/") {
+            raw = String(raw.dropFirst())
+        }
+    }
+
+    let urlString: String
+    if raw.isEmpty {
+        urlString = "nagram://settings"
+    } else if raw.hasPrefix("?") {
+        urlString = "nagram://settings\(raw)"
+    } else {
+        urlString = "nagram://settings/\(raw)"
+    }
+
+    guard let components = URLComponents(string: urlString) else {
+        return nil
+    }
+
+    let pathComponents = components.path.split(separator: "/").map(String.init)
+    let section = pathComponents.first
+    var row: String?
+    for item in components.queryItems ?? [] {
+        switch item.name.lowercased() {
+        case "r", "row":
+            if let value = item.value, !value.isEmpty {
+                row = value
+            }
+        default:
+            break
+        }
+    }
+    return NagramDeepLinkRequest(section: section, row: row)
+}
+
+private func nagramDeepLinkTarget(deepLinkPath: String?, groups: [NagramGroup]) -> NagramDeepLinkTarget {
+    let request = parseNagramDeepLinkRequest(deepLinkPath)
+    var selectedTab = nagramTabForDeepLinkSection(request?.section) ?? .general
+    var rowIndex: Int?
+
+    let rowCandidates = [request?.row, request?.section].compactMap { value -> String? in
+        guard let value, nagramTabForDeepLinkSection(value) == nil else {
+            return nil
+        }
+        return normalizedNagramDeepLinkToken(value)
+    }
+
+    if !rowCandidates.isEmpty {
+        var globalRowIndex = 0
+        scan: for group in groups {
+            for row in group.rows {
+                let tokens = nagramRowDeepLinkTokens(row)
+                if rowCandidates.contains(where: { tokens.contains($0) }) {
+                    selectedTab = group.tab
+                    rowIndex = globalRowIndex
+                    break scan
+                }
+                globalRowIndex += 1
+            }
+        }
+    }
+
+    return NagramDeepLinkTarget(tab: selectedTab, rowIndex: rowIndex)
 }
 
 private struct NagramGroup {
@@ -140,10 +386,13 @@ private final class NagramSettingsArguments {
     let toggle: (Int, Bool) -> Void
     let disclosureAction: (Int) -> Void
     let sliderUpdated: (Int, Int32) -> Void
-    init(toggle: @escaping (Int, Bool) -> Void, disclosureAction: @escaping (Int) -> Void, sliderUpdated: @escaping (Int, Int32) -> Void) {
+    let copyDeepLink: (Int) -> Void
+
+    init(toggle: @escaping (Int, Bool) -> Void, disclosureAction: @escaping (Int) -> Void, sliderUpdated: @escaping (Int, Int32) -> Void, copyDeepLink: @escaping (Int) -> Void) {
         self.toggle = toggle
         self.disclosureAction = disclosureAction
         self.sliderUpdated = sliderUpdated
+        self.copyDeepLink = copyDeepLink
     }
 }
 
@@ -198,6 +447,19 @@ private enum NagramSettingsEntry: ItemListNodeEntry {
         return lhs.stableId < rhs.stableId
     }
 
+    var tag: ItemListItemTag? {
+        switch self {
+        case let .toggle(_, _, _, _, _, _, index):
+            return NagramSettingsRowTag(index: index)
+        case let .disclosure(_, _, _, _, index):
+            return NagramSettingsRowTag(index: index)
+        case let .slider(_, _, _, _, _, index):
+            return NagramSettingsRowTag(index: index)
+        default:
+            return nil
+        }
+    }
+
     func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
         let arguments = arguments as! NagramSettingsArguments
         switch self {
@@ -206,22 +468,28 @@ private enum NagramSettingsEntry: ItemListNodeEntry {
         case let .toggle(_, section, title, value, enabled, enableInteractiveChanges, index):
             return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, enableInteractiveChanges: enableInteractiveChanges, enabled: enabled, sectionId: section, style: .blocks, updated: { value in
                 arguments.toggle(index, value)
-            })
+            }, longTapAction: {
+                arguments.copyDeepLink(index)
+            }, tag: self.tag)
         case let .disclosure(_, section, title, label, index):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: label, sectionId: section, style: .blocks, action: {
                 arguments.disclosureAction(index)
-            })
+            }, longTapAction: {
+                arguments.copyDeepLink(index)
+            }, tag: self.tag)
         case let .slider(_, section, minValue, maxValue, value, index):
             return NagramSliderItem(theme: presentationData.theme, minValue: minValue, maxValue: maxValue, value: value, sectionId: section, updated: { newValue in
                 arguments.sliderUpdated(index, newValue)
-            })
+            }, longTapAction: {
+                arguments.copyDeepLink(index)
+            }, tag: self.tag)
         case let .footer(_, section, text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: section)
         }
     }
 }
 
-public func nagramSettingsController(context: AccountContext) -> ViewController {
+public func nagramSettingsController(context: AccountContext, deepLinkPath: String? = nil) -> ViewController {
     var currentShowCallsTab = CallListSettings.defaultSettings.showTab
     var currentContentSettingsConfiguration: ContentSettingsConfiguration?
     let contentSettingsConfigurationPromise = Promise<ContentSettingsConfiguration?>()
@@ -271,8 +539,12 @@ public func nagramSettingsController(context: AccountContext) -> ViewController 
         pushControllerImpl?(nagramMessageMenuSettingsController(context: context))
     })
     let flatRows: [NagramRow] = groups.flatMap { $0.rows }
+    let flatRowDeepLinks: [String] = groups.flatMap { group in
+        group.rows.map { nagramSettingsDeepLink(tab: group.tab, row: $0) }
+    }
+    let deepLinkTarget = nagramDeepLinkTarget(deepLinkPath: deepLinkPath, groups: groups)
 
-    let tabPromise = ValuePromise<Int32>(0, ignoreRepeated: true)
+    let tabPromise = ValuePromise<Int32>(deepLinkTarget.tab.rawValue, ignoreRepeated: true)
 
     // 本地刷新计数:toggle/choice 改值后 bump() 触发重建。slider 不 bump(节点自显示)。
     let updatePromise = ValuePromise<Int32>(0, ignoreRepeated: false)
@@ -321,6 +593,16 @@ public func nagramSettingsController(context: AccountContext) -> ViewController 
         if case let .slider(_, _, _, set) = flatRows[index] {
             set(value)
         }
+    }, copyDeepLink: { index in
+        guard flatRowDeepLinks.indices.contains(index) else {
+            return
+        }
+        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+        UIPasteboard.general.string = flatRowDeepLinks[index]
+        HapticFeedback().tap()
+        presentControllerImpl?(UndoOverlayController(presentationData: presentationData, content: .linkCopied(title: nil, text: presentationData.strings.Conversation_LinkCopied), elevatedLayout: false, animateInAsReplacement: false, action: { _ in
+            return false
+        }), nil)
     })
 
     let signal = combineLatest(queue: .mainQueue(),
@@ -342,6 +624,7 @@ public func nagramSettingsController(context: AccountContext) -> ViewController 
         // stableId 必须全局唯一且稳定:遍历所有 group 全局递增分配,当前 tab 只取子集。
         // 否则切 tab 时同 stableId 指向不同类型 entry,ItemList diff 会用错 item 类型 update node 而崩溃。
         var entries: [NagramSettingsEntry] = []
+        var initialScrollToItem: ListViewScrollToItem?
         var stableId: Int32 = 0
         var globalRowIndex = 0
         for (groupIndex, group) in groups.enumerated() {
@@ -360,6 +643,9 @@ public func nagramSettingsController(context: AccountContext) -> ViewController 
                 let rowIndex = globalRowIndex
                 globalRowIndex += 1
                 if isCurrent {
+                    if deepLinkTarget.rowIndex == rowIndex {
+                        initialScrollToItem = ListViewScrollToItem(index: entries.count, position: .visible, animated: false, curve: .Default(duration: nil), directionHint: .Down)
+                    }
                     switch row {
                     case let .toggle(titleKey, get, _):
                         entries.append(.toggle(stableId: rowStableId, section: sectionId, title: ngI18n(titleKey, lang), value: get(), enabled: true, enableInteractiveChanges: true, index: rowIndex))
@@ -384,7 +670,7 @@ public func nagramSettingsController(context: AccountContext) -> ViewController 
 
         let tabTitles = NagramTab.allCases.map { ngI18n($0.titleKey, lang) }
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .sectionControl(tabTitles, Int(selectedTab)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, animateChanges: false)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, ensureVisibleItemTag: deepLinkTarget.rowIndex.map { NagramSettingsRowTag(index: $0) }, initialScrollToItem: initialScrollToItem, animateChanges: false)
 
         return (controllerState, (listState, arguments))
     }
@@ -394,6 +680,24 @@ public func nagramSettingsController(context: AccountContext) -> ViewController 
 
     let controller = ItemListController(context: context, state: signal)
     controller.navigationPresentation = .default
+    if let rowIndex = deepLinkTarget.rowIndex {
+        let targetTag = NagramSettingsRowTag(index: rowIndex)
+        controller.afterLayout { [weak controller] in
+            guard let controller else {
+                return
+            }
+            var didHighlight = false
+            for delay in [0.35, 0.75, 1.15] {
+                Queue.mainQueue().after(delay, { [weak controller] in
+                    guard !didHighlight, let itemNode = controller?.itemNode(forTag: targetTag) as? ItemListItemNode else {
+                        return
+                    }
+                    didHighlight = true
+                    itemNode.displayHighlight()
+                })
+            }
+        }
+    }
     controller.titleControlValueChanged = { index in
         tabPromise.set(Int32(index))
     }

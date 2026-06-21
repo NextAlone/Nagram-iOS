@@ -153,12 +153,35 @@ public enum ParsedInternalUrl {
     case oauth(url: String)
     case createBot(parentBot: String, username: String?, title: String?)
     case textStyle(slug: String)
+    case settings(path: String) // MARK: NAGRAM — local Nagram settings deep link
     case externalUrl(url: String)
 }
 
 private enum ParsedUrl {
     case externalUrl(String)
     case internalUrl(ParsedInternalUrl)
+}
+
+// MARK: NAGRAM — preserve Android-compatible nasettings path/query through URL resolution.
+private func appendQueryItems(to base: String, items: [URLQueryItem]) -> String {
+    guard !items.isEmpty else {
+        return base
+    }
+    var components = URLComponents()
+    components.queryItems = items
+    guard let query = components.percentEncodedQuery, !query.isEmpty else {
+        return base
+    }
+    return "\(base)?\(query)"
+}
+
+private func nagramSettingsPath(pathComponents: [String], queryItems: [URLQueryItem]?) -> String {
+    var result = "nagram"
+    let suffix = pathComponents.dropFirst().filter { !$0.isEmpty }
+    if !suffix.isEmpty {
+        result += "/" + suffix.joined(separator: "/")
+    }
+    return appendQueryItems(to: result, items: queryItems ?? [])
 }
 
 public func parseInternalUrl(sharedContext: SharedAccountContext, context: AccountContext?, query: String) -> ParsedInternalUrl? {
@@ -179,6 +202,12 @@ public func parseInternalUrl(sharedContext: SharedAccountContext, context: Accou
         }
         if !pathComponents.isEmpty && !pathComponents[0].isEmpty {
             let peerName: String = pathComponents[0]
+            if peerName.lowercased() == "nasettings" {
+                guard pathComponents.count <= 2 else {
+                    return nil
+                }
+                return .settings(path: nagramSettingsPath(pathComponents: pathComponents, queryItems: components.queryItems))
+            }
             
             if query.hasPrefix("tonsite/") {
                 return .externalUrl(url: "tonsite://" + String(query[query.index(query.startIndex, offsetBy: "tonsite/".count)...]))
@@ -826,6 +855,8 @@ private enum ResolveInternalUrlResult {
 
 private func resolveInternalUrl(context: AccountContext, url: ParsedInternalUrl) -> Signal<ResolveInternalUrlResult, NoError> {
     switch url {
+        case let .settings(path):
+            return .single(.result(.settings(.path(path))))
         case let .phone(phone, attach, startAttach, text):
             return context.engine.peers.resolvePeerByPhone(phone: phone)
             |> mapToSignal { peer -> Signal<ResolveInternalUrlResult, NoError> in

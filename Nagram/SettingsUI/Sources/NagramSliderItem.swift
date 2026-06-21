@@ -22,8 +22,10 @@ final class NagramSliderItem: ListViewItem, ItemListItem {
     let systemStyle: ItemListSystemStyle
     let sectionId: ItemListSectionId
     let updated: (Int32) -> Void
+    let longTapAction: (() -> Void)?
+    let tag: ItemListItemTag?
 
-    init(theme: PresentationTheme, minValue: Int32, maxValue: Int32, value: Int32, sectionId: ItemListSectionId, systemStyle: ItemListSystemStyle = .glass, updated: @escaping (Int32) -> Void) {
+    init(theme: PresentationTheme, minValue: Int32, maxValue: Int32, value: Int32, sectionId: ItemListSectionId, systemStyle: ItemListSystemStyle = .glass, updated: @escaping (Int32) -> Void, longTapAction: (() -> Void)? = nil, tag: ItemListItemTag? = nil) {
         self.theme = theme
         self.minValue = minValue
         self.maxValue = maxValue
@@ -31,6 +33,8 @@ final class NagramSliderItem: ListViewItem, ItemListItem {
         self.systemStyle = systemStyle
         self.sectionId = sectionId
         self.updated = updated
+        self.longTapAction = longTapAction
+        self.tag = tag
     }
 
     func nodeConfiguredForParams(async: @escaping (@escaping () -> Void) -> Void, params: ListViewItemLayoutParams, synchronousLoads: Bool, previousItem: ListViewItem?, nextItem: ListViewItem?, completion: @escaping (ListViewItemNode, @escaping () -> (Signal<Void, NoError>?, (ListViewItemApply) -> Void)) -> Void) {
@@ -62,8 +66,9 @@ final class NagramSliderItem: ListViewItem, ItemListItem {
     }
 }
 
-private final class NagramSliderItemNode: ListViewItemNode {
+private final class NagramSliderItemNode: ListViewItemNode, ItemListItemNode {
     private let backgroundNode: ASDisplayNode
+    private let highlightNode: ASDisplayNode
     private let topStripeNode: ASDisplayNode
     private let bottomStripeNode: ASDisplayNode
     private let maskNode: ASImageNode
@@ -77,9 +82,15 @@ private final class NagramSliderItemNode: ListViewItemNode {
     private var item: NagramSliderItem?
     private var layoutParams: ListViewItemLayoutParams?
 
+    var tag: ItemListItemTag? {
+        return self.item?.tag
+    }
+
     init() {
         self.backgroundNode = ASDisplayNode()
         self.backgroundNode.isLayerBacked = true
+        self.highlightNode = ASDisplayNode()
+        self.highlightNode.isLayerBacked = true
         self.topStripeNode = ASDisplayNode()
         self.topStripeNode.isLayerBacked = true
         self.bottomStripeNode = ASDisplayNode()
@@ -104,6 +115,36 @@ private final class NagramSliderItemNode: ListViewItemNode {
         return max(0.0, min(1.0, CGFloat(value - item.minValue) / span))
     }
 
+    override var canBeLongTapped: Bool {
+        return self.item?.longTapAction != nil
+    }
+
+    override func visibleForSelection(at point: CGPoint) -> Bool {
+        return point.y < 44.0
+    }
+
+    override func longTapped() {
+        self.item?.longTapAction?()
+    }
+
+    func displayHighlight() {
+        self.highlightNode.alpha = 1.0
+        if self.backgroundNode.supernode != nil {
+            self.insertSubnode(self.highlightNode, aboveSubnode: self.backgroundNode)
+        } else {
+            self.insertSubnode(self.highlightNode, at: 0)
+        }
+
+        Queue.mainQueue().after(1.2, { [weak self] in
+            guard let self else {
+                return
+            }
+            self.highlightNode.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.3, removeOnCompletion: false, completion: { [weak self] _ in
+                self?.highlightNode.removeFromSupernode()
+            })
+        })
+    }
+
     func asyncLayout() -> (_ item: NagramSliderItem, _ params: ListViewItemLayoutParams, _ neighbors: ItemListNeighbors) -> (ListViewItemNodeLayout, () -> Void) {
         return { item, params, neighbors in
             let separatorHeight = UIScreenPixel
@@ -125,6 +166,7 @@ private final class NagramSliderItemNode: ListViewItemNode {
                 strongSelf.layoutParams = params
 
                 strongSelf.backgroundNode.backgroundColor = item.theme.list.itemBlocksBackgroundColor
+                strongSelf.highlightNode.backgroundColor = item.theme.list.itemSearchHighlightColor
                 strongSelf.topStripeNode.backgroundColor = item.theme.list.itemBlocksSeparatorColor
                 strongSelf.bottomStripeNode.backgroundColor = item.theme.list.itemBlocksSeparatorColor
 
@@ -168,6 +210,7 @@ private final class NagramSliderItemNode: ListViewItemNode {
                 strongSelf.maskNode.image = hasCorners ? PresentationResourcesItemList.cornersImage(item.theme, top: hasTopCorners, bottom: hasBottomCorners, glass: item.systemStyle == .glass) : nil
 
                 strongSelf.backgroundNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: params.width, height: contentSize.height + min(insets.top, separatorHeight) + min(insets.bottom, separatorHeight)))
+                strongSelf.highlightNode.frame = strongSelf.backgroundNode.frame
                 strongSelf.maskNode.frame = strongSelf.backgroundNode.frame.insetBy(dx: params.leftInset, dy: 0.0)
                 strongSelf.topStripeNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: layoutSize.width, height: separatorHeight))
                 strongSelf.bottomStripeNode.frame = CGRect(origin: CGPoint(x: bottomStripeInset, y: contentSize.height + bottomStripeOffset), size: CGSize(width: layoutSize.width - bottomStripeInset - params.rightInset - separatorRightInset, height: separatorHeight))

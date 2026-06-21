@@ -71,6 +71,7 @@ swift_library(
         "//Nagram/Settings:NagramSettings",
         "//Nagram/SettingsSignal:NagramSettingsSignal",
         "//Nagram/Strings:NagramStrings",
+        "//Nagram/SettingsUI:NagramSettingsUI",
         "//submodules/MediaPlayer:UniversalMediaPlayer",
         "//submodules/TelegramVoip:TelegramVoip",
         "//submodules/DeviceAccess:DeviceAccess",

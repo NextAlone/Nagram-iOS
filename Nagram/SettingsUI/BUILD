@@ -20,6 +20,7 @@ swift_library(
         "//submodules/AccountContext:AccountContext",
         "//submodules/TelegramCore:TelegramCore",
         "//submodules/TelegramUIPreferences:TelegramUIPreferences",
+        "//submodules/UndoUI:UndoUI",
         "//Nagram/Settings:NagramSettings",
         "//Nagram/Strings:NagramStrings",
         "//Nagram/SettingsSignal:NagramSettingsSignal",
