@@ -112,10 +112,9 @@ jobs:
           }
           JSON
 
-      - name: Write local.bazelrc (main app only + Xcode 26.x deprecation demotion)
+      - name: Write local.bazelrc (app + extensions + Xcode 26.x deprecation demotion)
         run: |
           cat > local.bazelrc <<'RC'
-          build --//Telegram:disableExtensions
           build --copt=-Wno-error
           build --cxxopt=-Wno-error
           build --objccopt=-Wno-error
@@ -124,7 +123,7 @@ jobs:
           build --@build_bazel_rules_swift//swift:copt=-no-warnings-as-errors
           RC
 
-      - name: Generate App Store provisioning profile
+      - name: Generate App Store provisioning profiles
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -136,9 +135,21 @@ jobs:
           PY
           chmod 600 /tmp/asc_key.json
           mkdir -p build-input/codesigning/profiles
-          fastlane sigh --api_key_path /tmp/asc_key.json --app_identifier "$BUNDLE_ID" \
-            --platform ios --force \
-            --output_path build-input/codesigning/profiles --filename nagram_appstore.mobileprovision
+
+          while IFS=: read -r suffix filename; do
+            identifier="${BUNDLE_ID}${suffix}"
+            fastlane sigh --api_key_path /tmp/asc_key.json --app_identifier "$identifier" \
+              --platform ios --force \
+              --output_path build-input/codesigning/profiles --filename "$filename"
+          done <<'PROFILES'
+          :Telegram.mobileprovision
+          .Share:Share.mobileprovision
+          .NotificationContent:NotificationContent.mobileprovision
+          .NotificationService:NotificationService.mobileprovision
+          .SiriIntents:Intents.mobileprovision
+          .Widget:Widget.mobileprovision
+          .BroadcastUpload:BroadcastUpload.mobileprovision
+          PROFILES
           rm -f /tmp/asc_key.json
 
       - name: Force iOS 15 deployment target
