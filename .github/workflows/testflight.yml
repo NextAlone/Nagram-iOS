@@ -169,16 +169,11 @@ jobs:
             --buildNumber="$BUILD_NUMBER" \
             --configuration=release_arm64
 
-      - name: Submit to TestFlight (external)
+      - name: Upload to TestFlight
         env:
-          # Repository VARIABLES (Settings -> Secrets and variables -> Actions -> Variables):
-          #   TESTFLIGHT_GROUPS            - name of the EXTERNAL group in App Store Connect (must already exist)
-          #   USES_NON_EXEMPT_ENCRYPTION   - export-compliance answer; "true" or "false" (see note below)
-          TESTFLIGHT_GROUPS: ${{ vars.TESTFLIGHT_GROUPS }}
           USES_NON_EXEMPT_ENCRYPTION: ${{ vars.USES_NON_EXEMPT_ENCRYPTION || 'false' }}
         run: |
           set -euo pipefail
-          : "${TESTFLIGHT_GROUPS:?set the TESTFLIGHT_GROUPS repository variable to your external group name}"
           python3 - <<'PY'
           import json, os
           kid = os.environ["ASC_KEY_ID"]
@@ -187,15 +182,92 @@ jobs:
                      "key": open(p).read(), "in_house": False}, open("/tmp/asc_key.json", "w"))
           PY
           chmod 600 /tmp/asc_key.json
-          # Uploads, waits for Apple processing, adds the build to the external group,
-          # submits for Beta App Review, and notifies external testers.
+          # Upload only — do not distribute yet. Separating upload from distribution
+          # avoids BETA_CONTRACT_MISSING aborting the upload when the Beta Testing
+          # Agreement hasn't been accepted yet, or when the group is mis-configured.
           fastlane pilot upload \
             --api_key_path /tmp/asc_key.json \
             --ipa bazel-bin/Telegram/Telegram.ipa \
             --app_identifier "$BUNDLE_ID" \
-            --distribute_external true \
-            --groups "$TESTFLIGHT_GROUPS" \
-            --notify_external_testers true \
-            --changelog "$(git log -1 --pretty=%s)" \
+            --skip_submission true \
             --uses_non_exempt_encryption "$USES_NON_EXEMPT_ENCRYPTION"
           rm -f /tmp/asc_key.json
+
+      - name: Distribute to external TestFlight group
+        env:
+          # Repository VARIABLES (Settings -> Secrets and variables -> Actions -> Variables):
+          #   TESTFLIGHT_GROUPS  - name of the EXTERNAL group in App Store Connect (must already exist)
+          TESTFLIGHT_GROUPS: ${{ vars.TESTFLIGHT_GROUPS }}
+          APPSTORE_ID: "6781000861"
+        run: |
+          set -euo pipefail
+          : "${TESTFLIGHT_GROUPS:?set the TESTFLIGHT_GROUPS repository variable to your external group name}"
+          # Use the ASC REST API to find the processed build and add it to the external
+          # group — avoids re-uploading the IPA and decouples distribution from upload,
+          # so BETA_CONTRACT_MISSING or group misconfig cannot abort the upload step.
+          python3 - <<'PY'
+          import os, sys, time, json, base64, urllib.request, urllib.error, subprocess
+          from cryptography.hazmat.primitives.serialization import load_pem_private_key
+          from cryptography.hazmat.primitives.asymmetric.ec import ECDSA
+          from cryptography.hazmat.primitives.hashes import SHA256
+          from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
+
+          kid    = os.environ["ASC_KEY_ID"]
+          issuer = os.environ["ASC_ISSUER_ID"]
+          app_id = os.environ["APPSTORE_ID"]
+          group_name = os.environ["TESTFLIGHT_GROUPS"]
+          offset = int(open("build_number_offset").read().strip()) if os.path.exists("build_number_offset") else 0
+          commit_count = int(subprocess.check_output(["git", "rev-list", "--count", "HEAD"]).strip())
+          build_number = str(commit_count + offset)
+          key = load_pem_private_key(
+              open(os.path.expanduser(f"~/.appstoreconnect/private_keys/AuthKey_{kid}.p8")).read().encode(),
+              password=None)
+
+          def tok():
+              hdr = base64.urlsafe_b64encode(json.dumps({"alg":"ES256","kid":kid,"typ":"JWT"}).encode()).rstrip(b"=")
+              now = int(time.time())
+              pay = base64.urlsafe_b64encode(json.dumps({"iss":issuer,"iat":now,"exp":now+600,"aud":"appstoreconnect-v1"}).encode()).rstrip(b"=")
+              msg = hdr + b"." + pay
+              sig = key.sign(msg, ECDSA(SHA256()))
+              r, s = decode_dss_signature(sig)
+              return (msg + b"." + base64.urlsafe_b64encode(r.to_bytes(32,"big")+s.to_bytes(32,"big")).rstrip(b"=")).decode()
+
+          def api(method, path, body=None):
+              req = urllib.request.Request("https://api.appstoreconnect.apple.com" + path,
+                    method=method, headers={"Authorization": f"Bearer {tok()}", "Content-Type": "application/json"})
+              if body: req.data = json.dumps(body).encode()
+              try:
+                  with urllib.request.urlopen(req) as r: return r.status, json.loads(r.read())
+              except urllib.error.HTTPError as e: return e.code, {"_body": e.read().decode()}
+
+          # 1. Find the build (wait up to 30 min for processing)
+          build_id = None
+          for attempt in range(36):
+              s, r = api("GET", f"/v1/builds?filter[app]={app_id}&filter[version]={build_number}"
+                                "&filter[processingState]=VALID&sort=-uploadedDate&limit=1")
+              data = r.get("data", [])
+              if data:
+                  build_id = data[0]["id"]
+                  print(f"Build found: {build_id} (build {build_number})")
+                  break
+              print(f"Waiting for build {build_number} to finish processing ({attempt+1}/36)...")
+              time.sleep(50)
+          if not build_id:
+              print("ERROR: build not found after 30 minutes", file=sys.stderr); sys.exit(1)
+
+          # 2. Find the external beta group by name
+          s, r = api("GET", f"/v1/apps/{app_id}/betaGroups?filter[isInternalGroup]=false")
+          groups = [g for g in r.get("data", []) if g["attributes"]["name"] == group_name]
+          if not groups:
+              print(f"ERROR: external group '{group_name}' not found", file=sys.stderr); sys.exit(1)
+          group_id = groups[0]["id"]
+          print(f"Group: {group_name} ({group_id})")
+
+          # 3. Add build to group (triggers Beta App Review + notifies testers)
+          s, r = api("POST", f"/v1/betaGroups/{group_id}/relationships/builds",
+                     {"data": [{"type": "builds", "id": build_id}]})
+          if s in (200, 201, 204, 409):
+              print(f"Distributed build {build_id} to group '{group_name}' (status {s})")
+          else:
+              print(f"ERROR distributing: {s} {r.get('_body','')}", file=sys.stderr); sys.exit(1)
+          PY
