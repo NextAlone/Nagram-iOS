@@ -542,16 +542,37 @@ def patch_generated_xcodeproj_bazel_build_script(xcodeproj_path):
         contents = file.read()
 
     marker = "# MARK: NAGRAM\n"
+    nagram_toolchain_block = (
+        marker
+        + "# Xcode 27 beta may be the GUI while Bazel still needs the local Xcode 26.5 CLI.\n"
+        + "# Prefer the same toolchain path local.bazelrc forces, unless explicitly overridden.\n"
+        + "nagram_default_developer_dir=\"/Applications/Xcode.app/Contents/Developer\"\n"
+        + "if [[ ! -x \"$nagram_default_developer_dir/usr/bin/xcodebuild\" ]]; then\n"
+        + "  nagram_default_developer_dir=\"$DEVELOPER_DIR\"\n"
+        + "fi\n"
+        + "nagram_developer_dir=\"${NAGRAM_DEVELOPER_DIR:-$nagram_default_developer_dir}\"\n"
+        + "if [[ -n \"${NAGRAM_XCODE_PRODUCT_BUILD_VERSION:-}\" ]]; then\n"
+        + "  nagram_xcode_product_build_version=\"$NAGRAM_XCODE_PRODUCT_BUILD_VERSION\"\n"
+        + "else\n"
+        + "  nagram_xcode_product_build_version=\"$(\"$nagram_developer_dir/usr/bin/xcodebuild\" -version | awk '/Build version/ { print $3; exit }')\"\n"
+        + "  nagram_xcode_product_build_version=\"${nagram_xcode_product_build_version:-$XCODE_PRODUCT_BUILD_VERSION}\"\n"
+        + "fi\n\n"
+    )
+    legacy_nagram_toolchain_block = (
+        marker
+        + "# Keep the generated project on Xcode's normal toolchain by default.\n"
+        + "# Local machines can opt in to a different Bazel-resolved toolchain with NAGRAM_*.\n"
+        + "nagram_developer_dir=\"${NAGRAM_DEVELOPER_DIR:-$DEVELOPER_DIR}\"\n"
+        + "nagram_xcode_product_build_version=\"${NAGRAM_XCODE_PRODUCT_BUILD_VERSION:-$XCODE_PRODUCT_BUILD_VERSION}\"\n\n"
+    )
     if marker not in contents:
         contents = contents.replace(
             "bazel_cmd=(\n",
-            marker
-            + "# Keep the generated project on Xcode's normal toolchain by default.\n"
-            + "# Local machines can opt in to a different Bazel-resolved toolchain with NAGRAM_*.\n"
-            + "nagram_developer_dir=\"${NAGRAM_DEVELOPER_DIR:-$DEVELOPER_DIR}\"\n"
-            + "nagram_xcode_product_build_version=\"${NAGRAM_XCODE_PRODUCT_BUILD_VERSION:-$XCODE_PRODUCT_BUILD_VERSION}\"\n\n"
+            nagram_toolchain_block
             + "bazel_cmd=(\n"
         )
+    else:
+        contents = contents.replace(legacy_nagram_toolchain_block, nagram_toolchain_block, 1)
 
     replacements = {
         "\"--host_jvm_args=-Xdock:name=$DEVELOPER_DIR\"": "\"--host_jvm_args=-Xdock:name=$nagram_developer_dir\"",
