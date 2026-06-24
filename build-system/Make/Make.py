@@ -544,13 +544,21 @@ def patch_generated_xcodeproj_bazel_build_script(xcodeproj_path):
     marker = "# MARK: NAGRAM\n"
     nagram_toolchain_block = (
         marker
-        + "# Xcode 27 beta may be the GUI while Bazel still needs the local Xcode 26.5 CLI.\n"
         + "# Prefer the same toolchain path local.bazelrc forces, unless explicitly overridden.\n"
-        + "nagram_default_developer_dir=\"/Applications/Xcode.app/Contents/Developer\"\n"
-        + "if [[ ! -x \"$nagram_default_developer_dir/usr/bin/xcodebuild\" ]]; then\n"
-        + "  nagram_default_developer_dir=\"$DEVELOPER_DIR\"\n"
+        + "nagram_local_bazelrc=\"${SRCROOT:-$PWD}/local.bazelrc\"\n"
+        + "nagram_local_developer_dir=\"\"\n"
+        + "if [[ -f \"$nagram_local_bazelrc\" ]]; then\n"
+        + "  nagram_local_developer_dir=\"$(perl -ne '\n"
+        + "    next if /^\\s*#/;\n"
+        + "    if (/--repo_env=\"DEVELOPER_DIR=([^\"]+)\"/) { print \"$1\\n\"; }\n"
+        + "    elsif (/--repo_env=DEVELOPER_DIR=([^\\s]+)/) { print \"$1\\n\"; }\n"
+        + "  ' \"$nagram_local_bazelrc\" | tail -n 1)\"\n"
         + "fi\n"
-        + "nagram_developer_dir=\"${NAGRAM_DEVELOPER_DIR:-$nagram_default_developer_dir}\"\n"
+        + "nagram_developer_dir=\"${NAGRAM_DEVELOPER_DIR:-${nagram_local_developer_dir:-$DEVELOPER_DIR}}\"\n"
+        + "if [[ ! -x \"$nagram_developer_dir/usr/bin/xcodebuild\" ]]; then\n"
+        + "  echo \"warning: Xcode developer dir '$nagram_developer_dir' from NAGRAM_DEVELOPER_DIR/local.bazelrc is invalid; using '$DEVELOPER_DIR'\" >&2\n"
+        + "  nagram_developer_dir=\"$DEVELOPER_DIR\"\n"
+        + "fi\n"
         + "if [[ -n \"${NAGRAM_XCODE_PRODUCT_BUILD_VERSION:-}\" ]]; then\n"
         + "  nagram_xcode_product_build_version=\"$NAGRAM_XCODE_PRODUCT_BUILD_VERSION\"\n"
         + "else\n"
@@ -565,6 +573,22 @@ def patch_generated_xcodeproj_bazel_build_script(xcodeproj_path):
         + "nagram_developer_dir=\"${NAGRAM_DEVELOPER_DIR:-$DEVELOPER_DIR}\"\n"
         + "nagram_xcode_product_build_version=\"${NAGRAM_XCODE_PRODUCT_BUILD_VERSION:-$XCODE_PRODUCT_BUILD_VERSION}\"\n\n"
     )
+    hardcoded_nagram_toolchain_block = (
+        marker
+        + "# Xcode 27 beta may be the GUI while Bazel still needs the local Xcode 26.5 CLI.\n"
+        + "# Prefer the same toolchain path local.bazelrc forces, unless explicitly overridden.\n"
+        + "nagram_default_developer_dir=\"/Applications/Xcode.app/Contents/Developer\"\n"
+        + "if [[ ! -x \"$nagram_default_developer_dir/usr/bin/xcodebuild\" ]]; then\n"
+        + "  nagram_default_developer_dir=\"$DEVELOPER_DIR\"\n"
+        + "fi\n"
+        + "nagram_developer_dir=\"${NAGRAM_DEVELOPER_DIR:-$nagram_default_developer_dir}\"\n"
+        + "if [[ -n \"${NAGRAM_XCODE_PRODUCT_BUILD_VERSION:-}\" ]]; then\n"
+        + "  nagram_xcode_product_build_version=\"$NAGRAM_XCODE_PRODUCT_BUILD_VERSION\"\n"
+        + "else\n"
+        + "  nagram_xcode_product_build_version=\"$(\"$nagram_developer_dir/usr/bin/xcodebuild\" -version | awk '/Build version/ { print $3; exit }')\"\n"
+        + "  nagram_xcode_product_build_version=\"${nagram_xcode_product_build_version:-$XCODE_PRODUCT_BUILD_VERSION}\"\n"
+        + "fi\n\n"
+    )
     if marker not in contents:
         contents = contents.replace(
             "bazel_cmd=(\n",
@@ -572,7 +596,10 @@ def patch_generated_xcodeproj_bazel_build_script(xcodeproj_path):
             + "bazel_cmd=(\n"
         )
     else:
-        contents = contents.replace(legacy_nagram_toolchain_block, nagram_toolchain_block, 1)
+        for old_block in (legacy_nagram_toolchain_block, hardcoded_nagram_toolchain_block):
+            if old_block in contents:
+                contents = contents.replace(old_block, nagram_toolchain_block, 1)
+                break
 
     replacements = {
         "\"--host_jvm_args=-Xdock:name=$DEVELOPER_DIR\"": "\"--host_jvm_args=-Xdock:name=$nagram_developer_dir\"",
