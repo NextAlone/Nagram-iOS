@@ -418,6 +418,10 @@ public final class ReactionContextNode: ASDisplayNode, ASScrollViewDelegate {
     private var emojiContent: EmojiPagerContentComponent?
     private var scheduledEmojiContentAnimationHint: EmojiPagerContentComponent.ContentAnimation?
     private var emojiContentDisposable: Disposable?
+
+    // MARK: NAGRAM
+    private var isUpdatingLayout = false
+    private var pendingLayoutTransition: ContainedViewLayoutTransition?
     
     private let emojiSearchDisposable = MetaDisposable()
     private let emojiSearchState = Promise<EmojiSearchState>(EmojiSearchState(result: nil, isSearching: false))
@@ -744,7 +748,7 @@ public final class ReactionContextNode: ASDisplayNode, ASScrollViewDelegate {
                                     return
                                 }
                                 strongSelf.isReactionSearchActive = hideTopPanel
-                                strongSelf.requestLayout(transition.containedViewLayoutTransition)
+                                strongSelf.requestLayoutAfterCurrentUpdate(transition.containedViewLayoutTransition)
                             }
                         )),
                         environment: {},
@@ -911,7 +915,20 @@ public final class ReactionContextNode: ASDisplayNode, ASScrollViewDelegate {
     }
     
     public func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        // MARK: NAGRAM
+        if self.isUpdatingLayout {
+            return
+        }
         self.updateScrolling(transition: .immediate)
+    }
+
+    // MARK: NAGRAM
+    private func requestLayoutAfterCurrentUpdate(_ transition: ContainedViewLayoutTransition) {
+        if self.isUpdatingLayout {
+            self.pendingLayoutTransition = transition
+        } else {
+            self.requestLayout(transition)
+        }
     }
     
     private func updateScrolling(transition: ContainedViewLayoutTransition) {
@@ -1266,6 +1283,22 @@ public final class ReactionContextNode: ASDisplayNode, ASScrollViewDelegate {
     }
     
     private func updateLayout(size: CGSize, insets: UIEdgeInsets, anchorRect: CGRect, centerAligned: Bool, isCoveredByInput: Bool, isAnimatingOut: Bool, forceUpdate: Bool = false, transition: ContainedViewLayoutTransition, animateInFromAnchorRect: CGRect?, animateOutToAnchorRect: CGRect?, animateReactionHighlight: Bool = false) {
+        // MARK: NAGRAM
+        if self.isUpdatingLayout {
+            self.pendingLayoutTransition = transition
+            return
+        }
+        self.isUpdatingLayout = true
+        defer {
+            self.isUpdatingLayout = false
+            if let pendingLayoutTransition = self.pendingLayoutTransition {
+                self.pendingLayoutTransition = nil
+                Queue.mainQueue().justDispatch { [weak self] in
+                    self?.requestLayout(pendingLayoutTransition)
+                }
+            }
+        }
+
         if let expandItemView = self.expandItemView {
             expandItemView.updateTheme(theme: self.presentationData.theme)
         }
@@ -1435,7 +1468,7 @@ public final class ReactionContextNode: ASDisplayNode, ASScrollViewDelegate {
                                 return
                             }
                             strongSelf.isReactionSearchActive = hideTopPanel
-                            strongSelf.requestLayout(transition.containedViewLayoutTransition)
+                            strongSelf.requestLayoutAfterCurrentUpdate(transition.containedViewLayoutTransition)
                         }
                     )),
                     environment: {},

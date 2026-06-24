@@ -281,6 +281,7 @@ enum GCDAsyncSocketConfig
 // CFStream
 #if TARGET_OS_IPHONE
 + (void)startCFStreamThreadIfNeeded;
++ (void)closeCFStreams:(GCDAsyncSocket *)asyncSocket;
 - (BOOL)createReadAndWriteStream;
 - (BOOL)registerForStreamCallbacksIncludingReadWrite:(BOOL)includeReadWrite;
 - (BOOL)addStreamsToRunLoop;
@@ -2728,20 +2729,18 @@ enum GCDAsyncSocketConfig
 		if (readStream || writeStream)
 		{
 			[self removeStreamsFromRunLoop];
-			
-			if (readStream)
+
+			// MARK: NAGRAM
+			if (cfstreamThread != nil)
 			{
-				CFReadStreamSetClient(readStream, kCFStreamEventNone, NULL, NULL);
-				CFReadStreamClose(readStream);
-				CFRelease(readStream);
-				readStream = NULL;
+				[[self class] performSelector:@selector(closeCFStreams:)
+				                     onThread:cfstreamThread
+				                   withObject:self
+				                waitUntilDone:YES];
 			}
-			if (writeStream)
+			else
 			{
-				CFWriteStreamSetClient(writeStream, kCFStreamEventNone, NULL, NULL);
-				CFWriteStreamClose(writeStream);
-				CFRelease(writeStream);
-				writeStream = NULL;
+				[[self class] closeCFStreams:self];
 			}
 		}
 	}
@@ -6827,6 +6826,31 @@ static OSStatus SSLWriteFunction(SSLConnectionRef connection, const void *data, 
 	
 	if (asyncSocket->writeStream)
 		CFWriteStreamUnscheduleFromRunLoop(asyncSocket->writeStream, runLoop, kCFRunLoopDefaultMode);
+}
+
++ (void)closeCFStreams:(GCDAsyncSocket *)asyncSocket
+{
+	LogTrace();
+	
+	if ([NSThread currentThread] != cfstreamThread)
+	{
+		LogWarn(@"closeCFStreams invoked off CFStream thread");
+	}
+	
+	if (asyncSocket->readStream)
+	{
+		CFReadStreamSetClient(asyncSocket->readStream, kCFStreamEventNone, NULL, NULL);
+		CFReadStreamClose(asyncSocket->readStream);
+		CFRelease(asyncSocket->readStream);
+		asyncSocket->readStream = NULL;
+	}
+	if (asyncSocket->writeStream)
+	{
+		CFWriteStreamSetClient(asyncSocket->writeStream, kCFStreamEventNone, NULL, NULL);
+		CFWriteStreamClose(asyncSocket->writeStream);
+		CFRelease(asyncSocket->writeStream);
+		asyncSocket->writeStream = NULL;
+	}
 }
 
 static void CFReadStreamCallback (CFReadStreamRef stream, CFStreamEventType type, void *pInfo)

@@ -59,6 +59,18 @@ final class PasskeysScreenComponent: Component {
 
         private var passkeysData: [TelegramPasskey]?
         private var loadPasskeysDataDisposable: Disposable?
+
+        // MARK: NAGRAM
+        private var currentAuthorizationController: ASAuthorizationController?
+        private var currentAuthorizationPresentationAnchor: ASPresentationAnchor?
+
+        // MARK: NAGRAM
+        private var canUsePlatformPasskeys: Bool {
+            guard let bundleIdentifier = Bundle.main.bundleIdentifier else {
+                return false
+            }
+            return bundleIdentifier == "ph.telegra.Telegraph" || bundleIdentifier == "org.telegram.Telegram-iOS"
+        }
         
         override init(frame: CGRect) {
             super.init(frame: frame)
@@ -74,7 +86,13 @@ final class PasskeysScreenComponent: Component {
         
         func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
             Task { @MainActor [weak self] in
-                guard let self, let component = self.component else {
+                guard let self else {
+                    return
+                }
+                self.currentAuthorizationController = nil
+                self.currentAuthorizationPresentationAnchor = nil
+
+                guard let component = self.component else {
                     return
                 }
                 
@@ -108,31 +126,55 @@ final class PasskeysScreenComponent: Component {
         }
 
         func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: any Error) {
-            
+            Task { @MainActor [weak self] in
+                self?.currentAuthorizationController = nil
+                self?.currentAuthorizationPresentationAnchor = nil
+                Logger.shared.log("Passkeys", "authorization error: \(error)")
+            }
         }
-        
+
+        // MARK: NAGRAM
+        private func currentPresentationAnchor() -> ASPresentationAnchor? {
+            if let window = self.window, !window.isHidden {
+                return window
+            }
+            if let window = self.environment?.controller()?.view.window, !window.isHidden {
+                return window
+            }
+            if let window = self.component?.context.sharedContext.mainWindow?.viewController?.view.window, !window.isHidden {
+                return window
+            }
+            for case let windowScene as UIWindowScene in UIApplication.shared.connectedScenes {
+                guard windowScene.activationState == .foregroundActive || windowScene.activationState == .foregroundInactive else {
+                    continue
+                }
+                if let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow && !$0.isHidden }) {
+                    return keyWindow
+                }
+                if let visibleWindow = windowScene.windows.first(where: { !$0.isHidden && $0.alpha > 0.0 }) {
+                    return visibleWindow
+                }
+            }
+            return nil
+        }
+
         func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
             // MARK: NAGRAM
-            if let window = self.window {
+            if let window = self.currentAuthorizationPresentationAnchor ?? self.currentPresentationAnchor() {
                 return window
-            }
-            if let window = self.environment?.controller()?.view.window {
-                return window
-            }
-            if let window = self.component?.context.sharedContext.mainWindow?.viewController?.view.window {
-                return window
-            }
-            if let windowScene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
-                return ASPresentationAnchor(windowScene: windowScene)
             }
             Logger.shared.log("Passkeys", "presentationAnchor requested without an attached window")
-            return ASPresentationAnchor(frame: UIScreen.main.bounds)
+            return ASPresentationAnchor(frame: .zero)
         }
 
         private func createPasskey() {
             if #available(iOS 15.0, *) {
                 Task { @MainActor [weak self] in
                     guard let self, let component = self.component else {
+                        return
+                    }
+                    guard self.canUsePlatformPasskeys else {
+                        Logger.shared.log("Passkeys", "Skipping platform passkey registration for bundle without webcredentials entitlement")
                         return
                     }
                     
@@ -178,12 +220,18 @@ final class PasskeysScreenComponent: Component {
                     guard let userName = user["name"] as? String else {
                         return
                     }
+                    guard let presentationAnchor = self.currentPresentationAnchor() else {
+                        Logger.shared.log("Passkeys", "Skipping platform passkey registration without an attached window")
+                        return
+                    }
                     
                     let platformProvider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: relyingPartyIdentifier)
                     let platformKeyRequest = platformProvider.createCredentialRegistrationRequest(challenge: challengeData, name: userName, userID: userId)
                     let authController = ASAuthorizationController(authorizationRequests: [platformKeyRequest])
                     authController.delegate = self
                     authController.presentationContextProvider = self
+                    self.currentAuthorizationController = authController
+                    self.currentAuthorizationPresentationAnchor = presentationAnchor
                     authController.performRequests()
                 }
             }
@@ -223,7 +271,7 @@ final class PasskeysScreenComponent: Component {
             component.passkeysDataUpdated(self.passkeysData ?? [])
             self.state?.updated(transition: .spring(duration: 0.4))
             
-            if #available(iOS 26.0, *) {
+            if #available(iOS 26.0, *), self.canUsePlatformPasskeys {
                 Task { @MainActor in
                     let updater = ASCredentialUpdater()
                     let decodeBase64: (String) -> Data? = { string in
