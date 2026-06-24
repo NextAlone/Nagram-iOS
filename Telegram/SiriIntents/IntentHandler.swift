@@ -801,7 +801,8 @@ class DefaultIntentHandler: INExtension, INSendMessageIntentHandling, INSearchFo
             var accountResults: [Signal<INObjectSection<Friend>, Error>] = []
             
             for (accountId, accountPeerId, _) in accounts {
-                accountResults.append(accountTransaction(rootPath: rootPath, id: accountId, encryptionParameters: encryptionParameters, isReadOnly: true, useCopy: false, transaction: { postbox, transaction -> INObjectSection<Friend> in
+                // MARK: NAGRAM — Siri option providers can run concurrently; read a temporary postbox copy to avoid colliding with another extension/main-app database open.
+                accountResults.append(accountTransaction(rootPath: rootPath, id: accountId, encryptionParameters: encryptionParameters, isReadOnly: true, useCopy: true, transaction: { postbox, transaction -> INObjectSection<Friend> in
                     var accountTitle: String = ""
                     if let peer = transaction.getPeer(accountPeerId) as? TelegramUser {
                         if let username = peer.addressName, !username.isEmpty {
@@ -975,7 +976,8 @@ private final class WidgetIntentHandler {
             var accountResults: [Signal<INObjectSection<Friend>, Error>] = []
             
             for (accountId, accountPeerId, _) in accounts {
-                accountResults.append(accountTransaction(rootPath: rootPath, id: accountId, encryptionParameters: encryptionParameters, isReadOnly: true, useCopy: false, transaction: { postbox, transaction -> INObjectSection<Friend> in
+                // MARK: NAGRAM — Siri option providers can run concurrently; read a temporary postbox copy to avoid colliding with another extension/main-app database open.
+                accountResults.append(accountTransaction(rootPath: rootPath, id: accountId, encryptionParameters: encryptionParameters, isReadOnly: true, useCopy: true, transaction: { postbox, transaction -> INObjectSection<Friend> in
                     var accountTitle: String = ""
                     if let peer = transaction.getPeer(accountPeerId) as? TelegramUser {
                         if let username = peer.addressName, !username.isEmpty {
@@ -1058,7 +1060,8 @@ private final class WidgetIntentHandler {
                 if !isActive {
                     continue
                 }
-                accountResults.append(accountTransaction(rootPath: rootPath, id: accountId, encryptionParameters: encryptionParameters, isReadOnly: true, useCopy: false, transaction: { postbox, transaction -> [Friend] in
+                // MARK: NAGRAM — Siri option providers can run concurrently; read a temporary postbox copy to avoid colliding with another extension/main-app database open.
+                accountResults.append(accountTransaction(rootPath: rootPath, id: accountId, encryptionParameters: encryptionParameters, isReadOnly: true, useCopy: true, transaction: { postbox, transaction -> [Friend] in
                     var peers: [Peer] = []
                     
                     for id in _internal_getRecentPeers(transaction: transaction) {
