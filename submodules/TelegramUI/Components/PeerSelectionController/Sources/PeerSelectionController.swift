@@ -64,6 +64,7 @@ public final class PeerSelectionControllerImpl: ViewController, PeerSelectionCon
     private let hasGlobalSearch: Bool
     private let pretendPresentedInModal: Bool
     private let forwardedMessageIds: [EngineMessage.Id]
+    private let forwardOptionsState: ChatInterfaceForwardOptionsState?
     private let hasTypeHeaders: Bool
     private let requestPeerType: [ReplyMarkupButtonRequestPeerType]?
     let multipleSelectionLimit: Int32?
@@ -107,6 +108,7 @@ public final class PeerSelectionControllerImpl: ViewController, PeerSelectionCon
         self.createNewGroup = params.createNewGroup
         self.pretendPresentedInModal = params.pretendPresentedInModal
         self.forwardedMessageIds = params.forwardedMessageIds
+        self.forwardOptionsState = params.forwardOptionsState
         self.hasTypeHeaders = params.hasTypeHeaders
         self.selectForumThreads = params.selectForumThreads
         self.requestPeerType = params.requestPeerType
@@ -264,7 +266,7 @@ public final class PeerSelectionControllerImpl: ViewController, PeerSelectionCon
     override public func loadDisplayNode() {
         self.navigationBar?.secondaryContentHeight = 44.0 + 10.0
         
-        self.displayNode = PeerSelectionControllerNode(context: self.context, controller: self, presentationData: self.presentationData, filter: self.filter, forumPeerId: self.forumPeerId, hasFilters: self.hasFilters, hasChatListSelector: self.hasChatListSelector, hasContactSelector: self.hasContactSelector, hasGlobalSearch: self.hasGlobalSearch, forwardedMessageIds: self.forwardedMessageIds, hasTypeHeaders: self.hasTypeHeaders, requestPeerType: self.requestPeerType, hasCreation: self.hasCreation, createNewGroup: self.createNewGroup, suggestedPeers: self.suggestedPeers, present: { [weak self] c, a in
+        self.displayNode = PeerSelectionControllerNode(context: self.context, controller: self, presentationData: self.presentationData, filter: self.filter, forumPeerId: self.forumPeerId, hasFilters: self.hasFilters, hasChatListSelector: self.hasChatListSelector, hasContactSelector: self.hasContactSelector, hasGlobalSearch: self.hasGlobalSearch, forwardedMessageIds: self.forwardedMessageIds, forwardOptionsState: self.forwardOptionsState, hasTypeHeaders: self.hasTypeHeaders, requestPeerType: self.requestPeerType, hasCreation: self.hasCreation, createNewGroup: self.createNewGroup, suggestedPeers: self.suggestedPeers, present: { [weak self] c, a in
             self?.present(c, in: .window(.root), with: a)
         }, presentInGlobalOverlay: { [weak self] c, a in
             self?.presentInGlobalOverlay(c, with: a)

@@ -61,6 +61,7 @@ public final class PeerSelectionControllerParams {
     public let multipleSelection: Bool
     public let multipleSelectionLimit: Int32?
     public let forwardedMessageIds: [EngineMessage.Id]
+    public let forwardOptionsState: ChatInterfaceForwardOptionsState?
     public let hasTypeHeaders: Bool
     public let selectForumThreads: Bool
     public let hasCreation: Bool
@@ -85,6 +86,7 @@ public final class PeerSelectionControllerParams {
         multipleSelection: Bool = false,
         multipleSelectionLimit: Int32? = nil,
         forwardedMessageIds: [EngineMessage.Id] = [],
+        forwardOptionsState: ChatInterfaceForwardOptionsState? = nil,
         hasTypeHeaders: Bool = false,
         selectForumThreads: Bool = false,
         hasCreation: Bool = false,
@@ -108,6 +110,7 @@ public final class PeerSelectionControllerParams {
         self.multipleSelection = multipleSelection
         self.multipleSelectionLimit = multipleSelectionLimit
         self.forwardedMessageIds = forwardedMessageIds
+        self.forwardOptionsState = forwardOptionsState
         self.hasTypeHeaders = hasTypeHeaders
         self.selectForumThreads = selectForumThreads
         self.hasCreation = hasCreation

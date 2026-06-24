@@ -84,6 +84,7 @@
 "Nagram.MessageMenu.Item.editSticker" = "ステッカーを編集";
 "Nagram.MessageMenu.Item.viewStickerPack" = "ステッカーパックを表示";
 "Nagram.MessageMenu.Item.forward" = "転送";
+"Nagram.MessageMenu.Item.forwardWithoutQuote" = "引用なしで転送";
 "Nagram.MessageMenu.Item.report" = "報告";
 "Nagram.MessageMenu.Item.block" = "ブロック";
 "Nagram.MessageMenu.Item.viewStats" = "統計を表示";

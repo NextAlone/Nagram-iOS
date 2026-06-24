@@ -34,6 +34,7 @@ public enum NagramMessageMenuItemId: String, CaseIterable {
     case editSticker
     case viewStickerPack
     case forward
+    case forwardWithoutQuote
     case report
     case block
     case viewStats
@@ -47,6 +48,8 @@ public enum NagramMessageMenuItemId: String, CaseIterable {
 
 private let nagramMessageMenuOrderKey = "nagram.messageMenu.order"
 private let nagramMessageMenuDisabledKey = "nagram.messageMenu.disabled"
+private let nagramMessageMenuEnabledDefaultDisabledKey = "nagram.messageMenu.enabledDefaultDisabled"
+private let nagramDefaultDisabledMessageMenuItemIds: Set<NagramMessageMenuItemId> = [.forwardWithoutQuote]
 
 public extension NagramSettings {
     var messageMenuItemOrder: [NagramMessageMenuItemId] {
@@ -61,28 +64,42 @@ public extension NagramSettings {
     }
 
     func isMessageMenuItemEnabled(_ id: NagramMessageMenuItemId) -> Bool {
+        if nagramDefaultDisabledMessageMenuItemIds.contains(id), !self.enabledDefaultDisabledMessageMenuItemIds.contains(id) {
+            return false
+        }
         return !self.disabledMessageMenuItemIds.contains(id)
     }
 
     func setMessageMenuItemEnabled(_ id: NagramMessageMenuItemId, enabled: Bool) {
         var disabled = self.disabledMessageMenuItemIds
+        var enabledDefaultDisabled = self.enabledDefaultDisabledMessageMenuItemIds
         if enabled {
             disabled.remove(id)
+            if nagramDefaultDisabledMessageMenuItemIds.contains(id) {
+                enabledDefaultDisabled.insert(id)
+            }
         } else {
             disabled.insert(id)
+            enabledDefaultDisabled.remove(id)
         }
         UserDefaults.standard.set(disabled.map(\.rawValue).sorted().joined(separator: ","), forKey: nagramMessageMenuDisabledKey)
+        UserDefaults.standard.set(enabledDefaultDisabled.map(\.rawValue).sorted().joined(separator: ","), forKey: nagramMessageMenuEnabledDefaultDisabledKey)
     }
 
     func resetMessageMenuItems() {
         UserDefaults.standard.removeObject(forKey: nagramMessageMenuOrderKey)
         UserDefaults.standard.removeObject(forKey: nagramMessageMenuDisabledKey)
+        UserDefaults.standard.removeObject(forKey: nagramMessageMenuEnabledDefaultDisabledKey)
     }
 }
 
 private extension NagramSettings {
     var disabledMessageMenuItemIds: Set<NagramMessageMenuItemId> {
         return Set(self.messageMenuIds(from: UserDefaults.standard.string(forKey: nagramMessageMenuDisabledKey)))
+    }
+
+    var enabledDefaultDisabledMessageMenuItemIds: Set<NagramMessageMenuItemId> {
+        return Set(self.messageMenuIds(from: UserDefaults.standard.string(forKey: nagramMessageMenuEnabledDefaultDisabledKey)))
     }
 
     func messageMenuIds(from string: String?) -> [NagramMessageMenuItemId] {

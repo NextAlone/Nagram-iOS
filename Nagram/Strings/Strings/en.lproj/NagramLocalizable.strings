@@ -84,6 +84,7 @@
 "Nagram.MessageMenu.Item.editSticker" = "Edit Sticker";
 "Nagram.MessageMenu.Item.viewStickerPack" = "View Sticker Pack";
 "Nagram.MessageMenu.Item.forward" = "Forward";
+"Nagram.MessageMenu.Item.forwardWithoutQuote" = "Forward Without Quote";
 "Nagram.MessageMenu.Item.report" = "Report";
 "Nagram.MessageMenu.Item.block" = "Block";
 "Nagram.MessageMenu.Item.viewStats" = "View Stats";

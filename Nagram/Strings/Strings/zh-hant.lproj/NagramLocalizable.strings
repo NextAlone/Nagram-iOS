@@ -84,6 +84,7 @@
 "Nagram.MessageMenu.Item.editSticker" = "編輯貼圖";
 "Nagram.MessageMenu.Item.viewStickerPack" = "查看貼圖包";
 "Nagram.MessageMenu.Item.forward" = "轉發";
+"Nagram.MessageMenu.Item.forwardWithoutQuote" = "無引用轉發";
 "Nagram.MessageMenu.Item.report" = "檢舉";
 "Nagram.MessageMenu.Item.block" = "封鎖";
 "Nagram.MessageMenu.Item.viewStats" = "查看統計";

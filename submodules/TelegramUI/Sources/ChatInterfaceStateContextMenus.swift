@@ -1991,6 +1991,13 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     interfaceInteraction.forwardMessages(selectAll || isImage ? messages : [message])
                     f(.dismissWithoutContent)
                 })))
+                // MARK: NAGRAM — 无引用转发：复用原转发流程，预置隐藏发送者名称。
+                actions.append(.forwardWithoutQuote, .action(ContextMenuActionItem(text: ngI18n("Nagram.MessageMenu.Item.forwardWithoutQuote", context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode), icon: { theme in
+                    return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Forward"), color: theme.actionSheet.primaryTextColor)
+                }, action: { _, f in
+                    interfaceInteraction.forwardMessagesWithOptions(selectAll || isImage ? messages : [message], ChatInterfaceForwardOptionsState(hideNames: true, hideCaptions: false, unhideNamesOnCaptionChange: false))
+                    f(.dismissWithoutContent)
+                })))
             }
         }
         
