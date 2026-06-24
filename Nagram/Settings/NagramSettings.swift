@@ -109,24 +109,95 @@ public final class NagramSettings {
     public var showDC: Bool
 
     // MARK: 波次 3 批 B — UI 中改
-    /// 隐藏底部标签栏
-    @NagramDefault("nagram.hideTabBar", false)
-    public var hideTabBar: Bool
-    /// 隐藏底栏联系人入口
-    @NagramDefault("nagram.hideTabBarContacts", false)
-    public var hideTabBarContacts: Bool
-    /// 隐藏底栏消息入口
-    @NagramDefault("nagram.hideTabBarChats", false)
-    public var hideTabBarChats: Bool
-    /// 隐藏底栏设置入口
-    @NagramDefault("nagram.hideTabBarSettings", false)
-    public var hideTabBarSettings: Bool
-    /// 隐藏首页顶部搜索
-    @NagramDefault("nagram.showTabBarSearch", false)
-    public var showTabBarSearch: Bool
-    /// 展示宽底栏（默认开 = 保持原生均分宽度）
-    @NagramDefault("nagram.wideTabBar", true)
-    public var wideTabBar: Bool
+    /// 底栏布局完整配置。新逻辑只读写这一份模型。
+    public var bottomBarSettings: NagramBottomBarSettings {
+        get {
+            return NagramBottomBarSettings.load()
+        }
+        set {
+            newValue.save()
+        }
+    }
+    /// 隐藏底部标签栏。兼容旧调用点,实际映射到 bottomBarSettings。
+    public var hideTabBar: Bool {
+        get {
+            return !self.bottomBarSettings.isBottomBarVisible
+        }
+        set {
+            var settings = self.bottomBarSettings
+            settings.isBottomBarVisible = !newValue
+            self.bottomBarSettings = settings
+        }
+    }
+    /// 隐藏底栏联系人入口。兼容旧调用点,外置联系人不算隐藏。
+    public var hideTabBarContacts: Bool {
+        get {
+            return !self.bottomBarSettings.isVisible(.contacts)
+        }
+        set {
+            var settings = self.bottomBarSettings
+            if newValue != settings.hiddenItems.contains(.contacts) {
+                settings.toggleHidden(.contacts)
+            }
+            self.bottomBarSettings = settings
+        }
+    }
+    /// 隐藏底栏消息入口。兼容旧调用点,外置聊天不算隐藏。
+    public var hideTabBarChats: Bool {
+        get {
+            return !self.bottomBarSettings.isVisible(.chats)
+        }
+        set {
+            var settings = self.bottomBarSettings
+            if newValue != settings.hiddenItems.contains(.chats) {
+                settings.toggleHidden(.chats)
+            }
+            self.bottomBarSettings = settings
+        }
+    }
+    /// 隐藏底栏设置入口。兼容旧调用点,外置设置不算隐藏。
+    public var hideTabBarSettings: Bool {
+        get {
+            return !self.bottomBarSettings.isVisible(.settings)
+        }
+        set {
+            var settings = self.bottomBarSettings
+            if newValue != settings.hiddenItems.contains(.settings) {
+                settings.toggleHidden(.settings)
+            }
+            self.bottomBarSettings = settings
+        }
+    }
+    /// 旧 key 名保留: true 表示隐藏首页顶部搜索。
+    public var showTabBarSearch: Bool {
+        get {
+            return !self.bottomBarSettings.topSearchVisible
+        }
+        set {
+            var settings = self.bottomBarSettings
+            settings.topSearchVisible = !newValue
+            self.bottomBarSettings = settings
+        }
+    }
+    /// 展示宽底栏（默认开 = 保持原生均分宽度）。兼容旧调用点。
+    public var wideTabBar: Bool {
+        get {
+            return self.bottomBarSettings.buttonWidthFillRatio >= 100
+        }
+        set {
+            var settings = self.bottomBarSettings
+            settings.buttonWidthFillRatio = newValue ? 100 : 0
+            settings.widthMode = newValue ? .full : .adaptive
+            if newValue {
+                settings.slotMode = .visibleOnly
+                settings.alignment = .center
+            } else {
+                settings.slotMode = .preserveHidden
+                settings.alignment = .left
+            }
+            self.bottomBarSettings = settings
+        }
+    }
     /// 贴纸尺寸百分比（50–200，默认 100）
     @NagramDefault("nagram.stickerSize", Int32(100))
     public var stickerSize: Int32

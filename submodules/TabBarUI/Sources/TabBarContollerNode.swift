@@ -15,20 +15,20 @@ final class TabBarControllerNode: ASDisplayNode {
         let toolbar: Toolbar?
         let isTabBarHidden: Bool
         let currentControllerSearchState: ViewController.TabBarSearchState?
-        let nagramWideTabBar: Bool
+        let nagramBottomBarSettings: NagramBottomBarSettings
         
         init(
             layout: ContainerViewLayout,
             toolbar: Toolbar?,
             isTabBarHidden: Bool,
             currentControllerSearchState: ViewController.TabBarSearchState?,
-            nagramWideTabBar: Bool
+            nagramBottomBarSettings: NagramBottomBarSettings
         ) {
             self.layout = layout
             self.toolbar = toolbar
             self.isTabBarHidden = isTabBarHidden
             self.currentControllerSearchState = currentControllerSearchState
-            self.nagramWideTabBar = nagramWideTabBar
+            self.nagramBottomBarSettings = nagramBottomBarSettings
         }
     }
     
@@ -181,7 +181,7 @@ final class TabBarControllerNode: ASDisplayNode {
     }
     
     func containerLayoutUpdated(_ layout: ContainerViewLayout, toolbar: Toolbar?, transition: ContainedViewLayoutTransition) -> CGFloat {
-        let params = Params(layout: layout, toolbar: toolbar, isTabBarHidden: self.tabBarHidden, currentControllerSearchState: self.currentController?.tabBarSearchState, nagramWideTabBar: NagramSettings.shared.wideTabBar)
+        let params = Params(layout: layout, toolbar: toolbar, isTabBarHidden: self.tabBarHidden, currentControllerSearchState: self.currentController?.tabBarSearchState, nagramBottomBarSettings: NagramSettings.shared.bottomBarSettings)
         if let layoutResult = self.layoutResult, layoutResult.params == params {
             return layoutResult.bottomInset
         } else {
@@ -194,6 +194,24 @@ final class TabBarControllerNode: ASDisplayNode {
     private func requestUpdate() {
         self.isUpdateRequested = true
         self.view.setNeedsLayout()
+    }
+
+    private func nagramItemId(for item: UITabBarItem) -> NagramBottomBarItemId? {
+        switch item.animationName {
+        case "TabContacts":
+            return .contacts
+        case "TabCalls":
+            return .calls
+        case "TabChats":
+            return .chats
+        case "TabSettings":
+            return .settings
+        default:
+            if item.ringSelection {
+                return .settings
+            }
+            return nil
+        }
     }
     
     private func updateImpl(params: Params, transition: ContainedViewLayoutTransition) -> CGFloat {
@@ -219,17 +237,70 @@ final class TabBarControllerNode: ASDisplayNode {
             sideInset = 20.0
         }
         
-        let visibleTabBarItems: [(index: Int, item: TabBarNodeItem)] = self.tabBarItems.enumerated().compactMap { index, item in
-            if NagramSettings.shared.hideTabBarChats && item.item.animationName == "TabChats" {
+        let bottomBarSettings = params.nagramBottomBarSettings
+        let tabBarItemsById: [NagramBottomBarItemId: (index: Int, item: TabBarNodeItem)] = Dictionary(uniqueKeysWithValues: self.tabBarItems.enumerated().compactMap { index, item -> (NagramBottomBarItemId, (Int, TabBarNodeItem))? in
+            guard let id = self.nagramItemId(for: item.item) else {
                 return nil
             }
-            return (index, item)
+            return (id, (index, item))
+        })
+        let makeComponentItem: (NagramBottomBarItemId) -> TabBarComponent.Item? = { [weak self] id in
+            guard let self else {
+                return nil
+            }
+            if id == .search {
+                return TabBarComponent.Item(
+                    content: .customItem(TabBarComponent.Item.Content.CustomItem(id: AnyHashable("nagram.search"), title: self.strings.Common_Search, icon: .bundleIcon(name: "Navigation/Search"))),
+                    action: { [weak self] _ in
+                        self?.activateSearch()
+                    },
+                    doubleTapAction: nil,
+                    contextAction: nil
+                )
+            }
+            guard let item = tabBarItemsById[id] else {
+                return nil
+            }
+            let index = item.index
+            return TabBarComponent.Item(
+                content: .tabBarItem(item.item.item),
+                action: { [weak self] isLongTap in
+                    self?.itemSelected(index, isLongTap, [])
+                },
+                doubleTapAction: self.itemHasDoubleTapAction(index) ? { [weak self] in
+                    self?.itemDoubleTapped(index)
+                } : nil,
+                contextAction: { [weak self] gesture, sourceView in
+                    self?.contextAction(index, sourceView, gesture)
+                }
+            )
+        }
+
+        let visibleComponentItems: [TabBarComponent.Item] = bottomBarSettings.visibleBottomItems.compactMap { makeComponentItem($0) }
+        let externalComponentItem: TabBarComponent.Item?
+        if let externalItemId = bottomBarSettings.externalItem, externalItemId != .search, !bottomBarSettings.hiddenItems.contains(externalItemId) {
+            externalComponentItem = makeComponentItem(externalItemId)
+        } else {
+            externalComponentItem = nil
         }
         
         var selectedId: AnyHashable?
         if self.selectedIndex < self.tabBarItems.count {
             let selectedItem = self.tabBarItems[self.selectedIndex].item
-            if visibleTabBarItems.contains(where: { $0.item.item === selectedItem }) {
+            let isBottomSelected = visibleComponentItems.contains(where: { item in
+                if case let .tabBarItem(tabBarItem) = item.content {
+                    return tabBarItem === selectedItem
+                } else {
+                    return false
+                }
+            })
+            let isExternalSelected: Bool
+            if let externalComponentItem, case let .tabBarItem(tabBarItem) = externalComponentItem.content {
+                isExternalSelected = tabBarItem === selectedItem
+            } else {
+                isExternalSelected = false
+            }
+            if isBottomSelected || isExternalSelected {
                 selectedId = ObjectIdentifier(selectedItem)
             }
         }
@@ -241,54 +312,20 @@ final class TabBarControllerNode: ASDisplayNode {
         if self.tabBarView.view == nil {
             tabBarTransition = .immediate
         }
-        let nagramLayoutItemCount: Int?
-        if params.nagramWideTabBar {
-            nagramLayoutItemCount = nil
-        } else {
-            nagramLayoutItemCount = max(visibleTabBarItems.count, 4)
-        }
+        let nagramLayoutItemCount = max(visibleComponentItems.count, NagramBottomBarSettings.defaultBottomItems.count)
+        let tabBarSearchState = self.currentController?.tabBarSearchState
+        let searchIsVisible = bottomBarSettings.isVisible(.search)
         let tabBarSize = self.tabBarView.update(
             transition: tabBarTransition,
             component: AnyComponent(TabBarComponent(
                 theme: self.theme,
                 strings: self.strings,
-                items: visibleTabBarItems.map { visibleItem in
-                    let item = visibleItem.item
-                    let itemId = AnyHashable(ObjectIdentifier(item.item))
-                    
-                    let index = visibleItem.index
-                    
-                    return TabBarComponent.Item(
-                        content: .tabBarItem(item.item),
-                        action: { [weak self] isLongTap in
-                            guard let self else {
-                                return
-                            }
-                            if let index = self.tabBarItems.firstIndex(where: { AnyHashable(ObjectIdentifier($0.item)) == itemId }) {
-                                self.itemSelected(index, isLongTap, [])
-                            }
-                        },
-                        doubleTapAction: self.itemHasDoubleTapAction(index) ? { [weak self] in
-                            guard let self else {
-                                return
-                            }
-                            if let index = self.tabBarItems.firstIndex(where: { AnyHashable(ObjectIdentifier($0.item)) == itemId }) {
-                                self.itemDoubleTapped(index)
-                            }
-                        } : nil,
-                        contextAction: { [weak self] gesture, sourceView in
-                            guard let self else {
-                                return
-                            }
-                            if let index = self.tabBarItems.firstIndex(where: { AnyHashable(ObjectIdentifier($0.item)) == itemId }) {
-                                self.contextAction(index, sourceView, gesture)
-                            }
-                        }
-                    )
-                },
-                search: self.currentController?.tabBarSearchState.flatMap { tabBarSearchState in
+                items: visibleComponentItems,
+                externalItem: externalComponentItem,
+                search: searchIsVisible ? tabBarSearchState.flatMap { tabBarSearchState in
                     return TabBarComponent.Search(
                         isActive: tabBarSearchState.isActive,
+                        showsButton: bottomBarSettings.searchMode != .bar,
                         activate: { [weak self] in
                             guard let self else {
                                 return
@@ -302,16 +339,30 @@ final class TabBarControllerNode: ASDisplayNode {
                             self.deactivateSearch()
                         }
                     )
-                },
+                } : nil,
                 selectedId: selectedId,
                 outerInsets: UIEdgeInsets(top: 0.0, left: sideInset, bottom: tabBarBottomInset, right: sideInset),
-                layoutItemCount: nagramLayoutItemCount
+                layoutItemCount: nagramLayoutItemCount,
+                isAdaptiveWidth: false,
+                alignItemsToLeft: bottomBarSettings.alignment == .left,
+                showItemTitles: bottomBarSettings.showLabels,
+                buttonWidthFillRatio: CGFloat(bottomBarSettings.buttonWidthFillRatio) / 100.0
             )),
             environment: {},
             containerSize: CGSize(width: params.layout.size.width - sideInset * 2.0, height: 100.0)
         )
         let tabBarOriginX: CGFloat
-        if nagramLayoutItemCount != nil && self.currentController?.tabBarSearchState == nil {
+        let onlySearchButton = searchIsVisible && bottomBarSettings.searchMode != .bar && tabBarSearchState != nil && visibleComponentItems.isEmpty && externalComponentItem == nil && tabBarSearchState?.isActive != true
+        let fillsAvailableWidth = !onlySearchButton && (bottomBarSettings.buttonWidthFillRatio >= 100 || externalComponentItem != nil || searchIsVisible)
+        if onlySearchButton {
+            tabBarOriginX = params.layout.size.width - sideInset - tabBarSize.width
+        } else if !fillsAvailableWidth && tabBarSearchState?.isActive != true {
+            if bottomBarSettings.alignment == .left {
+                tabBarOriginX = sideInset
+            } else {
+                tabBarOriginX = floor((params.layout.size.width - tabBarSize.width) * 0.5)
+            }
+        } else if bottomBarSettings.buttonWidthFillRatio < 100 && tabBarSearchState == nil {
             tabBarOriginX = sideInset
         } else {
             tabBarOriginX = floor((params.layout.size.width - tabBarSize.width) * 0.5)
@@ -421,7 +472,11 @@ final class TabBarControllerNode: ASDisplayNode {
         guard let tabBarView = self.tabBarView.view as? TabBarComponent.View else {
             return nil
         }
-        guard let itemFrame = tabBarView.frameForItem(at: index) else {
+        guard self.tabBarItems.indices.contains(index) else {
+            return nil
+        }
+        let itemId = AnyHashable(ObjectIdentifier(self.tabBarItems[index].item))
+        guard let itemFrame = tabBarView.frameForItem(id: itemId) else {
             return nil
         }
         return self.view.convert(itemFrame, from: tabBarView)

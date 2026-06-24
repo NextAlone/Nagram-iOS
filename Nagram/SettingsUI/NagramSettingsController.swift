@@ -99,6 +99,8 @@ private func nagramRowDeepLinkAliases(titleKey: String) -> [String] {
     switch titleKey {
     case "Nagram.HideTabBar":
         return ["MainTabsStyle", "TabStyle"]
+    case "Nagram.BottomBarLayout":
+        return ["MainTabsStyle", "TabStyle", "HideTabBar", "HideCallsTab", "HideCallTab", "HideContactsTab", "HideContactTab", "HideChatsTab", "HideChatListTab", "HideSettingsTab", "ShowSearchTab", "SearchTab", "WideTabBar"]
     case "Nagram.HideTabBarCalls":
         return ["HideCallsTab", "HideCallTab"]
     case "Nagram.HideTabBarContacts":
@@ -299,11 +301,9 @@ private func nagramGroups(
     setHideCalls: @escaping (Bool) -> Void,
     sensitiveContentConfiguration: @escaping () -> ContentSettingsConfiguration?,
     setSensitiveContentEnabled: @escaping (Bool) -> Void,
+    bottomBarLayoutAction: @escaping () -> Void,
     messageMenuAction: @escaping () -> Void
 ) -> [NagramGroup] {
-    let tabBarSubitemEnabled: () -> Bool = {
-        return !NagramSettings.shared.hideTabBar
-    }
     let sensitiveContentEnabled: () -> Bool = {
         return sensitiveContentConfiguration()?.sensitiveContentEnabled ?? false
     }
@@ -313,13 +313,7 @@ private func nagramGroups(
     return [
         // 通用
         NagramGroup(tab: .general, headerKey: "Nagram.Section.Interface", footerKey: nil, rows: [
-            .toggle(titleKey: "Nagram.HideTabBar", get: { NagramSettings.shared.hideTabBar }, set: { NagramSettings.shared.hideTabBar = $0 }),
-            .toggleWithEnabled(titleKey: "Nagram.HideTabBarCalls", get: hideCalls, set: setHideCalls, enabled: tabBarSubitemEnabled, enableInteractiveChanges: true),
-            .toggleWithEnabled(titleKey: "Nagram.HideTabBarContacts", get: { NagramSettings.shared.hideTabBarContacts }, set: { NagramSettings.shared.hideTabBarContacts = $0 }, enabled: tabBarSubitemEnabled, enableInteractiveChanges: true),
-            .toggleWithEnabled(titleKey: "Nagram.HideTabBarChatList", get: { NagramSettings.shared.hideTabBarChats }, set: { NagramSettings.shared.hideTabBarChats = $0 }, enabled: tabBarSubitemEnabled, enableInteractiveChanges: true),
-            .toggleWithEnabled(titleKey: "Nagram.HideTabBarSettings", get: { NagramSettings.shared.hideTabBarSettings }, set: { NagramSettings.shared.hideTabBarSettings = $0 }, enabled: tabBarSubitemEnabled, enableInteractiveChanges: true),
-            .toggleWithEnabled(titleKey: "Nagram.ShowTabBarSearch", get: { NagramSettings.shared.showTabBarSearch }, set: { NagramSettings.shared.showTabBarSearch = $0 }, enabled: tabBarSubitemEnabled, enableInteractiveChanges: true),
-            .toggleWithEnabled(titleKey: "Nagram.WideTabBar", get: { NagramSettings.shared.wideTabBar }, set: { NagramSettings.shared.wideTabBar = $0 }, enabled: tabBarSubitemEnabled, enableInteractiveChanges: true),
+            .navigation(titleKey: "Nagram.BottomBarLayout", action: bottomBarLayoutAction),
             .toggle(titleKey: "Nagram.HideStories", get: { NagramSettings.shared.hideStories }, set: { NagramSettings.shared.hideStories = $0 }),
         ]),
         NagramGroup(tab: .general, headerKey: "Nagram.Section.Camera", footerKey: "Nagram.Section.Camera.Footer", rows: [
@@ -505,6 +499,12 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
         return !currentShowCallsTab
     }, setHideCalls: { hidden in
         currentShowCallsTab = !hidden
+        var bottomBarSettings = NagramSettings.shared.bottomBarSettings
+        bottomBarSettings.setVisible(.calls, visible: !hidden)
+        if bottomBarSettings.searchMode == .bar && !bottomBarSettings.visibleBottomItems.isEmpty {
+            bottomBarSettings.setSearchMode(.button)
+        }
+        NagramSettings.shared.bottomBarSettings = bottomBarSettings
         let _ = updateCallListSettingsInteractively(accountManager: context.sharedContext.accountManager, {
             $0.withUpdatedShowTab(!hidden)
         }).startStandalone()
@@ -535,6 +535,8 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
         } else {
             update()
         }
+    }, bottomBarLayoutAction: {
+        pushControllerImpl?(nagramBottomBarSettingsController(context: context))
     }, messageMenuAction: {
         pushControllerImpl?(nagramMessageMenuSettingsController(context: context))
     })
@@ -543,6 +545,12 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
         group.rows.map { nagramSettingsDeepLink(tab: group.tab, row: $0) }
     }
     let deepLinkTarget = nagramDeepLinkTarget(deepLinkPath: deepLinkPath, groups: groups)
+    let autoOpenNavigationAction: (() -> Void)? = deepLinkTarget.rowIndex.flatMap { rowIndex -> (() -> Void)? in
+        guard flatRows.indices.contains(rowIndex), case let .navigation(_, action) = flatRows[rowIndex] else {
+            return nil
+        }
+        return action
+    }
 
     let tabPromise = ValuePromise<Int32>(deepLinkTarget.tab.rawValue, ignoreRepeated: true)
 
@@ -680,7 +688,18 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
 
     let controller = ItemListController(context: context, state: signal)
     controller.navigationPresentation = .default
-    if let rowIndex = deepLinkTarget.rowIndex {
+    if let autoOpenNavigationAction {
+        var didAutoOpenNavigation = false
+        controller.afterLayout {
+            guard !didAutoOpenNavigation else {
+                return
+            }
+            didAutoOpenNavigation = true
+            Queue.mainQueue().after(0.15, {
+                autoOpenNavigationAction()
+            })
+        }
+    } else if let rowIndex = deepLinkTarget.rowIndex {
         let targetTag = NagramSettingsRowTag(index: rowIndex)
         controller.afterLayout { [weak controller] in
             guard let controller else {

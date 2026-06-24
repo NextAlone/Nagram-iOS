@@ -777,7 +777,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
 
         self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .immediate)
         // MARK: NAGRAM
-        self.nagramTabBarSearchDisposable = (nagramBoolSignal("nagram.showTabBarSearch", defaultValue: false)
+        self.nagramTabBarSearchDisposable = (nagramBottomBarSettingsSignal()
         |> deliverOnMainQueue).startStrict(next: { [weak self] _ in
             self?.requestLayout(transition: .animated(duration: 0.3, curve: .linear))
         })
@@ -6958,8 +6958,8 @@ private final class ChatListLocationContext {
                     isReorderingTabs,
                     peerStatus,
                     parentController.updatedPresentationData.1,
-                    // MARK: NAGRAM — 合并 hideStories signal，使其变化即时触发 header 重算(同步隐藏发布动态按钮)
-                    combineLatest(storyPostingAvailable, nagramBoolSignal("nagram.hideStories", defaultValue: false))
+                    // MARK: NAGRAM — 合并 Nagram 设置 signal，使 header 入口显隐即时重算。
+                    combineLatest(storyPostingAvailable, nagramBoolSignal("nagram.hideStories", defaultValue: false), nagramBottomBarSettingsSignal())
                 ).startStrict(next: { [weak self] networkState, proxy, passcode, stateAndFilterId, isReorderingTabs, peerStatus, presentationData, storyPostingAvailableAndHideStories in
                     guard let self else {
                         return

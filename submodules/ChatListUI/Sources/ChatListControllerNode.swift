@@ -111,7 +111,7 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
         
         let hasTopSearch: Bool
         if case .chatList(groupId: .root) = self.location {
-            hasTopSearch = !NagramSettings.shared.showTabBarSearch // MARK: NAGRAM
+            hasTopSearch = NagramSettings.shared.bottomBarSettings.topSearchVisible // MARK: NAGRAM
         } else {
             hasTopSearch = true
         }
@@ -1692,7 +1692,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         
         let shouldHideHomeSearchBar: Bool
         if case .chatList(groupId: .root) = self.location {
-            shouldHideHomeSearchBar = NagramSettings.shared.showTabBarSearch
+            shouldHideHomeSearchBar = !NagramSettings.shared.bottomBarSettings.topSearchVisible
         } else {
             shouldHideHomeSearchBar = false
         }

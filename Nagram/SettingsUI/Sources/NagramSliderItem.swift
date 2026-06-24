@@ -19,17 +19,19 @@ final class NagramSliderItem: ListViewItem, ItemListItem {
     let minValue: Int32
     let maxValue: Int32
     let value: Int32
+    let title: String?
     let systemStyle: ItemListSystemStyle
     let sectionId: ItemListSectionId
     let updated: (Int32) -> Void
     let longTapAction: (() -> Void)?
     let tag: ItemListItemTag?
 
-    init(theme: PresentationTheme, minValue: Int32, maxValue: Int32, value: Int32, sectionId: ItemListSectionId, systemStyle: ItemListSystemStyle = .glass, updated: @escaping (Int32) -> Void, longTapAction: (() -> Void)? = nil, tag: ItemListItemTag? = nil) {
+    init(theme: PresentationTheme, minValue: Int32, maxValue: Int32, value: Int32, title: String? = nil, sectionId: ItemListSectionId, systemStyle: ItemListSystemStyle = .glass, updated: @escaping (Int32) -> Void, longTapAction: (() -> Void)? = nil, tag: ItemListItemTag? = nil) {
         self.theme = theme
         self.minValue = minValue
         self.maxValue = maxValue
         self.value = value
+        self.title = title
         self.systemStyle = systemStyle
         self.sectionId = sectionId
         self.updated = updated
@@ -215,20 +217,33 @@ private final class NagramSliderItemNode: ListViewItemNode, ItemListItemNode {
                 strongSelf.topStripeNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: layoutSize.width, height: separatorHeight))
                 strongSelf.bottomStripeNode.frame = CGRect(origin: CGPoint(x: bottomStripeInset, y: contentSize.height + bottomStripeOffset), size: CGSize(width: layoutSize.width - bottomStripeInset - params.rightInset - separatorRightInset, height: separatorHeight))
 
-                strongSelf.leftTextNode.attributedText = NSAttributedString(string: "\(item.minValue)%", font: Font.regular(13.0), textColor: item.theme.list.itemSecondaryTextColor)
-                strongSelf.rightTextNode.attributedText = NSAttributedString(string: "\(item.maxValue)%", font: Font.regular(13.0), textColor: item.theme.list.itemSecondaryTextColor)
-                strongSelf.centerTextNode.attributedText = NSAttributedString(string: "\(item.value)%", font: Font.regular(16.0), textColor: item.theme.list.itemPrimaryTextColor)
+                if let title = item.title {
+                    strongSelf.leftTextNode.attributedText = NSAttributedString(string: title, font: Font.regular(17.0), textColor: item.theme.list.itemPrimaryTextColor)
+                    strongSelf.rightTextNode.attributedText = NSAttributedString(string: "\(item.value)%", font: Font.regular(17.0), textColor: item.theme.list.itemSecondaryTextColor)
+                    strongSelf.centerTextNode.attributedText = nil
+                } else {
+                    strongSelf.leftTextNode.attributedText = NSAttributedString(string: "\(item.minValue)%", font: Font.regular(13.0), textColor: item.theme.list.itemSecondaryTextColor)
+                    strongSelf.rightTextNode.attributedText = NSAttributedString(string: "\(item.maxValue)%", font: Font.regular(13.0), textColor: item.theme.list.itemSecondaryTextColor)
+                    strongSelf.centerTextNode.attributedText = NSAttributedString(string: "\(item.value)%", font: Font.regular(16.0), textColor: item.theme.list.itemPrimaryTextColor)
+                }
                 strongSelf.centerMeasureTextNode.attributedText = NSAttributedString(string: "\(item.maxValue)%", font: Font.regular(16.0), textColor: item.theme.list.itemPrimaryTextColor)
 
-                let leftTextSize = strongSelf.leftTextNode.updateLayout(CGSize(width: 100.0, height: 100.0))
+                let sideInset: CGFloat = 18.0
+                let availableTitleWidth = max(0.0, params.width - params.leftInset - params.rightInset - sideInset * 2.0 - 72.0)
+                let leftTextSize = strongSelf.leftTextNode.updateLayout(CGSize(width: item.title == nil ? 100.0 : availableTitleWidth, height: 100.0))
                 let rightTextSize = strongSelf.rightTextNode.updateLayout(CGSize(width: 100.0, height: 100.0))
                 let centerTextSize = strongSelf.centerTextNode.updateLayout(CGSize(width: 200.0, height: 100.0))
                 let centerMeasureTextSize = strongSelf.centerMeasureTextNode.updateLayout(CGSize(width: 200.0, height: 100.0))
 
-                let sideInset: CGFloat = 18.0
-                strongSelf.leftTextNode.frame = CGRect(origin: CGPoint(x: params.leftInset + sideInset, y: 15.0 + verticalInset), size: leftTextSize)
-                strongSelf.rightTextNode.frame = CGRect(origin: CGPoint(x: params.width - params.leftInset - sideInset - rightTextSize.width, y: 15.0 + verticalInset), size: rightTextSize)
-                strongSelf.centerTextNode.frame = CGRect(origin: CGPoint(x: floor((params.width - centerMeasureTextSize.width) / 2.0), y: 11.0 + verticalInset), size: centerTextSize)
+                if item.title != nil {
+                    strongSelf.leftTextNode.frame = CGRect(origin: CGPoint(x: params.leftInset + sideInset, y: 13.0 + verticalInset), size: leftTextSize)
+                    strongSelf.rightTextNode.frame = CGRect(origin: CGPoint(x: params.width - params.leftInset - sideInset - rightTextSize.width, y: 13.0 + verticalInset), size: rightTextSize)
+                    strongSelf.centerTextNode.frame = CGRect()
+                } else {
+                    strongSelf.leftTextNode.frame = CGRect(origin: CGPoint(x: params.leftInset + sideInset, y: 15.0 + verticalInset), size: leftTextSize)
+                    strongSelf.rightTextNode.frame = CGRect(origin: CGPoint(x: params.width - params.leftInset - sideInset - rightTextSize.width, y: 15.0 + verticalInset), size: rightTextSize)
+                    strongSelf.centerTextNode.frame = CGRect(origin: CGPoint(x: floor((params.width - centerMeasureTextSize.width) / 2.0), y: 11.0 + verticalInset), size: centerTextSize)
+                }
 
                 let sliderInset: CGFloat = 15.0
                 let sliderSize = strongSelf.slider.update(
@@ -282,9 +297,16 @@ private final class NagramSliderItemNode: ListViewItemNode, ItemListItemNode {
         if case .glass = item.systemStyle {
             verticalInset = 4.0
         }
-        self.centerTextNode.attributedText = NSAttributedString(string: "\(value)%", font: Font.regular(16.0), textColor: item.theme.list.itemPrimaryTextColor)
-        let centerTextSize = self.centerTextNode.updateLayout(CGSize(width: 200.0, height: 100.0))
-        let centerMeasureTextSize = self.centerMeasureTextNode.updateLayout(CGSize(width: 200.0, height: 100.0))
-        self.centerTextNode.frame = CGRect(origin: CGPoint(x: floor((params.width - centerMeasureTextSize.width) / 2.0), y: 11.0 + verticalInset), size: centerTextSize)
+        if item.title != nil {
+            self.rightTextNode.attributedText = NSAttributedString(string: "\(value)%", font: Font.regular(17.0), textColor: item.theme.list.itemSecondaryTextColor)
+            let rightTextSize = self.rightTextNode.updateLayout(CGSize(width: 100.0, height: 100.0))
+            let sideInset: CGFloat = 18.0
+            self.rightTextNode.frame = CGRect(origin: CGPoint(x: params.width - params.leftInset - sideInset - rightTextSize.width, y: 13.0 + verticalInset), size: rightTextSize)
+        } else {
+            self.centerTextNode.attributedText = NSAttributedString(string: "\(value)%", font: Font.regular(16.0), textColor: item.theme.list.itemPrimaryTextColor)
+            let centerTextSize = self.centerTextNode.updateLayout(CGSize(width: 200.0, height: 100.0))
+            let centerMeasureTextSize = self.centerMeasureTextNode.updateLayout(CGSize(width: 200.0, height: 100.0))
+            self.centerTextNode.frame = CGRect(origin: CGPoint(x: floor((params.width - centerMeasureTextSize.width) / 2.0), y: 11.0 + verticalInset), size: centerTextSize)
+        }
     }
 }

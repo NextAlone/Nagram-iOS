@@ -11,6 +11,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//Nagram/Settings:NagramSettings",
         "//submodules/SSignalKit/SwiftSignalKit",
     ],
     visibility = [

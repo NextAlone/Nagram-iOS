@@ -1,4 +1,5 @@
 import Foundation
+import NagramSettings
 import SwiftSignalKit
 
 // MARK: NAGRAM — 增强开关的响应式桥接。
@@ -13,6 +14,23 @@ public func nagramBoolSignal(_ key: String, defaultValue: Bool) -> Signal<Bool, 
             queue: nil
         ) { _ in
             subscriber.putNext(UserDefaults.standard.object(forKey: key) as? Bool ?? defaultValue)
+        }
+        return ActionDisposable {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+    return (initial |> then(changes)) |> distinctUntilChanged
+}
+
+public func nagramBottomBarSettingsSignal() -> Signal<NagramBottomBarSettings, NoError> {
+    let initial = Signal<NagramBottomBarSettings, NoError>.single(NagramSettings.shared.bottomBarSettings)
+    let changes = Signal<NagramBottomBarSettings, NoError> { subscriber in
+        let observer = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: UserDefaults.standard,
+            queue: nil
+        ) { _ in
+            subscriber.putNext(NagramSettings.shared.bottomBarSettings)
         }
         return ActionDisposable {
             NotificationCenter.default.removeObserver(observer)

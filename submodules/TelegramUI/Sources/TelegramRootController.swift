@@ -127,15 +127,8 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         })
         
         // MARK: NAGRAM
-        self.nagramTabBarSettingsDisposable = (combineLatest(
-            nagramBoolSignal("nagram.hideTabBar", defaultValue: false),
-            nagramBoolSignal("nagram.hideTabBarContacts", defaultValue: false),
-            nagramBoolSignal("nagram.hideTabBarChats", defaultValue: false),
-            nagramBoolSignal("nagram.hideTabBarSettings", defaultValue: false),
-            nagramBoolSignal("nagram.showTabBarSearch", defaultValue: false),
-            nagramBoolSignal("nagram.wideTabBar", defaultValue: true)
-        )
-        |> deliverOnMainQueue).startStrict(next: { [weak self] _, _, _, _, _, _ in
+        self.nagramTabBarSettingsDisposable = (nagramBottomBarSettingsSignal()
+        |> deliverOnMainQueue).startStrict(next: { [weak self] _ in
             guard let strongSelf = self else {
                 return
             }
@@ -228,19 +221,18 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
             return []
         }
 
-        let hideAll = NagramSettings.shared.hideTabBar
-        let showTabBarSearch = NagramSettings.shared.showTabBarSearch
+        let bottomBarSettings = NagramSettings.shared.bottomBarSettings
         var controllers: [ViewController] = []
-        if hideAll || !NagramSettings.shared.hideTabBarContacts {
+        if !bottomBarSettings.isBottomBarVisible || bottomBarSettings.visibleNavigationItems.contains(.contacts) {
             controllers.append(contactsController)
         }
-        if showCallsTab {
+        if showCallsTab && (!bottomBarSettings.isBottomBarVisible || bottomBarSettings.visibleNavigationItems.contains(.calls)) {
             controllers.append(callListController)
         }
-        if hideAll || !NagramSettings.shared.hideTabBarChats || showTabBarSearch {
+        if !bottomBarSettings.isBottomBarVisible || bottomBarSettings.visibleNavigationItems.contains(.chats) || bottomBarSettings.isVisible(.search) {
             controllers.append(chatListController)
         }
-        if hideAll || !NagramSettings.shared.hideTabBarSettings {
+        if !bottomBarSettings.isBottomBarVisible || bottomBarSettings.visibleNavigationItems.contains(.settings) {
             controllers.append(accountSettingsController)
         }
         if controllers.isEmpty {

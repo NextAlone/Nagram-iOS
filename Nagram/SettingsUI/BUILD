@@ -29,6 +29,7 @@ swift_library(
         "//submodules/ComponentFlow",
         "//submodules/TelegramUI/Components/FaceScanScreen",
         "//submodules/TelegramUI/Components/SliderComponent",
+        "//submodules/TelegramUI/Components/TabBarComponent",
     ],
     visibility = [
         "//visibility:public",
