@@ -1,32 +1,22 @@
 {
   "fill" : {
-    "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+    "solid" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
   },
   "groups" : [
     {
       "layers" : [
         {
-          "blend-mode" : "normal",
-          "fill" : "automatic",
-          "glass" : true,
-          "image-name" : "ic_launcher_nagram_blue-playstore.png",
-          "name" : "ic_launcher_nagram_blue-playstore",
-          "position" : {
-            "scale" : 2.2,
-            "translation-in-points" : [
-              0,
-              5.684341886080802e-14
-            ]
-          }
+          "image-name" : "Nagram.svg",
+          "name" : "Nagram"
         }
       ],
       "shadow" : {
         "kind" : "neutral",
-        "opacity" : 0.5
+        "opacity" : 0.6
       },
       "translucency" : {
         "enabled" : true,
-        "value" : 0.5
+        "value" : 0.2
       }
     }
   ],
