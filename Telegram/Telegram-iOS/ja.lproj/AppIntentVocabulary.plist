@@ -9,7 +9,7 @@
 			<string>INSendMessageIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Envía un mensaje de Telegram a Alicia diciéndole que estarás allí en 15 minutos</string>
+				<string>Telegramで太郎に10分後に着くとメッセージを送って</string>
 			</array>
 		</dict>
 		<dict>
@@ -17,7 +17,7 @@
 			<string>INStartAudioCallIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Llama a Alicia por Telegram</string>
+				<string>Telegramで太郎に電話して</string>
 			</array>
 		</dict>
 		<dict>
@@ -25,7 +25,7 @@
 			<string>INSearchForMessagesIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Busca mensajes de Alicia en Telegram</string>
+				<string>Telegramで太郎からのメッセージを検索して</string>
 			</array>
 		</dict>
 		<dict>
@@ -33,7 +33,7 @@
 			<string>INSetMessageAttributeIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Marca mis mensajes de Telegram como leídos</string>
+				<string>Telegramのメッセージを既読にして</string>
 			</array>
 		</dict>
 		<dict>
@@ -41,7 +41,7 @@
 			<string>INSearchCallHistoryIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Muestra mi historial de llamadas de Telegram</string>
+				<string>Telegramの通話履歴を表示して</string>
 			</array>
 		</dict>
 	</array>

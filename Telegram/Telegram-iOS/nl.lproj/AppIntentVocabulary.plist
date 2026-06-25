@@ -12,6 +12,38 @@
 				<string>Stuur een Telegram-bericht naar Maartje met ik ben er over 15 minuten.</string>
 			</array>
 		</dict>
+		<dict>
+			<key>IntentName</key>
+			<string>INStartAudioCallIntent</string>
+			<key>IntentExamples</key>
+			<array>
+				<string>Bel Maartje via Telegram</string>
+			</array>
+		</dict>
+		<dict>
+			<key>IntentName</key>
+			<string>INSearchForMessagesIntent</string>
+			<key>IntentExamples</key>
+			<array>
+				<string>Zoek Telegram-berichten van Maartje</string>
+			</array>
+		</dict>
+		<dict>
+			<key>IntentName</key>
+			<string>INSetMessageAttributeIntent</string>
+			<key>IntentExamples</key>
+			<array>
+				<string>Markeer mijn Telegram-berichten als gelezen</string>
+			</array>
+		</dict>
+		<dict>
+			<key>IntentName</key>
+			<string>INSearchCallHistoryIntent</string>
+			<key>IntentExamples</key>
+			<array>
+				<string>Toon mijn Telegram-oproepgeschiedenis</string>
+			</array>
+		</dict>
 	</array>
 </dict>
 </plist>

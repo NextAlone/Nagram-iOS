@@ -9,7 +9,7 @@
 			<string>INSendMessageIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Envía un mensaje de Telegram a Alicia diciéndole que estarás allí en 15 minutos</string>
+				<string>用 Telegram 给小明发送消息，说我 10 分钟后到</string>
 			</array>
 		</dict>
 		<dict>
@@ -17,7 +17,7 @@
 			<string>INStartAudioCallIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Llama a Alicia por Telegram</string>
+				<string>用 Telegram 给小明打电话</string>
 			</array>
 		</dict>
 		<dict>
@@ -25,7 +25,7 @@
 			<string>INSearchForMessagesIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Busca mensajes de Alicia en Telegram</string>
+				<string>搜索 Telegram 里小明发来的消息</string>
 			</array>
 		</dict>
 		<dict>
@@ -33,7 +33,7 @@
 			<string>INSetMessageAttributeIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Marca mis mensajes de Telegram como leídos</string>
+				<string>将我的 Telegram 消息标记为已读</string>
 			</array>
 		</dict>
 		<dict>
@@ -41,7 +41,7 @@
 			<string>INSearchCallHistoryIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Muestra mi historial de llamadas de Telegram</string>
+				<string>显示我的 Telegram 通话记录</string>
 			</array>
 		</dict>
 	</array>
