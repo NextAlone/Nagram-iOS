@@ -132,6 +132,16 @@
 "Nagram.ProfileId" = "ID";
 "Nagram.DataCenter" = "数据中心";
 "Nagram.RegDate" = "注册日期";
+"Nagram.AccountInfo" = "账号信息";
+"Nagram.AccountInfo.CopyId" = "复制 ID";
+"Nagram.AccountInfo.CopyDC" = "复制 DC";
+"Nagram.AccountInfo.CopyRegDate" = "复制注册日期";
+"Nagram.RegDate.Loading" = "加载中";
+"Nagram.RegDate.LoadFailed" = "加载失败，稍后重试";
+"Nagram.RegDate.LoadFailedWithFallback" = "%@（精确日期加载失败）";
+"Nagram.RegDate.Approximately" = "大约 %@";
+"Nagram.RegDate.Newer" = "晚于 %@";
+"Nagram.RegDate.Older" = "早于 %@";
 "Nagram.ConfirmCall.Video" = "确定发起视频通话？";
 "Nagram.ConfirmCall.Audio" = "确定发起语音通话？";
 "Nagram.Section.Profile" = "资料页";

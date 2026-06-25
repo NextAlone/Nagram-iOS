@@ -144,6 +144,12 @@ enum PeerInfoMemberAction {
     case editRank
 }
 
+// MARK: NAGRAM
+struct PeerInfoNagramAccountInfoCopyItem {
+    let title: String
+    let value: String
+}
+
 enum PeerInfoContextSubject {
     case bio
     case phone(String)
@@ -682,6 +688,11 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
                     return
                 }
                 self.openBirthdayContextMenu(node: node, gesture: gesture)
+            }, openNagramAccountInfoContextMenu: { [weak self] copyItems, node, gesture in
+                guard let self else {
+                    return
+                }
+                self.openNagramAccountInfoContextMenu(copyItems: copyItems, node: node, gesture: gesture)
             }, openMemberContextMenu: { [weak self] member, node, gesture in
                 guard let self else {
                     return

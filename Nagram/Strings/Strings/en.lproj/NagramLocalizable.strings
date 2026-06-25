@@ -132,6 +132,16 @@
 "Nagram.ProfileId" = "ID";
 "Nagram.DataCenter" = "Data Center";
 "Nagram.RegDate" = "Registration Date";
+"Nagram.AccountInfo" = "Account Info";
+"Nagram.AccountInfo.CopyId" = "Copy ID";
+"Nagram.AccountInfo.CopyDC" = "Copy DC";
+"Nagram.AccountInfo.CopyRegDate" = "Copy Registration Date";
+"Nagram.RegDate.Loading" = "Loading";
+"Nagram.RegDate.LoadFailed" = "Failed to load, try again later";
+"Nagram.RegDate.LoadFailedWithFallback" = "%@ (exact date failed to load)";
+"Nagram.RegDate.Approximately" = "Approximately %@";
+"Nagram.RegDate.Newer" = "Newer than %@";
+"Nagram.RegDate.Older" = "Older than %@";
 "Nagram.ConfirmCall.Video" = "Start a video call?";
 "Nagram.ConfirmCall.Audio" = "Start a voice call?";
 "Nagram.Section.Profile" = "Profile";

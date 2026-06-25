@@ -132,6 +132,16 @@
 "Nagram.ProfileId" = "ID";
 "Nagram.DataCenter" = "データセンター";
 "Nagram.RegDate" = "登録日";
+"Nagram.AccountInfo" = "アカウント情報";
+"Nagram.AccountInfo.CopyId" = "IDをコピー";
+"Nagram.AccountInfo.CopyDC" = "DCをコピー";
+"Nagram.AccountInfo.CopyRegDate" = "登録日をコピー";
+"Nagram.RegDate.Loading" = "読み込み中";
+"Nagram.RegDate.LoadFailed" = "読み込みに失敗しました。後でもう一度お試しください";
+"Nagram.RegDate.LoadFailedWithFallback" = "%@（正確な日付を読み込めませんでした）";
+"Nagram.RegDate.Approximately" = "約 %@";
+"Nagram.RegDate.Newer" = "%@ より新しい";
+"Nagram.RegDate.Older" = "%@ より古い";
 "Nagram.ConfirmCall.Video" = "ビデオ通話を発信しますか？";
 "Nagram.ConfirmCall.Audio" = "音声通話を発信しますか？";
 "Nagram.Section.Profile" = "プロフィール";

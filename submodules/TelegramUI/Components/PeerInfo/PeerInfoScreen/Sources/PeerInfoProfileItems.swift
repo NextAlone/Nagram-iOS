@@ -22,6 +22,63 @@ import NagramStrings
 private let enabledPublicBioEntities: EnabledEntityTypes = [.allUrl, .mention, .hashtag]
 private let enabledPrivateBioEntities: EnabledEntityTypes = [.internalUrl, .mention, .hashtag]
 
+private func nagramFormattedRegistrationMonth(_ registrationDate: String, strings: PresentationStrings) -> String? {
+    let components = registrationDate.components(separatedBy: ".")
+    guard components.count == 2, let month = Int32(components[0]), let year = Int32(components[1]) else {
+        return nil
+    }
+    return stringForMonth(strings: strings, month: month - 1, ofYear: year - 1900)
+}
+
+private func nagramFormattedRegistrationDate(_ result: NagramRegistrationDateResult, languageCode: String) -> String {
+    switch result.kind {
+    case .exact:
+        return result.date
+    case .approximately:
+        return NagramLocalization.shared.localizedString("Nagram.RegDate.Approximately", languageCode, args: result.date)
+    case .newerThan:
+        return NagramLocalization.shared.localizedString("Nagram.RegDate.Newer", languageCode, args: result.date)
+    case .olderThan:
+        return NagramLocalization.shared.localizedString("Nagram.RegDate.Older", languageCode, args: result.date)
+    }
+}
+
+private struct NagramRegistrationDateDisplayText {
+    let displayText: String
+    let copyText: String?
+}
+
+private func nagramRegistrationDateDisplayText(userId: Int64, fallbackRegistrationDate: String?, presentationData: PresentationData, interaction: PeerInfoInteraction) -> NagramRegistrationDateDisplayText {
+    let languageCode = presentationData.strings.baseLanguageCode
+    let fallbackText = fallbackRegistrationDate.flatMap { nagramFormattedRegistrationMonth($0, strings: presentationData.strings) }
+    let loadingText = fallbackText ?? ngI18n("Nagram.RegDate.Loading", languageCode)
+
+    switch NagramRegistrationDateService.shared.state(for: userId) {
+    case let .ready(result):
+        let text = nagramFormattedRegistrationDate(result, languageCode: languageCode)
+        return NagramRegistrationDateDisplayText(displayText: text, copyText: text)
+    case .loading:
+        return NagramRegistrationDateDisplayText(displayText: loadingText, copyText: fallbackText)
+    case .failed:
+        NagramRegistrationDateService.shared.request(userId: userId, completion: {
+            interaction.requestLayout(false)
+        })
+        if let fallbackText {
+            return NagramRegistrationDateDisplayText(
+                displayText: NagramLocalization.shared.localizedString("Nagram.RegDate.LoadFailedWithFallback", languageCode, args: fallbackText),
+                copyText: fallbackText
+            )
+        } else {
+            return NagramRegistrationDateDisplayText(displayText: ngI18n("Nagram.RegDate.LoadFailed", languageCode), copyText: nil)
+        }
+    case nil:
+        NagramRegistrationDateService.shared.request(userId: userId, completion: {
+            interaction.requestLayout(false)
+        })
+        return NagramRegistrationDateDisplayText(displayText: loadingText, copyText: fallbackText)
+    }
+}
+
 enum InfoSection: Int, CaseIterable {
     case unofficial
     case groupLocation
@@ -532,18 +589,62 @@ func infoItems(
                 }
             }
         }
-        // MARK: NAGRAM — 资料页 ID / 数据中心 / 注册日期(仅个人资料)
+        // MARK: NAGRAM — 资料页账号信息(仅个人资料)
+        let nagramLanguageCode = presentationData.strings.baseLanguageCode
+        var nagramAccountInfoTextComponents: [String] = []
+        var nagramAccountInfoCopyItems: [PeerInfoNagramAccountInfoCopyItem] = []
         if NagramSettings.shared.showProfileId {
-            items[.nagram]!.append(PeerInfoScreenLabeledValueItem(id: 0, label: ngI18n("Nagram.ProfileId", presentationData.strings.baseLanguageCode), text: "\(user.id.id._internalGetInt64Value())", textColor: .primary, action: nil, requestLayout: { _ in interaction.requestLayout(false) }))
+            let profileId = "\(user.id.id._internalGetInt64Value())"
+            nagramAccountInfoTextComponents.append(profileId)
+            nagramAccountInfoCopyItems.append(PeerInfoNagramAccountInfoCopyItem(
+                title: ngI18n("Nagram.AccountInfo.CopyId", nagramLanguageCode),
+                value: profileId
+            ))
         }
         if NagramSettings.shared.showDC, let smallProfileImage = user.smallProfileImage, let cloudResource = smallProfileImage.resource as? CloudPeerPhotoSizeMediaResource {
-            items[.nagram]!.append(PeerInfoScreenLabeledValueItem(id: 1, label: ngI18n("Nagram.DataCenter", presentationData.strings.baseLanguageCode), text: "DC\(cloudResource.datacenterId)", textColor: .primary, action: nil, requestLayout: { _ in interaction.requestLayout(false) }))
+            let dataCenter = "DC\(cloudResource.datacenterId)"
+            nagramAccountInfoTextComponents.append(dataCenter)
+            nagramAccountInfoCopyItems.append(PeerInfoNagramAccountInfoCopyItem(
+                title: ngI18n("Nagram.AccountInfo.CopyDC", nagramLanguageCode),
+                value: dataCenter
+            ))
         }
-        if NagramSettings.shared.showRegDate, let cachedData = data.cachedData as? CachedUserData, let registrationDate = cachedData.peerStatusSettings?.registrationDate {
-            let components = registrationDate.components(separatedBy: ".")
-            if components.count == 2, let first = Int32(components[0]), let second = Int32(components[1]) {
-                items[.nagram]!.append(PeerInfoScreenLabeledValueItem(id: 2, label: ngI18n("Nagram.RegDate", presentationData.strings.baseLanguageCode), text: stringForMonth(strings: presentationData.strings, month: first - 1, ofYear: second - 1900), textColor: .primary, action: nil, requestLayout: { _ in interaction.requestLayout(false) }))
+        if NagramSettings.shared.showRegDate {
+            let fallbackRegistrationDate = (data.cachedData as? CachedUserData)?.peerStatusSettings?.registrationDate
+            let registrationDateText = nagramRegistrationDateDisplayText(
+                userId: user.id.id._internalGetInt64Value(),
+                fallbackRegistrationDate: fallbackRegistrationDate,
+                presentationData: presentationData,
+                interaction: interaction
+            )
+            nagramAccountInfoTextComponents.append(registrationDateText.displayText)
+            if let copyText = registrationDateText.copyText {
+                nagramAccountInfoCopyItems.append(PeerInfoNagramAccountInfoCopyItem(
+                    title: ngI18n("Nagram.AccountInfo.CopyRegDate", nagramLanguageCode),
+                    value: copyText
+                ))
             }
+        }
+        if !nagramAccountInfoTextComponents.isEmpty {
+            let nagramAccountInfoContextAction: ((ASDisplayNode, ContextGesture?, CGPoint?) -> Void)?
+            if nagramAccountInfoCopyItems.isEmpty {
+                nagramAccountInfoContextAction = nil
+            } else {
+                nagramAccountInfoContextAction = { sourceNode, gesture, _ in
+                    interaction.openNagramAccountInfoContextMenu(nagramAccountInfoCopyItems, sourceNode, gesture)
+                }
+            }
+            items[.nagram]!.append(PeerInfoScreenLabeledValueItem(
+                id: 0,
+                label: ngI18n("Nagram.AccountInfo", nagramLanguageCode),
+                text: nagramAccountInfoTextComponents.joined(separator: " · "),
+                textColor: .primary,
+                action: nil,
+                contextAction: nagramAccountInfoContextAction,
+                requestLayout: { _ in
+                    interaction.requestLayout(false)
+                }
+            ))
         }
     } else if case let .channel(channel) = data.peer {
         let ItemUsername = 1

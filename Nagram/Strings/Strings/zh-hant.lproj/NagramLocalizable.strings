@@ -132,6 +132,16 @@
 "Nagram.ProfileId" = "ID";
 "Nagram.DataCenter" = "資料中心";
 "Nagram.RegDate" = "註冊日期";
+"Nagram.AccountInfo" = "帳號資訊";
+"Nagram.AccountInfo.CopyId" = "複製 ID";
+"Nagram.AccountInfo.CopyDC" = "複製 DC";
+"Nagram.AccountInfo.CopyRegDate" = "複製註冊日期";
+"Nagram.RegDate.Loading" = "載入中";
+"Nagram.RegDate.LoadFailed" = "載入失敗，稍後重試";
+"Nagram.RegDate.LoadFailedWithFallback" = "%@（精確日期載入失敗）";
+"Nagram.RegDate.Approximately" = "約為 %@";
+"Nagram.RegDate.Newer" = "晚於 %@";
+"Nagram.RegDate.Older" = "早於 %@";
 "Nagram.ConfirmCall.Video" = "確定發起視訊通話？";
 "Nagram.ConfirmCall.Audio" = "確定發起語音通話？";
 "Nagram.Section.Profile" = "個人資料";
