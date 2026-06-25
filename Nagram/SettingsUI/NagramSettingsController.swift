@@ -137,6 +137,8 @@ private func nagramRowDeepLinkAliases(titleKey: String) -> [String] {
         return ["PanguOnEditing", "PanguEditing"]
     case "Nagram.MessageMenu":
         return ["MessageMenu", "DisableActionBarButton"]
+    case "Nagram.RegexFilters":
+        return ["RegexFilters", "Filters", "MessageFilters"]
     case "Nagram.StickerSize":
         return ["stickerSize"]
     case "Nagram.StickerTimestamp":
@@ -304,7 +306,8 @@ private func nagramGroups(
     sensitiveContentConfiguration: @escaping () -> ContentSettingsConfiguration?,
     setSensitiveContentEnabled: @escaping (Bool) -> Void,
     bottomBarLayoutAction: @escaping () -> Void,
-    messageMenuAction: @escaping () -> Void
+    messageMenuAction: @escaping () -> Void,
+    regexFiltersAction: @escaping () -> Void
 ) -> [NagramGroup] {
     let sensitiveContentEnabled: () -> Bool = {
         return sensitiveContentConfiguration()?.sensitiveContentEnabled ?? false
@@ -340,6 +343,9 @@ private func nagramGroups(
         ]),
         NagramGroup(tab: .chat, headerKey: "Nagram.Section.MessageMenu", footerKey: nil, rows: [
             .navigation(titleKey: "Nagram.MessageMenu", action: messageMenuAction),
+        ]),
+        NagramGroup(tab: .chat, headerKey: "Nagram.Section.Filtering", footerKey: "Nagram.RegexFilters.Main.Footer", rows: [
+            .navigation(titleKey: "Nagram.RegexFilters", action: regexFiltersAction),
         ]),
         // 贴纸尺寸:单独成段,header 即标题,行内滑杆中央显示当前 %。
         NagramGroup(tab: .chat, headerKey: "Nagram.StickerSize", footerKey: nil, rows: [
@@ -542,6 +548,8 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
         pushControllerImpl?(nagramBottomBarSettingsController(context: context))
     }, messageMenuAction: {
         pushControllerImpl?(nagramMessageMenuSettingsController(context: context))
+    }, regexFiltersAction: {
+        pushControllerImpl?(nagramRegexFilterSettingsController(context: context))
     })
     let flatRows: [NagramRow] = groups.flatMap { $0.rows }
     let flatRowDeepLinks: [String] = groups.flatMap { group in

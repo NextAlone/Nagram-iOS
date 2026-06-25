@@ -21,7 +21,6 @@ public func nagramBoolSignal(_ key: String, defaultValue: Bool) -> Signal<Bool, 
     }
     return (initial |> then(changes)) |> distinctUntilChanged
 }
-
 public func nagramBottomBarSettingsSignal() -> Signal<NagramBottomBarSettings, NoError> {
     let initial = Signal<NagramBottomBarSettings, NoError>.single(NagramSettings.shared.bottomBarSettings)
     let changes = Signal<NagramBottomBarSettings, NoError> { subscriber in
@@ -37,4 +36,23 @@ public func nagramBottomBarSettingsSignal() -> Signal<NagramBottomBarSettings, N
         }
     }
     return (initial |> then(changes)) |> distinctUntilChanged
+}
+
+public func nagramRegexFiltersSignal() -> Signal<Int32, NoError> {
+    let initial = Signal<Int32, NoError>.single(0)
+    let changes = Signal<Int32, NoError> { subscriber in
+        var version: Int32 = 0
+        let observer = NotificationCenter.default.addObserver(
+            forName: Notification.Name("NagramRegexFiltersDidChange"),
+            object: nil,
+            queue: nil
+        ) { _ in
+            version += 1
+            subscriber.putNext(version)
+        }
+        return ActionDisposable {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+    return initial |> then(changes)
 }

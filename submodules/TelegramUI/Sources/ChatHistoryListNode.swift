@@ -38,6 +38,7 @@ import TextFormat
 import ChatNewThreadInfoItem
 import PhoneNumberFormat
 import Postbox
+import NagramSettingsSignal // MARK: NAGRAM
 
 struct ChatTopVisibleMessageRange: Equatable {
     var lowerBound: MessageIndex
@@ -1872,6 +1873,10 @@ public final class ChatHistoryListNodeImpl: ListViewImpl, ChatHistoryNode, ChatH
             } else {
                 return historyViewUpdateValue
             }
+        }
+        historyViewUpdate = combineLatest(queue: .mainQueue(), historyViewUpdate, nagramRegexFiltersSignal()) // MARK: NAGRAM — 规则变化时重算聊天条目。
+        |> map { update, _ in
+            return update
         }
                 
         let startTime = CFAbsoluteTimeGetCurrent()

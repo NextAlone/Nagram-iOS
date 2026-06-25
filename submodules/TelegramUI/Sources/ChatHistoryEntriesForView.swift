@@ -12,6 +12,8 @@ import TextFormat
 import Markdown
 import Display
 import TelegramStringFormatting
+import NagramSettings // MARK: NAGRAM
+import NagramStrings // MARK: NAGRAM
 
 struct ChatHistoryEntriesForViewState {
     private var messageStableIdToLocalId: [UInt32: Int64] = [:]
@@ -141,6 +143,7 @@ func chatHistoryEntriesForView(
     }
     
     var count = 0
+    let nagramRegexFilterMatcher = NagramSettings.shared.regexFilterMatcher(peerId: location.peerId?.toInt64()) // MARK: NAGRAM
     loop: for entry in view.entries {
         var message = entry.message
         var isRead = entry.isRead
@@ -152,6 +155,32 @@ func chatHistoryEntriesForView(
         
         if pendingRemovedMessages.contains(message.id) {
             continue
+        }
+
+        if let nagramRegexFilterMatcher { // MARK: NAGRAM — 正则消息过滤只影响聊天展示，不写回 Postbox。
+            switch nagramRegexFilterMatcher.apply(to: message.text) {
+            case .hidden:
+                continue
+            case .contentHidden:
+                let text = ngI18n("Nagram.RegexFilters.ContentHidden", presentationData.strings.baseLanguageCode)
+                let attributes = message.attributes.filter { !($0 is TextEntitiesMessageAttribute) }
+                message = message.withUpdatedText(text).withUpdatedAttributes(attributes)
+            case let .visible(text, spoilerRanges):
+                if text != message.text || !spoilerRanges.isEmpty {
+                    let attributes = message.attributes.filter { !($0 is TextEntitiesMessageAttribute) }
+                    var textEntities: [MessageTextEntity] = text == message.text ? (message.textEntitiesAttribute?.entities ?? []) : []
+                    for range in spoilerRanges {
+                        textEntities.append(MessageTextEntity(range: range, type: .Spoiler))
+                    }
+                    let updatedAttributes: [MessageAttribute]
+                    if textEntities.isEmpty {
+                        updatedAttributes = attributes
+                    } else {
+                        updatedAttributes = attributes + [TextEntitiesMessageAttribute(entities: textEntities)]
+                    }
+                    message = message.withUpdatedText(text).withUpdatedAttributes(updatedAttributes)
+                }
+            }
         }
         
         if case let .replyThread(replyThreadMessage) = location, replyThreadMessage.isForumPost {

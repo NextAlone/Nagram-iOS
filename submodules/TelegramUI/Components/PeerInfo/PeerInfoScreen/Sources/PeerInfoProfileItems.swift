@@ -889,6 +889,13 @@ func infoItems(
         }
     }
     
+    // MARK: NAGRAM — 对话级正则过滤覆盖，只影响当前聊天本地展示。
+    if isOpenedFromChat, let peerId = data.peer?.id.toInt64() {
+        items[.nagram]!.append(PeerInfoScreenSwitchItem(id: AnyHashable("nagram_regex_filters_peer"), text: ngI18n("Nagram.RegexFilters.CurrentChat", presentationData.strings.baseLanguageCode), value: NagramSettings.shared.isRegexFilteringEnabled(peerId: peerId), toggled: { value in
+            NagramSettings.shared.setRegexFilteringEnabled(value, peerId: peerId)
+        }))
+    }
+    
     var result: [(AnyHashable, [PeerInfoScreenItem])] = []
     for section in InfoSection.allCases {
         if let sectionItems = items[section], !sectionItems.isEmpty {
