@@ -109,6 +109,7 @@
 "Nagram.ShowProfileId" = "顯示使用者 ID";
 "Nagram.ShowDC" = "顯示資料中心";
 "Nagram.ShowRegDate" = "顯示註冊日期";
+"Nagram.HidePhoneInSettings" = "隱藏設定頁手機號碼";
 "Nagram.Section.Calls" = "通話";
 "Nagram.ConfirmCalls" = "通話前確認";
 "Nagram.Section.Interface" = "介面";

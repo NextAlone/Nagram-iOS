@@ -33,6 +33,8 @@ import PeerInfoVisualMediaPaneNode
 import AvatarStoryIndicatorComponent
 import ComponentDisplayAdapters
 import ChatAvatarNavigationNode
+// MARK: NAGRAM
+import NagramSettings
 import MultiScaleTextNode
 import PeerInfoCoverComponent
 import PeerInfoPaneNode
@@ -402,7 +404,8 @@ final class PeerInfoHeaderNode: ASDisplayNode {
     
     @objc private func handlePhoneLongPress(_ gestureRecognizer: UILongPressGestureRecognizer) {
         if gestureRecognizer.state == .began {
-            self.displayCopyContextMenu?(self.subtitleNodeRawContainer, true, !self.isAvatarExpanded)
+            // MARK: NAGRAM
+            self.displayCopyContextMenu?(self.subtitleNodeRawContainer, !NagramSettings.shared.hidePhoneInSettings, !self.isAvatarExpanded)
         }
     }
     
@@ -1235,10 +1238,12 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             smallTitleAttributes = MultiScaleTextState.Attributes(font: Font.medium(28.0), color: .white, shadowColor: titleShadowColor)
             
             if self.isSettings, case let .user(user) = peer {
-                var subtitle = formatPhoneNumber(context: self.context, number: user.phone ?? "")
+                // MARK: NAGRAM
+                var subtitle = NagramSettings.shared.hidePhoneInSettings ? "" : formatPhoneNumber(context: self.context, number: user.phone ?? "")
                 
                 if let mainUsername = user.addressName, !mainUsername.isEmpty {
-                    subtitle = "\(subtitle) • @\(mainUsername)"
+                    // MARK: NAGRAM
+                    subtitle = subtitle.isEmpty ? "@\(mainUsername)" : "\(subtitle) • @\(mainUsername)"
                 }
                 subtitleStringText = subtitle
                 subtitleAttributes = MultiScaleTextState.Attributes(font: Font.regular(17.0), color: .white)
