@@ -163,6 +163,8 @@ private func nagramRowDeepLinkAliases(titleKey: String) -> [String] {
         return ["ShowDC", "ShowDataCenter", "ShowIdAndDc"]
     case "Nagram.ShowRegDate":
         return ["ShowRegDate", "RegistrationDate"]
+    case "Nagram.HidePhoneInSettings":
+        return ["HidePhone", "hidePhoneInSettings"]
     case "Nagram.ConfirmCalls":
         return ["AskBeforeCalling", "ConfirmCalls"]
     case "Nagram.DisableFiltering":
@@ -363,6 +365,7 @@ private func nagramGroups(
             .toggle(titleKey: "Nagram.ShowProfileId", get: { NagramSettings.shared.showProfileId }, set: { NagramSettings.shared.showProfileId = $0 }),
             .toggle(titleKey: "Nagram.ShowDC", get: { NagramSettings.shared.showDC }, set: { NagramSettings.shared.showDC = $0 }),
             .toggle(titleKey: "Nagram.ShowRegDate", get: { NagramSettings.shared.showRegDate }, set: { NagramSettings.shared.showRegDate = $0 }),
+            .toggle(titleKey: "Nagram.HidePhoneInSettings", get: { NagramSettings.shared.hidePhoneInSettings }, set: { NagramSettings.shared.hidePhoneInSettings = $0 }),
         ]),
         NagramGroup(tab: .other, headerKey: "Nagram.Section.Calls", footerKey: nil, rows: [
             .toggle(titleKey: "Nagram.ConfirmCalls", get: { NagramSettings.shared.confirmCalls }, set: { NagramSettings.shared.confirmCalls = $0 }),

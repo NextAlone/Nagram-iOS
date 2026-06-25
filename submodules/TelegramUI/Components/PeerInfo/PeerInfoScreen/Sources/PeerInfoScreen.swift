@@ -2162,6 +2162,10 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
                         }
                     }))
                 }
+                // MARK: NAGRAM
+                if actions.isEmpty {
+                    return
+                }
                 
                 let contextMenuController = makeContextMenuController(actions: actions)
                 strongSelf.controller?.present(contextMenuController, in: .window(.root), with: ContextMenuControllerPresentationArguments(sourceNodeAndRect: { [weak self] in

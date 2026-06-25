@@ -111,6 +111,7 @@
 "Nagram.ShowProfileId" = "Show User ID";
 "Nagram.ShowDC" = "Show Data Center";
 "Nagram.ShowRegDate" = "Show Registration Date";
+"Nagram.HidePhoneInSettings" = "Hide Phone Number in Settings";
 "Nagram.Section.Calls" = "Calls";
 "Nagram.ConfirmCalls" = "Confirm Before Calling";
 "Nagram.Section.Interface" = "Interface";

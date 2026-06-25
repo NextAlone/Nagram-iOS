@@ -247,6 +247,9 @@ public final class NagramSettings {
     /// 资料页显示注册日期（默认关 = 保持原生）
     @NagramDefault("nagram.showRegDate", false)
     public var showRegDate: Bool
+    /// 设置/资料页隐藏手机号（默认关 = 保持原生）
+    @NagramDefault("nagram.hidePhoneInSettings", false)
+    public var hidePhoneInSettings: Bool
 }
 
 public extension NagramSettings {

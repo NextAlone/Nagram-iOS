@@ -111,6 +111,7 @@
 "Nagram.ShowProfileId" = "显示用户 ID";
 "Nagram.ShowDC" = "显示数据中心";
 "Nagram.ShowRegDate" = "显示注册日期";
+"Nagram.HidePhoneInSettings" = "隐藏设置页手机号";
 "Nagram.Section.Calls" = "通话";
 "Nagram.ConfirmCalls" = "通话前确认";
 "Nagram.Section.Interface" = "界面";
