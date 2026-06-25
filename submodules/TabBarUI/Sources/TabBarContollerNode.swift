@@ -315,6 +315,8 @@ final class TabBarControllerNode: ASDisplayNode {
         let nagramLayoutItemCount = max(visibleComponentItems.count, NagramBottomBarSettings.defaultBottomItems.count)
         let tabBarSearchState = self.currentController?.tabBarSearchState
         let searchIsVisible = bottomBarSettings.isVisible(.search)
+        let hasVisibleSearch = searchIsVisible && tabBarSearchState != nil
+        let hasVisibleTabBarContent = !visibleComponentItems.isEmpty || externalComponentItem != nil || hasVisibleSearch
         let tabBarSize = self.tabBarView.update(
             transition: tabBarTransition,
             component: AnyComponent(TabBarComponent(
@@ -352,8 +354,8 @@ final class TabBarControllerNode: ASDisplayNode {
             containerSize: CGSize(width: params.layout.size.width - sideInset * 2.0, height: 100.0)
         )
         let tabBarOriginX: CGFloat
-        let onlySearchButton = searchIsVisible && bottomBarSettings.searchMode != .bar && tabBarSearchState != nil && visibleComponentItems.isEmpty && externalComponentItem == nil && tabBarSearchState?.isActive != true
-        let fillsAvailableWidth = !onlySearchButton && (bottomBarSettings.buttonWidthFillRatio >= 100 || externalComponentItem != nil || searchIsVisible)
+        let onlySearchButton = hasVisibleSearch && bottomBarSettings.searchMode != .bar && visibleComponentItems.isEmpty && externalComponentItem == nil && tabBarSearchState?.isActive != true
+        let fillsAvailableWidth = !onlySearchButton && (bottomBarSettings.buttonWidthFillRatio >= 100 || externalComponentItem != nil || hasVisibleSearch)
         if onlySearchButton {
             tabBarOriginX = params.layout.size.width - sideInset - tabBarSize.width
         } else if !fillsAvailableWidth && tabBarSearchState?.isActive != true {
@@ -367,14 +369,16 @@ final class TabBarControllerNode: ASDisplayNode {
         } else {
             tabBarOriginX = floor((params.layout.size.width - tabBarSize.width) * 0.5)
         }
-        let tabBarFrame = CGRect(origin: CGPoint(x: tabBarOriginX, y: params.layout.size.height - (self.tabBarHidden ? 0.0 : (tabBarSize.height + tabBarBottomInset))), size: tabBarSize)
+        let tabBarFrame = CGRect(origin: CGPoint(x: tabBarOriginX, y: params.layout.size.height - (params.isTabBarHidden ? 0.0 : (tabBarSize.height + tabBarBottomInset))), size: tabBarSize)
         
         if let tabBarComponentView = self.tabBarView.view {
             if tabBarComponentView.superview == nil {
                 self.view.addSubview(tabBarComponentView)
             }
             transition.updateFrame(view: tabBarComponentView, frame: tabBarFrame)
-            transition.updateAlpha(layer: tabBarComponentView.layer, alpha: params.toolbar == nil ? 1.0 : 0.0)
+            let tabBarContentAlpha: CGFloat = !params.isTabBarHidden && params.toolbar == nil && hasVisibleTabBarContent ? 1.0 : 0.0
+            transition.updateAlpha(layer: tabBarComponentView.layer, alpha: tabBarContentAlpha)
+            tabBarComponentView.isUserInteractionEnabled = tabBarContentAlpha > 0.0
         }
         
         transition.updateFrame(node: self.disabledOverlayNode, frame: tabBarFrame)
@@ -465,6 +469,9 @@ final class TabBarControllerNode: ASDisplayNode {
             }
         }
         
+        if params.toolbar == nil && !hasVisibleTabBarContent {
+            return 0.0
+        }
         return params.layout.size.height - tabBarFrame.minY
     }
     
