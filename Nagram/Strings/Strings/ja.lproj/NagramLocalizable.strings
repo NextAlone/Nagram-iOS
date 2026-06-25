@@ -60,6 +60,7 @@
 "Nagram.MessageMenu.Item.sendGift" = "ギフトを送る";
 "Nagram.MessageMenu.Item.reply" = "返信";
 "Nagram.MessageMenu.Item.repeat" = "リピート送信";
+"Nagram.MessageMenu.Item.repeatWithoutQuote" = "引用なしでリピート送信";
 "Nagram.MessageMenu.Item.sendScheduledNow" = "今すぐ送信";
 "Nagram.MessageMenu.Item.editScheduledTime" = "予約時刻を編集";
 "Nagram.MessageMenu.Item.copy" = "コピー";

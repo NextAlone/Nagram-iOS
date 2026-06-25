@@ -1396,6 +1396,18 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 let _ = enqueueMessages(account: context.account, peerId: peerId, messages: repeatedMessages).startStandalone()
                 f(.dismissWithoutContent)
             })))
+            actions.append(.repeatWithoutQuote, .action(ContextMenuActionItem(text: ngI18n("Nagram.MessageMenu.Item.repeat", context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode), icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/RepeatPlusOne"), color: theme.actionSheet.primaryTextColor)
+            }, action: { _, f in
+                let forwardAttributes: [EngineMessage.Attribute] = [
+                    ForwardOptionsMessageAttribute(hideNames: true, hideCaptions: false)
+                ]
+                let repeatedMessages = (selectAll ? messages : [message]).map { message -> EnqueueMessage in
+                    return .forward(source: message.id, threadId: chatPresentationInterfaceState.chatLocation.threadId, grouping: .auto, attributes: forwardAttributes, correlationId: nil)
+                }
+                let _ = enqueueMessages(account: context.account, peerId: peerId, messages: repeatedMessages).startStandalone()
+                f(.dismissWithoutContent)
+            })))
         }
 
         if !messageText.isEmpty || richMessageMarkdown != nil || (resourceAvailable && isImage) || diceEmoji != nil {

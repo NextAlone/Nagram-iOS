@@ -60,6 +60,7 @@
 "Nagram.MessageMenu.Item.sendGift" = "贈送禮物";
 "Nagram.MessageMenu.Item.reply" = "回覆";
 "Nagram.MessageMenu.Item.repeat" = "復讀";
+"Nagram.MessageMenu.Item.repeatWithoutQuote" = "無引用復讀";
 "Nagram.MessageMenu.Item.sendScheduledNow" = "立即傳送";
 "Nagram.MessageMenu.Item.editScheduledTime" = "編輯定時";
 "Nagram.MessageMenu.Item.copy" = "複製";

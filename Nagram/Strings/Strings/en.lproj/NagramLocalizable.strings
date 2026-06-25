@@ -60,6 +60,7 @@
 "Nagram.MessageMenu.Item.sendGift" = "Send Gift";
 "Nagram.MessageMenu.Item.reply" = "Reply";
 "Nagram.MessageMenu.Item.repeat" = "Repeat";
+"Nagram.MessageMenu.Item.repeatWithoutQuote" = "Repeat Without Quote";
 "Nagram.MessageMenu.Item.sendScheduledNow" = "Send Now";
 "Nagram.MessageMenu.Item.editScheduledTime" = "Edit Scheduled Time";
 "Nagram.MessageMenu.Item.copy" = "Copy";
