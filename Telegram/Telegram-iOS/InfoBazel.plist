@@ -35,7 +35,7 @@
 			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>telegram</string>
+				<string>na</string>
 			</array>
 		</dict>
 		<dict>
@@ -45,8 +45,8 @@
 			<string>$(PRODUCT_BUNDLE_IDENTIFIER).compatibility</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>tg</string>
-				<string>$(APP_SPECIFIC_URL_SCHEME)</string>
+				<string>nagram</string>
+				<string>na</string>
 			</array>
 		</dict>
 		<dict>

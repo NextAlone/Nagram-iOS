@@ -97,7 +97,7 @@ xcrun devicectl device install app --device <DEVICE_UDID> /tmp/tg-device/Payload
   "is_internal_build": "true",
   "is_appstore_build": "false",
   "appstore_id": "0",
-  "app_specific_url_scheme": "tg",
+  "app_specific_url_scheme": "na",
   "premium_iap_product_id": "",
   "enable_siri": false,
   "enable_icloud": false
