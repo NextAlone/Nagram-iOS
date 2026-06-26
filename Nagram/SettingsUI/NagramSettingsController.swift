@@ -132,6 +132,10 @@ private func nagramRowDeepLinkAliases(titleKey: String) -> [String] {
         return ["HideChannelBottomButton"]
     case "Nagram.HideSponsoredMessages":
         return ["HideSponsoredMessages", "DisableSponsoredMessages"]
+    case "Nagram.ChatListMessagePreviewStyle":
+        return ["ChatListLines", "CompactMessagePreview", "MessagePreviewStyle"]
+    case "Nagram.ChatListCompact":
+        return ["CompactChatList", "CompactChatListLayout"]
     case "Nagram.PanguOnReceiving":
         return ["PanguOnReceiving", "PanguOnRecv", "PanguReceiving"]
     case "Nagram.PanguOnSending":
@@ -337,11 +341,26 @@ private func nagramGroups(
     let sensitiveContentCanAdjust: () -> Bool = {
         return sensitiveContentConfiguration()?.canAdjustSensitiveContent ?? false
     }
+    if NagramSettings.shared.chatListCompact && NagramSettings.shared.chatListMessagePreviewStyle != NagramChatListMessagePreviewStyle.two.rawValue {
+        NagramSettings.shared.chatListMessagePreviewStyle = NagramChatListMessagePreviewStyle.two.rawValue
+    }
     return [
         // 通用
         NagramGroup(tab: .general, headerKey: "Nagram.Section.Interface", footerKey: nil, rows: [
             .navigation(titleKey: "Nagram.BottomBarLayout", action: bottomBarLayoutAction),
             .startupFolder(titleKey: "Nagram.ChatListStartupFolder"),
+            .choice(titleKey: "Nagram.ChatListMessagePreviewStyle", prefix: "Nagram.ChatListMessagePreviewStyle", options: ["three", "two"], current: { NagramSettings.shared.chatListMessagePreviewStyleMode.rawValue }, set: { value in
+                if NagramSettings.shared.chatListCompact && value == NagramChatListMessagePreviewStyle.three.rawValue {
+                    return
+                }
+                NagramSettings.shared.chatListMessagePreviewStyle = value
+            }),
+            .toggle(titleKey: "Nagram.ChatListCompact", get: { NagramSettings.shared.chatListCompact }, set: { value in
+                NagramSettings.shared.chatListCompact = value
+                if value {
+                    NagramSettings.shared.chatListMessagePreviewStyle = NagramChatListMessagePreviewStyle.two.rawValue
+                }
+            }),
             .toggle(titleKey: "Nagram.HideStories", get: { NagramSettings.shared.hideStories }, set: { NagramSettings.shared.hideStories = $0 }),
         ]),
         NagramGroup(tab: .general, headerKey: "Nagram.Section.Camera", footerKey: "Nagram.Section.Camera.Footer", rows: [
@@ -615,7 +634,8 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
                 actionSheet?.dismissAnimated()
             }
             var items: [ActionSheetItem] = [ActionSheetTextItem(title: ngI18n(titleKey, lang))]
-            for option in options {
+            let effectiveOptions = titleKey == "Nagram.ChatListMessagePreviewStyle" && NagramSettings.shared.chatListCompact ? ["two"] : options
+            for option in effectiveOptions {
                 items.append(ActionSheetButtonItem(title: ngI18n("\(prefix).\(option)", lang), color: .accent, action: {
                     dismissAction()
                     set(option)
@@ -745,7 +765,8 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
                     case let .toggleWithEnabled(titleKey, get, _, enabled, enableInteractiveChanges):
                         entries.append(.toggle(stableId: rowStableId, section: sectionId, title: ngI18n(titleKey, lang), value: get(), enabled: enabled(), enableInteractiveChanges: enableInteractiveChanges, index: rowIndex))
                     case let .choice(titleKey, prefix, _, current, _):
-                        entries.append(.disclosure(stableId: rowStableId, section: sectionId, title: ngI18n(titleKey, lang), label: ngI18n("\(prefix).\(current())", lang), index: rowIndex))
+                        let currentValue = titleKey == "Nagram.ChatListMessagePreviewStyle" && NagramSettings.shared.chatListCompact ? NagramChatListMessagePreviewStyle.two.rawValue : current()
+                        entries.append(.disclosure(stableId: rowStableId, section: sectionId, title: ngI18n(titleKey, lang), label: ngI18n("\(prefix).\(currentValue)", lang), index: rowIndex))
                     case let .startupFolder(titleKey):
                         entries.append(.disclosure(stableId: rowStableId, section: sectionId, title: ngI18n(titleKey, lang), label: nagramChatListStartupFolderLabel(accountPeerId: context.account.peerId.toInt64(), strings: presentationData.strings, lang: lang), index: rowIndex))
                     case let .slider(minValue, maxValue, get, _):

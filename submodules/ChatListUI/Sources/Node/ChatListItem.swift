@@ -1925,6 +1925,9 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             }
             
             var avatarDiameter = min(60.0, floor(item.presentationData.fontSize.baseDisplaySize * 60.0 / 17.0))
+            if NagramSettings.shared.chatListCompact { // MARK: NAGRAM
+                avatarDiameter = floor(avatarDiameter / 1.5)
+            }
             
             if case let .peer(peerData) = item.content, let customMessageListData = peerData.customMessageListData, customMessageListData.commandPrefix != nil {
                 avatarDiameter = 40.0
@@ -2454,6 +2457,10 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             
             // if changed, adjust setupItem accordingly
             var avatarDiameter = min(60.0, floor(item.presentationData.fontSize.baseDisplaySize * 60.0 / 17.0))
+            let nagramCompactChatList = NagramSettings.shared.chatListCompact // MARK: NAGRAM
+            if nagramCompactChatList {
+                avatarDiameter = floor(avatarDiameter / 1.5)
+            }
             let avatarLeftInset: CGFloat
             
             if case let .peer(peerData) = item.content, let customMessageListData = peerData.customMessageListData, customMessageListData.commandPrefix != nil {
@@ -2465,7 +2472,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                 } else if !useChatListLayout {
                     avatarLeftInset = 50.0
                 } else {
-                    avatarLeftInset = 24.0 + avatarDiameter
+                    avatarLeftInset = (nagramCompactChatList ? 18.0 : 24.0) + avatarDiameter // MARK: NAGRAM
                 }
             }
             
@@ -2530,7 +2537,16 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             if case .groupReference = item.content {
                 useInlineAuthorPrefix = true
             }
-            if !itemTags.isEmpty {
+            let nagramTwoLineMessagePreview = NagramSettings.shared.chatListMessagePreviewStyleMode == .two // MARK: NAGRAM
+            if nagramTwoLineMessagePreview && !hideAuthor {
+                useInlineAuthorPrefix = true
+                hideAuthor = true
+            }
+            if nagramTwoLineMessagePreview { // MARK: NAGRAM
+                forumTopicData = nil
+                topForumTopicItems = []
+            }
+            if !itemTags.isEmpty && !nagramTwoLineMessagePreview { // MARK: NAGRAM
                 forumTopicData = nil
                 topForumTopicItems = []
                 
@@ -2688,19 +2704,27 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                 
                     if inlineAuthorPrefix == nil, let mediaDraftContentType {
                         hasDraft = true
-                        authorAttributedString = NSAttributedString(string: item.presentationData.strings.DialogList_Draft, font: textFont, textColor: theme.messageDraftTextColor)
-                        
+                        let mediaTitle: String
                         switch mediaDraftContentType {
                         case .audio:
-                            attributedText = NSAttributedString(string: item.presentationData.strings.Message_Audio, font: textFont, textColor: theme.messageTextColor)
+                            mediaTitle = item.presentationData.strings.Message_Audio
                         case .video:
-                            attributedText = NSAttributedString(string: item.presentationData.strings.Message_VideoMessage, font: textFont, textColor: theme.messageTextColor)
+                            mediaTitle = item.presentationData.strings.Message_VideoMessage
+                        }
+                        if nagramTwoLineMessagePreview { // MARK: NAGRAM
+                            let draftText = NSMutableAttributedString()
+                            draftText.append(NSAttributedString(string: item.presentationData.strings.DialogList_Draft + ": ", font: textFont, textColor: theme.messageDraftTextColor))
+                            draftText.append(NSAttributedString(string: mediaTitle, font: textFont, textColor: theme.messageTextColor))
+                            attributedText = draftText
+                        } else {
+                            authorAttributedString = NSAttributedString(string: item.presentationData.strings.DialogList_Draft, font: textFont, textColor: theme.messageDraftTextColor)
+                            attributedText = NSAttributedString(string: mediaTitle, font: textFont, textColor: theme.messageTextColor)
                         }
                     } else if inlineAuthorPrefix == nil, let draftState = draftState {
                         hasDraft = true
                         let draftText = stringWithAppliedEntities(draftState.text, entities: draftState.entities, baseColor: theme.messageTextColor, linkColor: theme.messageTextColor, baseFont: textFont, linkFont: textFont, boldFont: textFont, italicFont: textFont, boldItalicFont: textFont, fixedFont: textFont, blockQuoteFont: textFont, message: nil)
                         
-                        if !itemTags.isEmpty {
+                        if !itemTags.isEmpty || nagramTwoLineMessagePreview { // MARK: NAGRAM
                             let tempAttributedText = foldLineBreaks(draftText)
                             let attributedTextWithDraft = NSMutableAttributedString()
                             attributedTextWithDraft.append(NSAttributedString(string: item.presentationData.strings.DialogList_Draft + ": ", font: textFont, textColor: theme.messageDraftTextColor))
@@ -3562,11 +3586,11 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             }
             badgeSize = max(badgeSize, reorderInset)
             
-            if !itemTags.isEmpty {
+            if !itemTags.isEmpty && !nagramTwoLineMessagePreview { // MARK: NAGRAM
                 authorAttributedString = nil
             }
             
-            var effectiveAuthorTitle = (hideAuthor && !hasDraft) ? nil : authorAttributedString
+            var effectiveAuthorTitle = (hideAuthor && (!hasDraft || nagramTwoLineMessagePreview)) ? nil : authorAttributedString // MARK: NAGRAM
             
             let isSearching = item.interaction.searchTextHighightState != nil
             
@@ -3657,10 +3681,11 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             }
             
             let textLineSpacing: CGFloat = min(0.2, item.presentationData.fontSize.itemListBaseFontSize * 0.2 / 17.0)
+            let nagramChatListTextLineCount = nagramTwoLineMessagePreview ? 1 : ((authorAttributedString == nil && itemTags.isEmpty && forumThread == nil && topForumTopicItems.isEmpty) ? 2 : 1) // MARK: NAGRAM
             let (textLayout, textApply) = textLayout(TextNodeLayoutArguments(
                 attributedString: textAttributedString,
                 backgroundColor: nil,
-                maximumNumberOfLines: (authorAttributedString == nil && itemTags.isEmpty && forumThread == nil && topForumTopicItems.isEmpty) ? 2 : 1,
+                maximumNumberOfLines: nagramChatListTextLineCount,
                 truncationType: .end,
                 constrainedSize: CGSize(width: textMaxWidth, height: .greatestFiniteMagnitude),
                 alignment: .natural,
@@ -3875,6 +3900,9 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                 itemHeight += measureLayout.size.height * 3.0
                 itemHeight += titleSpacing
                 itemHeight += authorSpacing
+            }
+            if nagramCompactChatList { // MARK: NAGRAM
+                itemHeight = floorToScreenPixels(itemHeight / 1.5)
             }
                         
             let rawContentRect = CGRect(origin: CGPoint(x: 2.0, y: layoutOffset + floor(item.presentationData.fontSize.itemListBaseFontSize * 8.0 / 17.0)), size: CGSize(width: rawContentWidth, height: itemHeight - 12.0 - 9.0))
@@ -4521,12 +4549,14 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     }
                     
                     let contentDelta = CGPoint(x: contentRect.origin.x - (strongSelf.titleNode.frame.minX - titleOffset), y: contentRect.origin.y - (strongSelf.titleNode.frame.minY - UIScreenPixel))
-                    let titleFrame = CGRect(origin: CGPoint(x: contentRect.origin.x + titleOffset, y: contentRect.origin.y + UIScreenPixel), size: titleLayout.size)
+                    let nagramTwoLineVerticalOffset = nagramTwoLineMessagePreview && !nagramCompactChatList && authorLayout.height.isZero ? floorToScreenPixels(6.0 * item.presentationData.fontSize.itemListBaseFontSize / 17.0) : 0.0 // MARK: NAGRAM
+                    let nagramTwoLineTextSpacing = nagramTwoLineMessagePreview && !nagramCompactChatList ? floorToScreenPixels(6.0 * item.presentationData.fontSize.itemListBaseFontSize / 17.0) : 0.0 // MARK: NAGRAM
+                    let titleFrame = CGRect(origin: CGPoint(x: contentRect.origin.x + titleOffset, y: contentRect.origin.y + UIScreenPixel + nagramTwoLineVerticalOffset), size: titleLayout.size)
                     strongSelf.titleNode.frame = titleFrame
                     
-                    let authorNodeFrame = CGRect(origin: CGPoint(x: contentRect.origin.x - 1.0, y: contentRect.minY + titleLayout.size.height - 2.0), size: authorLayout)
+                    let authorNodeFrame = CGRect(origin: CGPoint(x: contentRect.origin.x - 1.0, y: contentRect.minY + titleLayout.size.height - 2.0 + nagramTwoLineVerticalOffset + nagramTwoLineTextSpacing), size: authorLayout)
                     strongSelf.authorNode.frame = authorNodeFrame
-                    let textNodeFrame = CGRect(origin: CGPoint(x: contentRect.origin.x - 1.0, y: contentRect.minY + titleLayout.size.height - 2.0 + (authorLayout.height.isZero ? 0.0 : (authorLayout.height - 3.0))), size: textLayout.size)
+                    let textNodeFrame = CGRect(origin: CGPoint(x: contentRect.origin.x - 1.0, y: contentRect.minY + titleLayout.size.height - 2.0 + (authorLayout.height.isZero ? 0.0 : (authorLayout.height - 3.0)) + nagramTwoLineVerticalOffset + nagramTwoLineTextSpacing), size: textLayout.size)
                     
                     if let topForumTopicRect, !isSearching {
                         let compoundHighlightingNode: LinkHighlightingNode
@@ -4706,7 +4736,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         }
                     }
                     
-                    if !itemTags.isEmpty {
+                    if !itemTags.isEmpty && !nagramTwoLineMessagePreview { // MARK: NAGRAM
                         let sizeFactor = item.presentationData.fontSize.itemListBaseFontSize / 17.0
                         
                         let itemTagListFrame = CGRect(origin: CGPoint(x: contentRect.minX, y: contentRect.minY + measureLayout.size.height * 2.0 + floorToScreenPixels(2.0 * sizeFactor)), size: CGSize(width: contentRect.width, height: floorToScreenPixels(20.0 * sizeFactor)))

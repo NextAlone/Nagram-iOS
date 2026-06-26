@@ -15,6 +15,10 @@
 "Nagram.Section.Privacy" = "プライバシー";
 
 "Nagram.SecondsInMessages" = "タイムスタンプに秒を表示";
+"Nagram.ChatListMessagePreviewStyle" = "メッセージプレビュー形式";
+"Nagram.ChatListMessagePreviewStyle.three" = "3行";
+"Nagram.ChatListMessagePreviewStyle.two" = "2行";
+"Nagram.ChatListCompact" = "コンパクトなチャットレイアウト";
 "Nagram.PanguOnReceiving" = "受信メッセージをPangu化";
 "Nagram.PanguInfo" = "文字を読みやすくするため、CJK（中国語、日本語、韓国語）、半角英数字、記号の間に自動でスペースを挿入します。";
 "Nagram.HideReactions" = "リアクションを非表示";

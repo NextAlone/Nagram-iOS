@@ -68,6 +68,11 @@ public enum NagramChatListStartupFolderMode: String {
     case specific
 }
 
+public enum NagramChatListMessagePreviewStyle: String {
+    case three
+    case two
+}
+
 public final class NagramSettings {
     public static let shared = NagramSettings()
     public static let chatListAllChatsFolderId: Int32 = -1
@@ -220,6 +225,12 @@ public final class NagramSettings {
     /// 对话列表启动分组（"telegram" / "last" / "specific"）
     @NagramDefault("nagram.chatListStartupFolderMode", NagramChatListStartupFolderMode.telegramDefault.rawValue)
     public var chatListStartupFolderMode: String
+    /// 对话列表消息预览样式（"three" / "two"）
+    @NagramDefault("nagram.chatListMessagePreviewStyle", NagramChatListMessagePreviewStyle.three.rawValue)
+    public var chatListMessagePreviewStyle: String
+    /// 紧凑对话列表（压缩列表行高）
+    @NagramDefault("nagram.chatListCompact", false)
+    public var chatListCompact: Bool
     /// 最近会话快捷入口
     @NagramDefault("nagram.recentChatsEnabled", false)
     public var recentChatsEnabled: Bool
@@ -269,6 +280,19 @@ public extension NagramSettings {
 
     var chatListStartupFolderModeValue: NagramChatListStartupFolderMode {
         return NagramChatListStartupFolderMode(rawValue: self.chatListStartupFolderMode) ?? .telegramDefault
+    }
+
+    var chatListMessagePreviewStyleMode: NagramChatListMessagePreviewStyle {
+        if self.chatListCompact {
+            if self.chatListMessagePreviewStyle != NagramChatListMessagePreviewStyle.two.rawValue {
+                self.chatListMessagePreviewStyle = NagramChatListMessagePreviewStyle.two.rawValue
+            }
+            return .two
+        }
+        if UserDefaults.standard.object(forKey: "nagram.chatListMessagePreviewStyle") == nil, let legacyValue = UserDefaults.standard.string(forKey: "nagram.chatListLines"), let legacyMode = NagramChatListMessagePreviewStyle(rawValue: legacyValue) {
+            return legacyMode
+        }
+        return NagramChatListMessagePreviewStyle(rawValue: self.chatListMessagePreviewStyle) ?? .three
     }
 
     func chatListStartupSpecificFolderId(accountPeerId: Int64) -> Int32? {

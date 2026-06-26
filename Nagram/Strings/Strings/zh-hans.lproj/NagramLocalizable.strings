@@ -15,6 +15,10 @@
 "Nagram.Section.Privacy" = "隐私";
 
 "Nagram.SecondsInMessages" = "时间戳显示秒";
+"Nagram.ChatListMessagePreviewStyle" = "消息预览样式";
+"Nagram.ChatListMessagePreviewStyle.three" = "三行";
+"Nagram.ChatListMessagePreviewStyle.two" = "两行";
+"Nagram.ChatListCompact" = "紧凑会话布局";
 "Nagram.PanguOnReceiving" = "接收消息 Pangu 化";
 "Nagram.PanguInfo" = "使文字更具可读性。在 CJK（中文、日文、韩文）、半宽英文、数字和符号字符之间自动插入空格。";
 "Nagram.HideReactions" = "隐藏消息反应";
