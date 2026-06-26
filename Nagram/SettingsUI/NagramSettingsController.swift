@@ -62,6 +62,7 @@ private enum NagramRow {
     case toggle(titleKey: String, get: () -> Bool, set: (Bool) -> Void)
     case toggleWithEnabled(titleKey: String, get: () -> Bool, set: (Bool) -> Void, enabled: () -> Bool, enableInteractiveChanges: Bool)
     case choice(titleKey: String, prefix: String, options: [String], current: () -> String, set: (String) -> Void)
+    case startupFolder(titleKey: String)
     case slider(minValue: Int32, maxValue: Int32, get: () -> Int32, set: (Int32) -> Void)
     case navigation(titleKey: String, action: () -> Void)
 }
@@ -87,6 +88,8 @@ private func nagramRowTitleKey(_ row: NagramRow) -> String {
     case let .toggleWithEnabled(titleKey, _, _, _, _):
         return titleKey
     case let .choice(titleKey, _, _, _, _):
+        return titleKey
+    case let .startupFolder(titleKey):
         return titleKey
     case .slider:
         return "Nagram.StickerSize"
@@ -153,6 +156,8 @@ private func nagramRowDeepLinkAliases(titleKey: String) -> [String] {
         return ["RecentChats", "recent_dialogs", "ShowRecentChatsInSidebar"]
     case "Nagram.ChatListSwipeAction":
         return ["ChatListSwipeAction"]
+    case "Nagram.ChatListStartupFolder":
+        return ["DefaultFolder", "StartupFolder", "RememberLastFolder"]
     case "Nagram.DisableScrollToNextChannel":
         return ["DisableScrollToNextChannel"]
     case "Nagram.DisableScrollToNextTopic":
@@ -175,6 +180,23 @@ private func nagramRowDeepLinkAliases(titleKey: String) -> [String] {
         return ["ForceCopy", "ForceCopyEnabled"]
     default:
         return []
+    }
+}
+
+private func nagramChatListStartupFolderLabel(accountPeerId: Int64, strings: PresentationStrings, lang: String) -> String {
+    switch NagramSettings.shared.chatListStartupFolderModeValue {
+    case .telegramDefault:
+        return ngI18n("Nagram.ChatListStartupFolder.telegram", lang)
+    case .last:
+        return ngI18n("Nagram.ChatListStartupFolder.last", lang)
+    case .specific:
+        guard let folderId = NagramSettings.shared.chatListStartupSpecificFolderId(accountPeerId: accountPeerId) else {
+            return ngI18n("Nagram.ChatListStartupFolder.notSet", lang)
+        }
+        if folderId == NagramSettings.chatListAllChatsFolderId {
+            return strings.ChatList_Tabs_AllChats
+        }
+        return "\(ngI18n("Nagram.ChatListStartupFolder.specific", lang)) #\(folderId)"
     }
 }
 
@@ -319,6 +341,7 @@ private func nagramGroups(
         // 通用
         NagramGroup(tab: .general, headerKey: "Nagram.Section.Interface", footerKey: nil, rows: [
             .navigation(titleKey: "Nagram.BottomBarLayout", action: bottomBarLayoutAction),
+            .startupFolder(titleKey: "Nagram.ChatListStartupFolder"),
             .toggle(titleKey: "Nagram.HideStories", get: { NagramSettings.shared.hideStories }, set: { NagramSettings.shared.hideStories = $0 }),
         ]),
         NagramGroup(tab: .general, headerKey: "Nagram.Section.Camera", footerKey: "Nagram.Section.Camera.Footer", rows: [
@@ -604,6 +627,57 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
                 ActionSheetItemGroup(items: [ActionSheetButtonItem(title: presentationData.strings.Common_Cancel, action: { dismissAction() })])
             ])
             presentControllerImpl?(actionSheet, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
+        } else if case let .startupFolder(titleKey) = row {
+            let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+            let lang = presentationData.strings.baseLanguageCode
+            let accountPeerId = context.account.peerId.toInt64()
+            let _ = (context.engine.peers.updatedChatListFilters()
+            |> take(1)
+            |> deliverOnMainQueue).startStandalone(next: { filters in
+                let actionSheet = ActionSheetController(presentationData: presentationData)
+                let dismissAction: () -> Void = { [weak actionSheet] in
+                    actionSheet?.dismissAnimated()
+                }
+                let setMode: (NagramChatListStartupFolderMode, Int32?) -> Void = { mode, folderId in
+                    NagramSettings.shared.chatListStartupFolderMode = mode.rawValue
+                    if let folderId {
+                        NagramSettings.shared.setChatListStartupSpecificFolderId(folderId, accountPeerId: accountPeerId)
+                    }
+                    bump()
+                }
+                var modeItems: [ActionSheetItem] = [
+                    ActionSheetTextItem(title: ngI18n(titleKey, lang)),
+                    ActionSheetButtonItem(title: ngI18n("Nagram.ChatListStartupFolder.telegram", lang), color: .accent, action: {
+                        dismissAction()
+                        setMode(.telegramDefault, nil)
+                    }),
+                    ActionSheetButtonItem(title: ngI18n("Nagram.ChatListStartupFolder.last", lang), color: .accent, action: {
+                        dismissAction()
+                        setMode(.last, nil)
+                    })
+                ]
+                var folderItems: [ActionSheetItem] = [
+                    ActionSheetButtonItem(title: presentationData.strings.ChatList_Tabs_AllChats, color: .accent, action: {
+                        dismissAction()
+                        setMode(.specific, NagramSettings.chatListAllChatsFolderId)
+                    })
+                ]
+                for filter in filters {
+                    if case let .filter(id, title, _, _) = filter {
+                        folderItems.append(ActionSheetButtonItem(title: title.text, color: .accent, action: {
+                            dismissAction()
+                            setMode(.specific, id)
+                        }))
+                    }
+                }
+                modeItems.append(ActionSheetTextItem(title: ngI18n("Nagram.ChatListStartupFolder.specific", lang)))
+                actionSheet.setItemGroups([
+                    ActionSheetItemGroup(items: modeItems),
+                    ActionSheetItemGroup(items: folderItems),
+                    ActionSheetItemGroup(items: [ActionSheetButtonItem(title: presentationData.strings.Common_Cancel, action: { dismissAction() })])
+                ])
+                presentControllerImpl?(actionSheet, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
+            })
         } else if case let .navigation(_, action) = row {
             action()
         }
@@ -672,6 +746,8 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
                         entries.append(.toggle(stableId: rowStableId, section: sectionId, title: ngI18n(titleKey, lang), value: get(), enabled: enabled(), enableInteractiveChanges: enableInteractiveChanges, index: rowIndex))
                     case let .choice(titleKey, prefix, _, current, _):
                         entries.append(.disclosure(stableId: rowStableId, section: sectionId, title: ngI18n(titleKey, lang), label: ngI18n("\(prefix).\(current())", lang), index: rowIndex))
+                    case let .startupFolder(titleKey):
+                        entries.append(.disclosure(stableId: rowStableId, section: sectionId, title: ngI18n(titleKey, lang), label: nagramChatListStartupFolderLabel(accountPeerId: context.account.peerId.toInt64(), strings: presentationData.strings, lang: lang), index: rowIndex))
                     case let .slider(minValue, maxValue, get, _):
                         entries.append(.slider(stableId: rowStableId, section: sectionId, minValue: minValue, maxValue: maxValue, value: get(), index: rowIndex))
                     case let .navigation(titleKey, _):

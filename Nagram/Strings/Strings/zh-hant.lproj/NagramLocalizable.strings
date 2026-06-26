@@ -197,3 +197,8 @@
 "Nagram.BottomBarLayout.Item.search" = "搜尋";
 "Nagram.RecentChats" = "快速返回最近會話";
 "Nagram.ChatListFolder.CategoryRecent" = "最近";
+"Nagram.ChatListStartupFolder" = "啟動時打開分組";
+"Nagram.ChatListStartupFolder.telegram" = "Telegram 預設";
+"Nagram.ChatListStartupFolder.last" = "上次所在分組";
+"Nagram.ChatListStartupFolder.specific" = "指定分組";
+"Nagram.ChatListStartupFolder.notSet" = "未指定";

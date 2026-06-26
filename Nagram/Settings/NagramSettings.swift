@@ -62,8 +62,15 @@ public enum NagramChatListSwipeAction: String {
     }
 }
 
+public enum NagramChatListStartupFolderMode: String {
+    case telegramDefault = "telegram"
+    case last
+    case specific
+}
+
 public final class NagramSettings {
     public static let shared = NagramSettings()
+    public static let chatListAllChatsFolderId: Int32 = -1
     private init() {}
 
     // MARK: 波次 1 — force-copy（已落地，key 保持不变以平滑迁移）
@@ -210,6 +217,9 @@ public final class NagramSettings {
     /// 对话列表横滑行为（"both" / "switch" / "quick" / "none"）
     @NagramDefault("nagram.chatListSwipeAction", NagramChatListSwipeAction.both.rawValue)
     public var chatListSwipeAction: String
+    /// 对话列表启动分组（"telegram" / "last" / "specific"）
+    @NagramDefault("nagram.chatListStartupFolderMode", NagramChatListStartupFolderMode.telegramDefault.rawValue)
+    public var chatListStartupFolderMode: String
     /// 最近会话快捷入口
     @NagramDefault("nagram.recentChatsEnabled", false)
     public var recentChatsEnabled: Bool
@@ -257,6 +267,26 @@ public extension NagramSettings {
         return NagramChatListSwipeAction(rawValue: self.chatListSwipeAction) ?? .both
     }
 
+    var chatListStartupFolderModeValue: NagramChatListStartupFolderMode {
+        return NagramChatListStartupFolderMode(rawValue: self.chatListStartupFolderMode) ?? .telegramDefault
+    }
+
+    func chatListStartupSpecificFolderId(accountPeerId: Int64) -> Int32? {
+        return self.chatListStartupFolderId(forKey: self.chatListStartupSpecificFolderKey(accountPeerId: accountPeerId))
+    }
+
+    func setChatListStartupSpecificFolderId(_ folderId: Int32?, accountPeerId: Int64) {
+        self.setChatListStartupFolderId(folderId, forKey: self.chatListStartupSpecificFolderKey(accountPeerId: accountPeerId))
+    }
+
+    func chatListStartupLastFolderId(accountPeerId: Int64) -> Int32? {
+        return self.chatListStartupFolderId(forKey: self.chatListStartupLastFolderKey(accountPeerId: accountPeerId))
+    }
+
+    func setChatListStartupLastFolderId(_ folderId: Int32?, accountPeerId: Int64) {
+        self.setChatListStartupFolderId(folderId, forKey: self.chatListStartupLastFolderKey(accountPeerId: accountPeerId))
+    }
+
     /// 下载分片大小：按加速档位放大（接入 TelegramCore FetchV2）。仿 SG getSGDownloadPartSize。
     func downloadPartSize(default defaultValue: Int64, fileSize: Int64?) -> Int64 {
         let smallFileThreshold: Int64 = 1 * 1024 * 1024
@@ -279,5 +309,30 @@ public extension NagramSettings {
         case "maximum": return 12
         default: return defaultValue
         }
+    }
+}
+
+private extension NagramSettings {
+    func chatListStartupSpecificFolderKey(accountPeerId: Int64) -> String {
+        return "nagram.chatListStartupSpecificFolder.\(accountPeerId)"
+    }
+
+    func chatListStartupLastFolderKey(accountPeerId: Int64) -> String {
+        return "nagram.chatListStartupLastFolder.\(accountPeerId)"
+    }
+
+    func chatListStartupFolderId(forKey key: String) -> Int32? {
+        guard UserDefaults.standard.object(forKey: key) != nil else {
+            return nil
+        }
+        return Int32(UserDefaults.standard.integer(forKey: key))
+    }
+
+    func setChatListStartupFolderId(_ folderId: Int32?, forKey key: String) {
+        guard let folderId else {
+            UserDefaults.standard.removeObject(forKey: key)
+            return
+        }
+        UserDefaults.standard.set(Int(folderId), forKey: key)
     }
 }

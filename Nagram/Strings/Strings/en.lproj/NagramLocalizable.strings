@@ -197,3 +197,8 @@
 "Nagram.BottomBarLayout.Item.search" = "Search";
 "Nagram.RecentChats" = "Quick Return to Recent Chats";
 "Nagram.ChatListFolder.CategoryRecent" = "Recent";
+"Nagram.ChatListStartupFolder" = "Open Folder on Startup";
+"Nagram.ChatListStartupFolder.telegram" = "Telegram Default";
+"Nagram.ChatListStartupFolder.last" = "Last Opened Folder";
+"Nagram.ChatListStartupFolder.specific" = "Specific Folder";
+"Nagram.ChatListStartupFolder.notSet" = "Not Set";

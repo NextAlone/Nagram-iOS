@@ -751,6 +751,16 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                 if let navigationBarView = strongSelf.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View, let headerPanelsView = navigationBarView.headerPanels as? HeaderPanelContainerComponent.View, let tabsView = headerPanelsView.tabs as? HorizontalTabsComponent.View {
                     tabsView.updateTabSwitchFraction(fraction: fraction, isDragging: strongSelf.chatListDisplayNode.mainContainerNode.isSwitchingCurrentItemFilterByDragging, transition: ComponentTransition(transition))
                 }
+                if fraction.isZero {
+                    let folderId: Int32
+                    switch filter {
+                    case .all:
+                        folderId = NagramSettings.chatListAllChatsFolderId
+                    case let .filter(id):
+                        folderId = id
+                    }
+                    NagramSettings.shared.setChatListStartupLastFolderId(folderId, accountPeerId: strongSelf.context.account.peerId.toInt64()) // MARK: NAGRAM
+                }
             }
             self.reloadFilters()
         }
@@ -3999,12 +4009,27 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             }
             
             let firstItem = countAndFilterItems.1.first?.0 ?? .allChats
-            let firstItemEntryId: ChatListFilterTabEntryId
+            var firstItemEntryId: ChatListFilterTabEntryId // MARK: NAGRAM
             switch firstItem {
                 case .allChats:
                     firstItemEntryId = .all
                 case let .filter(id, _, _, _):
                     firstItemEntryId = .filter(id)
+            }
+            if !strongSelf.initializedFilters {
+                let accountPeerId = strongSelf.context.account.peerId.toInt64()
+                let configuredFolderId: Int32?
+                switch NagramSettings.shared.chatListStartupFolderModeValue {
+                case .telegramDefault:
+                    configuredFolderId = nil
+                case .last:
+                    configuredFolderId = NagramSettings.shared.chatListStartupLastFolderId(accountPeerId: accountPeerId)
+                case .specific:
+                    configuredFolderId = NagramSettings.shared.chatListStartupSpecificFolderId(accountPeerId: accountPeerId)
+                }
+                if let configuredFolderId {
+                    firstItemEntryId = configuredFolderId == NagramSettings.chatListAllChatsFolderId ? .all : .filter(configuredFolderId) // MARK: NAGRAM
+                }
             }
             
             var selectedEntryId = !strongSelf.initializedFilters ? firstItemEntryId : strongSelf.chatListDisplayNode.mainContainerNode.currentItemFilter
