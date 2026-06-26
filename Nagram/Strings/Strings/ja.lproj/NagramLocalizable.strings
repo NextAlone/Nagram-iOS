@@ -30,6 +30,7 @@
 "Nagram.UploadSpeedBoost" = "アップロード高速化";
 "Nagram.Section.Network" = "ネットワーク高速化";
 "Nagram.VideoPIPSwipeUp" = "上スワイプでピクチャインピクチャ";
+"Nagram.TapMessageRowToOpenContextMenu" = "メッセージ行タップでメニュー";
 "Nagram.ChatListSwipeAction" = "チャットリスト横スワイプ";
 "Nagram.ChatListSwipeAction.both" = "切替 + クイック";
 "Nagram.ChatListSwipeAction.switch" = "切替";

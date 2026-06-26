@@ -30,6 +30,7 @@
 "Nagram.UploadSpeedBoost" = "上传加速";
 "Nagram.Section.Network" = "网络加速";
 "Nagram.VideoPIPSwipeUp" = "上滑打开画中画";
+"Nagram.TapMessageRowToOpenContextMenu" = "点击消息行打开菜单";
 "Nagram.ChatListSwipeAction" = "对话列表横滑";
 "Nagram.ChatListSwipeAction.both" = "切换 + 快捷";
 "Nagram.ChatListSwipeAction.switch" = "切换";

@@ -30,6 +30,7 @@
 "Nagram.UploadSpeedBoost" = "Upload Boost";
 "Nagram.Section.Network" = "Network Boost";
 "Nagram.VideoPIPSwipeUp" = "Swipe Up for Picture-in-Picture";
+"Nagram.TapMessageRowToOpenContextMenu" = "Tap Message Row for Menu";
 "Nagram.ChatListSwipeAction" = "Chat List Swipe";
 "Nagram.ChatListSwipeAction.both" = "Switch + Quick Actions";
 "Nagram.ChatListSwipeAction.switch" = "Switch Folders";

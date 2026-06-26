@@ -27,6 +27,7 @@ import ChatMessageShareButton
 import ChatMessageActionButtonsNode
 import ChatSwipeToReplyRecognizer
 import ChatMessageReactionsFooterContentNode
+import NagramSettings // MARK: NAGRAM
 
 private let nameFont = Font.medium(14.0)
 
@@ -968,8 +969,10 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
                         f.action()
                     case let .optionalAction(f):
                         f()
-                    case .openContextMenu:
-                        break
+                    case let .openContextMenu(openContextMenu):
+                        if let item = self.item, case .tap = gesture {
+                            item.controllerInteraction.openMessageContextMenu(openContextMenu.tapMessage, openContextMenu.selectAll, self, openContextMenu.subFrame, nil, nil)
+                        }
                     }
                 } else if case .tap = gesture {
                     self.item?.controllerInteraction.clickThroughMessage(self.view, location)
@@ -978,6 +981,35 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
         default:
             break
         }
+    }
+
+    // MARK: NAGRAM
+    private func nagramTapMessageRowToOpenContextMenuAction(location: CGPoint) -> InternalBubbleTapAction? {
+        guard NagramSettings.shared.tapMessageRowToOpenContextMenu, let item = self.item else {
+            return nil
+        }
+        guard item.controllerInteraction.selectionState == nil, self.bounds.contains(location) else {
+            return nil
+        }
+        if self.interactiveVideoNode.frame.contains(location) {
+            return nil
+        }
+        if let actionButtonsNode = self.actionButtonsNode, actionButtonsNode.frame.contains(location) {
+            return nil
+        }
+        if let shareButtonNode = self.shareButtonNode, shareButtonNode.frame.contains(location) {
+            return nil
+        }
+        if let reactionButtonsNode = self.reactionButtonsNode, reactionButtonsNode.frame.contains(location) {
+            return nil
+        }
+        if let replyInfoNode = self.replyInfoNode, replyInfoNode.frame.contains(location) {
+            return nil
+        }
+        if let forwardInfoNode = self.forwardInfoNode, forwardInfoNode.frame.contains(location) {
+            return nil
+        }
+        return .openContextMenu(InternalBubbleTapAction.OpenContextMenu(tapMessage: item.message, selectAll: false, subFrame: self.interactiveVideoNode.frame, disableDefaultPressAnimation: true))
     }
     
     private func gestureRecognized(gesture: TapLongTapOrDoubleTapGesture, location: CGPoint, recognizer: TapLongTapOrDoubleTapGestureRecognizer?) -> InternalBubbleTapAction? {
@@ -1025,6 +1057,9 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
                         return .optionalAction(performAction)
                     }
                 }
+            }
+            if let action = self.nagramTapMessageRowToOpenContextMenuAction(location: location) {
+                return action
             }
             return nil
         case .longTap, .doubleTap, .secondaryTap:

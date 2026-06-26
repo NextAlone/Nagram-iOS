@@ -87,6 +87,7 @@ import LottieMetal
 import AvatarNode
 import ChatMessageSuggestedPostInfoNode
 import PremiumAlertController
+import NagramSettings // MARK: NAGRAM
 
 private struct BubbleItemAttributes {
     var index: Int?
@@ -5541,7 +5542,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                     case let .optionalAction(f):
                         f()
                     case let .openContextMenu(openContextMenu):
-                        if canAddMessageReactions(message: EngineMessage(openContextMenu.tapMessage)) {
+                        if case .doubleTap = gesture, canAddMessageReactions(message: EngineMessage(openContextMenu.tapMessage)) {
                             item.controllerInteraction.updateMessageReaction(openContextMenu.tapMessage, .default, false, nil)
                         } else {
                             item.controllerInteraction.openMessageContextMenu(openContextMenu.tapMessage, openContextMenu.selectAll, self, openContextMenu.subFrame, nil, nil)
@@ -5558,6 +5559,71 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         default:
             break
         }
+    }
+
+    // MARK: NAGRAM
+    private func nagramTapMessageRowToOpenContextMenuAction(location: CGPoint) -> InternalBubbleTapAction? {
+        guard NagramSettings.shared.tapMessageRowToOpenContextMenu, let item = self.item else {
+            return nil
+        }
+        guard item.controllerInteraction.selectionState == nil, self.bounds.contains(location) else {
+            return nil
+        }
+        if let actionButtonsNode = self.actionButtonsNode, actionButtonsNode.frame.contains(location) {
+            return nil
+        }
+        if let shareButtonNode = self.shareButtonNode, shareButtonNode.frame.contains(location) {
+            return nil
+        }
+        if let reactionButtonsNode = self.reactionButtonsNode, reactionButtonsNode.frame.contains(location) {
+            return nil
+        }
+        if let threadInfoNode = self.threadInfoNode, threadInfoNode.frame.contains(location) {
+            return nil
+        }
+        if let replyInfoNode = self.replyInfoNode, replyInfoNode.frame.contains(location) {
+            return nil
+        }
+        if let forwardInfoNode = self.forwardInfoNode, forwardInfoNode.frame.contains(location) {
+            return nil
+        }
+
+        var tapMessage: Message? = item.content.firstMessage
+        var selectAll = true
+        var hasFiles = false
+        var subFrame = self.backgroundNode.frame
+
+        loop: for contentNode in self.contentNodes {
+            let convertedNodeFrame = contentNode.view.convert(contentNode.bounds, to: self.view)
+
+            if contentNode is ChatMessageFileBubbleContentNode {
+                hasFiles = true
+            }
+
+            if !convertedNodeFrame.contains(location) {
+                continue loop
+            } else if contentNode is ChatMessageMediaBubbleContentNode {
+                selectAll = false
+            } else if contentNode is ChatMessageFileBubbleContentNode {
+                selectAll = false
+            } else if contentNode is ChatMessageTextBubbleContentNode, hasFiles {
+                selectAll = false
+            }
+
+            if contentNode is ChatMessageEventLogPreviousMessageContentNode {
+            } else {
+                tapMessage = contentNode.item?.message
+            }
+            if case .group = item.content {
+                subFrame = contentNode.frame.insetBy(dx: 0.0, dy: -4.0)
+            }
+            break
+        }
+
+        guard let tapMessage else {
+            return nil
+        }
+        return .openContextMenu(InternalBubbleTapAction.OpenContextMenu(tapMessage: tapMessage, selectAll: selectAll, subFrame: subFrame, disableDefaultPressAnimation: true))
     }
     
     private func gestureRecognized(gesture: TapLongTapOrDoubleTapGesture, location: CGPoint, recognizer: TapLongTapOrDoubleTapGestureRecognizer?) -> InternalBubbleTapAction? {
@@ -5988,6 +6054,9 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                             self.playMessageEffect(force: true)
                         }, contextMenuOnLongPress: true))
                     }
+                }
+                if let action = self.nagramTapMessageRowToOpenContextMenuAction(location: location) {
+                    return action
                 }
                 return nil
             case .longTap, .doubleTap, .secondaryTap:

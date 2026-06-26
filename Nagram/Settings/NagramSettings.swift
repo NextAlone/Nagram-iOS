@@ -234,6 +234,9 @@ public final class NagramSettings {
     /// 最近会话快捷入口
     @NagramDefault("nagram.recentChatsEnabled", false)
     public var recentChatsEnabled: Bool
+    /// 点击消息行打开上下文菜单（默认关 = 保持原生长按）
+    @NagramDefault("nagram.tapMessageRowToOpenContextMenu", false)
+    public var tapMessageRowToOpenContextMenu: Bool
     /// 资料页显示用户数字 ID（默认关 = 保持原生）
     @NagramDefault("nagram.showProfileId", false)
     public var showProfileId: Bool
