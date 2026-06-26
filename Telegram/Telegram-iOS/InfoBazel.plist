@@ -35,7 +35,7 @@
 			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>na</string>
+				<string>nagram</string>
 			</array>
 		</dict>
 		<dict>
@@ -45,7 +45,7 @@
 			<string>$(PRODUCT_BUNDLE_IDENTIFIER).compatibility</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>nagram</string>
+				<string>na</string>
 				<string>na</string>
 			</array>
 		</dict>
