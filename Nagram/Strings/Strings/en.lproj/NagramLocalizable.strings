@@ -85,6 +85,7 @@
 "Nagram.MessageMenu.Item.saveGif" = "Save GIF";
 "Nagram.MessageMenu.Item.editSticker" = "Edit Sticker";
 "Nagram.MessageMenu.Item.viewStickerPack" = "View Sticker Pack";
+"Nagram.MessageMenu.Item.saveToSavedMessages" = "Save to Saved Messages";
 "Nagram.MessageMenu.Item.forward" = "Forward";
 "Nagram.MessageMenu.Item.forwardWithoutQuote" = "Forward Without Quote";
 "Nagram.MessageMenu.Item.report" = "Report";

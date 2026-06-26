@@ -85,6 +85,7 @@
 "Nagram.MessageMenu.Item.saveGif" = "儲存 GIF";
 "Nagram.MessageMenu.Item.editSticker" = "編輯貼圖";
 "Nagram.MessageMenu.Item.viewStickerPack" = "查看貼圖包";
+"Nagram.MessageMenu.Item.saveToSavedMessages" = "儲存到收藏夾";
 "Nagram.MessageMenu.Item.forward" = "轉發";
 "Nagram.MessageMenu.Item.forwardWithoutQuote" = "無引用轉發";
 "Nagram.MessageMenu.Item.report" = "檢舉";

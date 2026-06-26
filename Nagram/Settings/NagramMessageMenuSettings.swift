@@ -34,6 +34,7 @@ public enum NagramMessageMenuItemId: String, CaseIterable {
     case saveGif
     case editSticker
     case viewStickerPack
+    case saveToSavedMessages
     case forward
     case forwardWithoutQuote
     case report

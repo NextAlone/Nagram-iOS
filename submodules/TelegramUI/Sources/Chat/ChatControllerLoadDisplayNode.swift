@@ -2095,6 +2095,15 @@ extension ChatControllerImpl {
                 let forwardMessageIds = messages.map { $0.id }.sorted()
                 strongSelf.forwardMessages(messageIds: forwardMessageIds, options: options)
             }
+        }, saveMessagesToSavedMessages: { [weak self] messages in
+            if let strongSelf = self, !messages.isEmpty {
+                guard !strongSelf.presentAccountFrozenInfoIfNeeded(delay: true) else {
+                    return
+                }
+                
+                strongSelf.commitPurposefulAction()
+                strongSelf.saveMessagesToSavedMessages(messages: messages)
+            }
         }, updateForwardOptionsState: { [weak self] f in
             if let strongSelf = self {
                 strongSelf.updateChatPresentationInterfaceState(animated: true, interactive: true, { $0.updatedInterfaceState({ $0.withUpdatedForwardOptionsState(f($0.forwardOptionsState ?? ChatInterfaceForwardOptionsState(hideNames: false, hideCaptions: false, unhideNamesOnCaptionChange: false))) }) })

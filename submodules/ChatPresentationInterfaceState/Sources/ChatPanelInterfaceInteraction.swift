@@ -83,6 +83,7 @@ public final class ChatPanelInterfaceInteraction {
     public let forwardCurrentForwardMessages: () -> Void
     public let forwardMessages: ([EngineRawMessage]) -> Void
     public let forwardMessagesWithOptions: ([EngineRawMessage], ChatInterfaceForwardOptionsState?) -> Void
+    public let saveMessagesToSavedMessages: ([EngineRawMessage]) -> Void
     public let updateForwardOptionsState: ((ChatInterfaceForwardOptionsState) -> ChatInterfaceForwardOptionsState) -> Void
     public let presentForwardOptions: (UIView) -> Void
     public let presentReplyOptions: (UIView) -> Void
@@ -216,6 +217,7 @@ public final class ChatPanelInterfaceInteraction {
         forwardCurrentForwardMessages: @escaping () -> Void,
         forwardMessages: @escaping ([EngineRawMessage]) -> Void,
         forwardMessagesWithOptions: (([EngineRawMessage], ChatInterfaceForwardOptionsState?) -> Void)? = nil,
+        saveMessagesToSavedMessages: (([EngineRawMessage]) -> Void)? = nil,
         updateForwardOptionsState: @escaping ((ChatInterfaceForwardOptionsState) -> ChatInterfaceForwardOptionsState) -> Void,
         presentForwardOptions: @escaping (UIView) -> Void,
         presentReplyOptions: @escaping (UIView) -> Void,
@@ -350,6 +352,7 @@ public final class ChatPanelInterfaceInteraction {
         self.forwardMessagesWithOptions = forwardMessagesWithOptions ?? { messages, _ in
             forwardMessages(messages)
         }
+        self.saveMessagesToSavedMessages = saveMessagesToSavedMessages ?? forwardMessages
         self.updateForwardOptionsState = updateForwardOptionsState
         self.presentForwardOptions = presentForwardOptions
         self.presentReplyOptions = presentReplyOptions

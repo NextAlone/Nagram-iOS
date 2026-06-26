@@ -1997,17 +1997,27 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
 
         if data.messageActions.options.contains(.forward) {
             if !isCopyProtected {
+                let messagesToForward = selectAll || isImage ? messages : [message]
+                // MARK: NAGRAM — 快速保存到 Saved Messages：直接转发到自己的云收藏。
+                if messagesToForward.contains(where: { $0.id.peerId != context.account.peerId || $0.id.namespace == Namespaces.Message.Local }) {
+                    actions.append(.saveToSavedMessages, .action(ContextMenuActionItem(text: ngI18n("Nagram.MessageMenu.Item.saveToSavedMessages", context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode), icon: { theme in
+                        return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Archive"), color: theme.actionSheet.primaryTextColor)
+                    }, action: { _, f in
+                        interfaceInteraction.saveMessagesToSavedMessages(messagesToForward)
+                        f(.dismissWithoutContent)
+                    })))
+                }
                 actions.append(.forward, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuForward, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Forward"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in
-                    interfaceInteraction.forwardMessages(selectAll || isImage ? messages : [message])
+                    interfaceInteraction.forwardMessages(messagesToForward)
                     f(.dismissWithoutContent)
                 })))
                 // MARK: NAGRAM — 无引用转发：复用原转发流程，预置隐藏发送者名称。
                 actions.append(.forwardWithoutQuote, .action(ContextMenuActionItem(text: ngI18n("Nagram.MessageMenu.Item.forwardWithoutQuote", context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode), icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Forward"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in
-                    interfaceInteraction.forwardMessagesWithOptions(selectAll || isImage ? messages : [message], ChatInterfaceForwardOptionsState(hideNames: true, hideCaptions: false, unhideNamesOnCaptionChange: false))
+                    interfaceInteraction.forwardMessagesWithOptions(messagesToForward, ChatInterfaceForwardOptionsState(hideNames: true, hideCaptions: false, unhideNamesOnCaptionChange: false))
                     f(.dismissWithoutContent)
                 })))
             }
