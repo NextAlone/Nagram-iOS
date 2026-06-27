@@ -119,6 +119,9 @@ public final class NagramSettings {
     /// 资料页显示数据中心 DC
     @NagramDefault("nagram.showDC", false)
     public var showDC: Bool
+    /// 控件玻璃高亮（默认开 = 保持原生交互反馈）
+    @NagramDefault("nagram.controlHighlightEnabled", true)
+    public var controlHighlightEnabled: Bool
 
     // MARK: 波次 3 批 B — UI 中改
     /// 底栏布局完整配置。新逻辑只读写这一份模型。

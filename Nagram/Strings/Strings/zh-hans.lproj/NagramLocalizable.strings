@@ -167,6 +167,7 @@
 "Nagram.ConfirmCalls" = "通话前确认";
 "Nagram.Section.Interface" = "界面";
 "Nagram.HideStories" = "隐藏动态";
+"Nagram.ControlHighlight" = "控件高亮";
 "Nagram.HideTabBar" = "隐藏底部标签栏";
 "Nagram.HideTabBarCalls" = "隐藏通话";
 "Nagram.HideTabBarContacts" = "隐藏联系人";

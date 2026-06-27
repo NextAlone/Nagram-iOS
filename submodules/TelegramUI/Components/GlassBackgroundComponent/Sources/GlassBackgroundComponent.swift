@@ -6,6 +6,7 @@ import ComponentDisplayAdapters
 import UIKitRuntimeUtils
 import CoreImage
 import AppBundle
+import NagramSettings // MARK: NAGRAM
 
 private final class ContentContainer: UIView {
     private let maskContentView: UIView
@@ -605,9 +606,10 @@ public class GlassBackgroundView: UIView {
     }
 
     func update(size: CGSize, shape: Shape, isDark: Bool, tintColor: TintColor, isInteractive: Bool = false, isVisible: Bool = true, transition: ComponentTransition) {
+        let effectiveIsInteractive = isInteractive && NagramSettings.shared.controlHighlightEnabled // MARK: NAGRAM
         
         if let glassHighlightRecognizer = self.glassHighlightRecognizer {
-            glassHighlightRecognizer.isEnabled = isInteractive
+            glassHighlightRecognizer.isEnabled = effectiveIsInteractive
         }
         
         if let nativeView = self.nativeView, let nativeViewClippingContext = self.nativeViewClippingContext, (nativeView.bounds.size != size || nativeViewClippingContext.shape != shape || (nativeView.overrideUserInterfaceStyle == .dark) != isDark) {
@@ -690,7 +692,7 @@ public class GlassBackgroundView: UIView {
             innerBackgroundView.removeFromSuperview()
         }
         
-        let params = Params(shape: shape, isDark: isDark, tintColor: tintColor, isInteractive: isInteractive, isVisible: isVisible)
+        let params = Params(shape: shape, isDark: isDark, tintColor: tintColor, isInteractive: effectiveIsInteractive, isVisible: isVisible)
         if self.params != params {
             self.params = params
             
@@ -770,7 +772,7 @@ public class GlassBackgroundView: UIView {
                                     glassEffectValue.tintColor = nil
                                 }
                             }
-                            glassEffectValue.isInteractive = isInteractive
+                            glassEffectValue.isInteractive = effectiveIsInteractive
                             glassEffect = glassEffectValue
                         }
                         

@@ -167,6 +167,7 @@
 "Nagram.ConfirmCalls" = "通話前に確認";
 "Nagram.Section.Interface" = "インターフェース";
 "Nagram.HideStories" = "ストーリーズを非表示";
+"Nagram.ControlHighlight" = "コントロールのハイライト";
 "Nagram.HideTabBar" = "タブバーを非表示";
 "Nagram.HideTabBarCalls" = "通話を非表示";
 "Nagram.HideTabBarContacts" = "連絡先を非表示";

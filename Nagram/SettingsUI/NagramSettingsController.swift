@@ -172,6 +172,8 @@ private func nagramRowDeepLinkAliases(titleKey: String) -> [String] {
         return ["ShowProfileId", "ShowId", "ShowIdAndDc"]
     case "Nagram.ShowDC":
         return ["ShowDC", "ShowDataCenter", "ShowIdAndDc"]
+    case "Nagram.ControlHighlight":
+        return ["ControlHighlight", "GlassHighlight", "LiquidGlassHighlight"]
     case "Nagram.ShowRegDate":
         return ["ShowRegDate", "RegistrationDate"]
     case "Nagram.HidePhoneInSettings":
@@ -361,6 +363,7 @@ private func nagramGroups(
                     NagramSettings.shared.chatListMessagePreviewStyle = NagramChatListMessagePreviewStyle.two.rawValue
                 }
             }),
+            .toggle(titleKey: "Nagram.ControlHighlight", get: { NagramSettings.shared.controlHighlightEnabled }, set: { NagramSettings.shared.controlHighlightEnabled = $0 }),
             .toggle(titleKey: "Nagram.HideStories", get: { NagramSettings.shared.hideStories }, set: { NagramSettings.shared.hideStories = $0 }),
         ]),
         NagramGroup(tab: .general, headerKey: "Nagram.Section.Camera", footerKey: "Nagram.Section.Camera.Footer", rows: [

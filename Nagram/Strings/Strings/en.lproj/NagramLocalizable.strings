@@ -167,6 +167,7 @@
 "Nagram.ConfirmCalls" = "Confirm Before Calling";
 "Nagram.Section.Interface" = "Interface";
 "Nagram.HideStories" = "Hide Stories";
+"Nagram.ControlHighlight" = "Control Highlight";
 "Nagram.HideTabBar" = "Hide Tab Bar";
 "Nagram.HideTabBarCalls" = "Hide Calls";
 "Nagram.HideTabBarContacts" = "Hide Contacts";
