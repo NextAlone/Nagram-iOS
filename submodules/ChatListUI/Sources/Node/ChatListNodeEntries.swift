@@ -5,6 +5,7 @@ import TelegramPresentationData
 import MergeLists
 import AccountContext
 import NagramSettings
+import NagramStrings // MARK: NAGRAM
 
 enum ChatListNodeEntryId: Hashable {
     case Header
@@ -599,6 +600,49 @@ struct ChatListContactPeer {
     }
 }
 
+// MARK: NAGRAM — 对话列表预览复用聊天内正则过滤规则，仅改展示层消息副本。
+private func nagramFilteredChatListMessages(_ messages: [EngineMessage], peerId: EnginePeer.Id?, presentationData: ChatListPresentationData) -> [EngineMessage] {
+    guard let nagramRegexFilterMatcher = NagramSettings.shared.regexFilterMatcher(peerId: peerId?.toInt64()) else {
+        return messages
+    }
+    
+    return messages.compactMap { engineMessage -> EngineMessage? in
+        var message = engineMessage._asMessage()
+        switch nagramRegexFilterMatcher.apply(to: message.text) {
+        case .hidden:
+            return nil
+        case .contentHidden:
+            let text = ngI18n("Nagram.RegexFilters.ContentHidden", presentationData.strings.baseLanguageCode)
+            let attributes = message.attributes.filter { !($0 is TextEntitiesMessageAttribute) }
+            message = message.withUpdatedText(text).withUpdatedAttributes(attributes)
+        case let .visible(text, spoilerRanges):
+            if text != message.text || !spoilerRanges.isEmpty {
+                let attributes = message.attributes.filter { !($0 is TextEntitiesMessageAttribute) }
+                var textEntities: [MessageTextEntity] = []
+                if text == message.text {
+                    for attribute in message.attributes {
+                        if let attribute = attribute as? TextEntitiesMessageAttribute {
+                            textEntities = attribute.entities
+                            break
+                        }
+                    }
+                }
+                for range in spoilerRanges {
+                    textEntities.append(MessageTextEntity(range: range, type: .Spoiler))
+                }
+                let updatedAttributes: [MessageAttribute]
+                if textEntities.isEmpty {
+                    updatedAttributes = attributes
+                } else {
+                    updatedAttributes = attributes + [TextEntitiesMessageAttribute(entities: textEntities)]
+                }
+                message = message.withUpdatedText(text).withUpdatedAttributes(updatedAttributes)
+            }
+        }
+        return EngineMessage(message)
+    }
+}
+
 func chatListNodeEntriesForView(view: EngineChatList, state: ChatListNodeState, savedMessagesPeer: EnginePeer?, foundPeers: [(EnginePeer, EnginePeer?)], hideArchivedFolderByDefault: Bool, displayArchiveIntro: Bool, mode: ChatListNodeMode, chatListLocation: ChatListControllerLocation, contacts: [ChatListContactPeer], accountPeerId: EnginePeer.Id, isMainTab: Bool) -> (entries: [ChatListNodeEntry], loading: Bool) {
     var groupItems = view.groupItems
     if isMainTab && state.archiveStoryState != nil && groupItems.isEmpty {
@@ -686,6 +730,9 @@ func chatListNodeEntriesForView(view: EngineChatList, state: ChatListNodeState, 
         if let peerId = peerId, state.pendingClearHistoryPeerIds.contains(ChatListNodeState.ItemId(peerId: peerId, threadId: threadId)) {
             updatedMessages = []
             updatedCombinedReadState = nil
+        }
+        if !updatedMessages.isEmpty {
+            updatedMessages = nagramFilteredChatListMessages(updatedMessages, peerId: peerId, presentationData: state.presentationData)
         }
 
         var draftState: ChatListItemContent.DraftState?
@@ -880,7 +927,7 @@ func chatListNodeEntriesForView(view: EngineChatList, state: ChatListNodeState, 
                     result.append(.PeerEntry(ChatListNodeEntry.PeerEntryData(
                         index: .chatList(EngineChatList.Item.Index.ChatList(pinningIndex: pinningIndex, messageIndex: index.messageIndex)),
                         presentationData: state.presentationData,
-                        messages: item.item.messages,
+                        messages: nagramFilteredChatListMessages(item.item.messages, peerId: peerId, presentationData: state.presentationData),
                         readState: item.item.readCounters,
                         isRemovedFromTotalUnreadCount: item.item.isMuted,
                         draftState: draftState,

@@ -23,6 +23,7 @@ import UndoUI
 import NewSessionInfoScreen
 import PresentationDataUtils
 import GlobalControlPanelsContext
+import NagramSettingsSignal // MARK: NAGRAM
 
 public enum ChatListNodeMode {
     case chatList(appendContacts: Bool)
@@ -1932,13 +1933,17 @@ public final class ChatListNode: ListViewImpl {
             shouldLoadCanMessagePeer = false
         }
         
-        let chatListViewUpdate = self.chatListLocation.get()
+        var chatListViewUpdate = self.chatListLocation.get()
         |> distinctUntilChanged
         |> mapToSignal { listLocation -> Signal<(ChatListNodeViewUpdate, ChatListFilter?), NoError> in
             return chatListViewForLocation(chatListLocation: location, location: listLocation, account: context.account, shouldLoadCanMessagePeer: shouldLoadCanMessagePeer)
             |> map { update in
                 return (update, listLocation.filter)
             }
+        }
+        chatListViewUpdate = combineLatest(queue: .mainQueue(), chatListViewUpdate, nagramRegexFiltersSignal()) // MARK: NAGRAM — 规则变化时重算对话列表预览。
+        |> map { update, _ in
+            return update
         }
         
         let previousState = Atomic<ChatListNodeState>(value: self.currentState)
