@@ -1498,8 +1498,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                                 isNotAvailable: false
                             )),
                             subject: subject,
-                            chatListFilter: self.currentChatListFilterId, // MARK: NAGRAM — 话题聊天也保留当前分组。
-                            keepStack: .always
+                            keepStack: .always,
+                            chatListFilter: self.currentChatListFilterId // MARK: NAGRAM — 话题聊天也保留当前分组。
                         ))
                         
                         self.chatListDisplayNode.clearHighlightAnimated(true)

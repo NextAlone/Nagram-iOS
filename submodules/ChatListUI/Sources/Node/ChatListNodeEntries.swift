@@ -630,7 +630,7 @@ private func nagramFilteredChatListMessages(_ messages: [EngineMessage], peerId:
                 for range in spoilerRanges {
                     textEntities.append(MessageTextEntity(range: range, type: .Spoiler))
                 }
-                let updatedAttributes: [MessageAttribute]
+                let updatedAttributes: [EngineMessage.Attribute]
                 if textEntities.isEmpty {
                     updatedAttributes = attributes
                 } else {
