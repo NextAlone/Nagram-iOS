@@ -4416,17 +4416,26 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     strongSelf.statusNode.fontSize = item.presentationData.fontSize.itemListBaseFontSize
                     let _ = strongSelf.statusNode.transitionToState(statusState, animated: animateContent)
                     
-                    let rightAccessoryVerticalOffset: CGFloat = floorToScreenPixels(-4.0 * min(1.0, item.presentationData.fontSize.itemListBaseFontSize / 17.0))
+                    let rightAccessoryVerticalOffset: CGFloat = nagramCompactChatList ? 0.0 : floorToScreenPixels(-4.0 * min(1.0, item.presentationData.fontSize.itemListBaseFontSize / 17.0)) // MARK: NAGRAM
+                    let rightAccessoryY: (CGFloat) -> CGFloat = { height in // MARK: NAGRAM
+                        var y = contentRect.maxY - height + rightAccessoryVerticalOffset
+                        if nagramCompactChatList {
+                            let minY = dateFrame.maxY + floorToScreenPixels(2.0 * min(1.0, item.presentationData.fontSize.itemListBaseFontSize / 17.0))
+                            let maxY = max(0.0, itemHeight - height - UIScreenPixel)
+                            y = min(max(y, minY), maxY)
+                        }
+                        return y
+                    }
                     var nextBadgeX: CGFloat = contentRect.maxX
                     if let _ = currentBadgeBackgroundImage {
-                        let badgeFrame = CGRect(x: nextBadgeX - badgeLayout.width, y: contentRect.maxY - badgeLayout.height + rightAccessoryVerticalOffset, width: badgeLayout.width, height: badgeLayout.height)
+                        let badgeFrame = CGRect(x: nextBadgeX - badgeLayout.width, y: rightAccessoryY(badgeLayout.height), width: badgeLayout.width, height: badgeLayout.height)
                         
                         transition.updateFrame(node: strongSelf.badgeNode, frame: badgeFrame)
                         nextBadgeX -= badgeLayout.width + 6.0
                     }
                     
                     if currentMentionBadgeImage != nil || currentBadgeBackgroundImage != nil {
-                        let badgeFrame = CGRect(x: nextBadgeX - mentionBadgeLayout.width, y: contentRect.maxY - mentionBadgeLayout.height + rightAccessoryVerticalOffset, width: mentionBadgeLayout.width, height: mentionBadgeLayout.height)
+                        let badgeFrame = CGRect(x: nextBadgeX - mentionBadgeLayout.width, y: rightAccessoryY(mentionBadgeLayout.height), width: mentionBadgeLayout.width, height: mentionBadgeLayout.height)
                         
                         transition.updateFrame(node: strongSelf.mentionBadgeNode, frame: badgeFrame)
                         nextBadgeX -= mentionBadgeLayout.width + 6.0
@@ -4437,7 +4446,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         strongSelf.pinnedIconNode.isHidden = false
                         
                         let pinnedIconSize = currentPinnedIconImage.size
-                        let pinnedIconFrame = CGRect(x: nextBadgeX - pinnedIconSize.width, y: contentRect.maxY - pinnedIconSize.height + rightAccessoryVerticalOffset, width: pinnedIconSize.width, height: pinnedIconSize.height)
+                        let pinnedIconFrame = CGRect(x: nextBadgeX - pinnedIconSize.width, y: rightAccessoryY(pinnedIconSize.height), width: pinnedIconSize.width, height: pinnedIconSize.height)
                         
                         strongSelf.pinnedIconNode.frame = pinnedIconFrame
                         nextBadgeX -= pinnedIconSize.width + 6.0
