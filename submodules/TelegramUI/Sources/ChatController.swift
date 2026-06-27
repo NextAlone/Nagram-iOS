@@ -2166,6 +2166,12 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     }
                 }
             })
+        // MARK: NAGRAM
+        }, nagramPerformMessageDoubleTapAction: { [weak self] message, actionRawValue in
+            guard let self else {
+                return false
+            }
+            return self.nagramPerformMessageDoubleTapAction(message: message, actionRawValue: actionRawValue)
         }, activateMessagePinch: { [weak self] sourceNode in
             guard let strongSelf = self else {
                 return
@@ -11067,6 +11073,65 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 
                 completion?()
             })
+        }
+    }
+    
+    // MARK: NAGRAM
+    private func nagramPerformMessageDoubleTapAction(message: EngineRawMessage, actionRawValue: String) -> Bool {
+        guard self.isNodeLoaded, let action = NagramMessageDoubleTapAction(rawValue: actionRawValue) else {
+            return false
+        }
+        
+        switch action {
+        case .disabled, .sendReaction, .showReactions, .reply:
+            return false
+        case .repeatMessage, .repeatWithoutQuote:
+            guard let peerId = self.chatLocation.peerId else {
+                return false
+            }
+            guard canSendMessagesToChat(self.presentationInterfaceState) else {
+                return false
+            }
+            guard !Namespaces.Message.allScheduled.contains(message.id.namespace) else {
+                return false
+            }
+            let isCopyProtected = (self.presentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !NagramSettings.shared.forceCopyEnabled
+            guard !isCopyProtected else {
+                return false
+            }
+            
+            let forwardAttributes: [EngineMessage.Attribute]
+            switch action {
+            case .repeatWithoutQuote:
+                forwardAttributes = [
+                    ForwardOptionsMessageAttribute(hideNames: true, hideCaptions: false)
+                ]
+            default:
+                forwardAttributes = []
+            }
+            
+            let messages: [EnqueueMessage] = [
+                .forward(source: message.id, threadId: self.chatLocation.threadId, grouping: .auto, attributes: forwardAttributes, correlationId: nil)
+            ]
+            let _ = enqueueMessages(account: self.context.account, peerId: peerId, messages: messages).startStandalone()
+            return true
+        case .edit:
+            if case .pinnedMessages = self.subject {
+                return false
+            }
+            let isMigrated = self.presentationInterfaceState.renderedPeer?.peer is TelegramChannel && message.id.peerId.namespace == Namespaces.Peer.CloudGroup
+            guard !isMigrated else {
+                return false
+            }
+            guard canEditMessage(context: self.context, limitsConfiguration: self.context.currentLimitsConfiguration.with { EngineConfiguration.Limits($0) }, message: message) else {
+                return false
+            }
+            if message.media.contains(where: { $0 is TelegramMediaTodo }) {
+                self.interfaceInteraction?.editTodoMessage(message.id, nil, false)
+            } else {
+                self.interfaceInteraction?.setupEditMessage(message.id, { _ in })
+            }
+            return true
         }
     }
     

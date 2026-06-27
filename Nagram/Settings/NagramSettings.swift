@@ -237,6 +237,9 @@ public final class NagramSettings {
     /// 点击消息行打开上下文菜单（默认关 = 保持原生长按）
     @NagramDefault("nagram.tapMessageRowToOpenContextMenu", false)
     public var tapMessageRowToOpenContextMenu: Bool
+    /// 双击消息动作（默认发送回应 = 保持 iOS 原生行为）
+    @NagramDefault("nagram.messageDoubleTapAction", NagramMessageDoubleTapAction.sendReaction.rawValue)
+    public var messageDoubleTapAction: String
     /// 资料页显示用户数字 ID（默认关 = 保持原生）
     @NagramDefault("nagram.showProfileId", false)
     public var showProfileId: Bool
@@ -296,6 +299,14 @@ public extension NagramSettings {
             return legacyMode
         }
         return NagramChatListMessagePreviewStyle(rawValue: self.chatListMessagePreviewStyle) ?? .three
+    }
+
+    var messageDoubleTapActionValue: NagramMessageDoubleTapAction {
+        guard let value = NagramMessageDoubleTapAction(rawValue: self.messageDoubleTapAction) else {
+            self.messageDoubleTapAction = NagramMessageDoubleTapAction.sendReaction.rawValue
+            return .sendReaction
+        }
+        return value
     }
 
     func chatListStartupSpecificFolderId(accountPeerId: Int64) -> Int32? {

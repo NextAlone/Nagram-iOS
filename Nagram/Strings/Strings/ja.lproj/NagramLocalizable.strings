@@ -31,6 +31,14 @@
 "Nagram.Section.Network" = "ネットワーク高速化";
 "Nagram.VideoPIPSwipeUp" = "上スワイプでピクチャインピクチャ";
 "Nagram.TapMessageRowToOpenContextMenu" = "メッセージ行タップでメニュー";
+"Nagram.MessageDoubleTapAction" = "メッセージのダブルタップ";
+"Nagram.MessageDoubleTapAction.disabled" = "無効";
+"Nagram.MessageDoubleTapAction.sendReaction" = "リアクション送信";
+"Nagram.MessageDoubleTapAction.showReactions" = "リアクション表示";
+"Nagram.MessageDoubleTapAction.reply" = "返信";
+"Nagram.MessageDoubleTapAction.repeatMessage" = "リピート送信";
+"Nagram.MessageDoubleTapAction.repeatWithoutQuote" = "引用なしリピート送信";
+"Nagram.MessageDoubleTapAction.edit" = "編集";
 "Nagram.ChatListSwipeAction" = "チャットリスト横スワイプ";
 "Nagram.ChatListSwipeAction.both" = "切替 + クイック";
 "Nagram.ChatListSwipeAction.switch" = "切替";

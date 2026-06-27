@@ -31,6 +31,14 @@
 "Nagram.Section.Network" = "網路加速";
 "Nagram.VideoPIPSwipeUp" = "上滑開啟子母畫面";
 "Nagram.TapMessageRowToOpenContextMenu" = "點按訊息列開啟選單";
+"Nagram.MessageDoubleTapAction" = "雙擊訊息動作";
+"Nagram.MessageDoubleTapAction.disabled" = "停用";
+"Nagram.MessageDoubleTapAction.sendReaction" = "傳送回應";
+"Nagram.MessageDoubleTapAction.showReactions" = "顯示回應";
+"Nagram.MessageDoubleTapAction.reply" = "回覆";
+"Nagram.MessageDoubleTapAction.repeatMessage" = "復讀";
+"Nagram.MessageDoubleTapAction.repeatWithoutQuote" = "無引用復讀";
+"Nagram.MessageDoubleTapAction.edit" = "編輯";
 "Nagram.ChatListSwipeAction" = "對話列表橫滑";
 "Nagram.ChatListSwipeAction.both" = "切換 + 快捷";
 "Nagram.ChatListSwipeAction.switch" = "切換";

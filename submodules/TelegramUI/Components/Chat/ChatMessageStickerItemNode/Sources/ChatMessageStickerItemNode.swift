@@ -1515,6 +1515,10 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
                     case let .optionalAction(f):
                         f()
                     case let .openContextMenu(openContextMenu):
+                        // MARK: NAGRAM
+                        if case .doubleTap = gesture, self.nagramHandleMessageDoubleTap(message: openContextMenu.tapMessage, selectAll: openContextMenu.selectAll, subFrame: openContextMenu.subFrame) {
+                            return
+                        }
                         if case .doubleTap = gesture, canAddMessageReactions(message: EngineMessage(item.message)) {
                             item.controllerInteraction.updateMessageReaction(openContextMenu.tapMessage, .default, false, nil)
                         } else {
@@ -1527,6 +1531,34 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
             }
         default:
             break
+        }
+    }
+
+    // MARK: NAGRAM
+    private func nagramHandleMessageDoubleTap(message: EngineRawMessage, selectAll: Bool, subFrame: CGRect) -> Bool {
+        guard let item = self.item else {
+            return false
+        }
+        if item.controllerInteraction.selectionState != nil {
+            return true
+        }
+        let action = NagramSettings.shared.messageDoubleTapActionValue
+        switch action {
+        case .sendReaction:
+            return false
+        case .disabled:
+            return true
+        case .showReactions:
+            item.controllerInteraction.openMessageContextMenu(message, selectAll, self, subFrame, nil, nil)
+            return true
+        case .reply:
+            if case .reply = item.controllerInteraction.canSetupReply(message) {
+                item.controllerInteraction.setupReply(message.id)
+            }
+            return true
+        case .repeatMessage, .repeatWithoutQuote, .edit:
+            let _ = item.controllerInteraction.nagramPerformMessageDoubleTapAction(message, action.rawValue)
+            return true
         }
     }
 

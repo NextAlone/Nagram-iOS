@@ -31,6 +31,14 @@
 "Nagram.Section.Network" = "Network Boost";
 "Nagram.VideoPIPSwipeUp" = "Swipe Up for Picture-in-Picture";
 "Nagram.TapMessageRowToOpenContextMenu" = "Tap Message Row for Menu";
+"Nagram.MessageDoubleTapAction" = "Double Tap Message";
+"Nagram.MessageDoubleTapAction.disabled" = "Disable";
+"Nagram.MessageDoubleTapAction.sendReaction" = "Send Reaction";
+"Nagram.MessageDoubleTapAction.showReactions" = "Show Reactions";
+"Nagram.MessageDoubleTapAction.reply" = "Reply";
+"Nagram.MessageDoubleTapAction.repeatMessage" = "Repeat";
+"Nagram.MessageDoubleTapAction.repeatWithoutQuote" = "Repeat Without Quote";
+"Nagram.MessageDoubleTapAction.edit" = "Edit";
 "Nagram.ChatListSwipeAction" = "Chat List Swipe";
 "Nagram.ChatListSwipeAction.both" = "Switch + Quick Actions";
 "Nagram.ChatListSwipeAction.switch" = "Switch Folders";

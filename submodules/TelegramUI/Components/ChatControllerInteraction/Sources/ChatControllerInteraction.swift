@@ -201,6 +201,8 @@ public final class ChatControllerInteraction: ChatControllerInteractionProtocol 
     public let updateMessageReaction: (EngineRawMessage, ChatControllerInteractionReaction, Bool, ContextExtractedContentContainingView?) -> Void
     public let openMessageReactionContextMenu: (EngineRawMessage, ContextExtractedContentContainingView, ContextGesture?, MessageReaction.Reaction) -> Void
     public let activateMessagePinch: (PinchSourceContainerNode) -> Void
+    // MARK: NAGRAM
+    public let nagramPerformMessageDoubleTapAction: (EngineRawMessage, String) -> Bool
     public let openMessageContextActions: (EngineRawMessage, ASDisplayNode, CGRect, ContextGesture?) -> Void
     public let navigateToMessage: (EngineMessage.Id, EngineMessage.Id, NavigateToMessageParams) -> Void
     public let navigateToMessageStandalone: (EngineMessage.Id) -> Void
@@ -380,6 +382,8 @@ public final class ChatControllerInteraction: ChatControllerInteractionProtocol 
         openMessageContextMenu: @escaping (EngineRawMessage, Bool, ASDisplayNode, CGRect, UIGestureRecognizer?, CGPoint?) -> Void,
         openMessageReactionContextMenu: @escaping (EngineRawMessage, ContextExtractedContentContainingView, ContextGesture?, MessageReaction.Reaction) -> Void,
         updateMessageReaction: @escaping (EngineRawMessage, ChatControllerInteractionReaction, Bool, ContextExtractedContentContainingView?) -> Void,
+        // MARK: NAGRAM
+        nagramPerformMessageDoubleTapAction: @escaping (EngineRawMessage, String) -> Bool = { _, _ in false },
         activateMessagePinch: @escaping (PinchSourceContainerNode) -> Void,
         openMessageContextActions: @escaping (EngineRawMessage, ASDisplayNode, CGRect, ContextGesture?) -> Void,
         navigateToMessage: @escaping (EngineMessage.Id, EngineMessage.Id, NavigateToMessageParams) -> Void,
@@ -513,6 +517,8 @@ public final class ChatControllerInteraction: ChatControllerInteractionProtocol 
         self.openMessageReactionContextMenu = openMessageReactionContextMenu
         self.updateMessageReaction = updateMessageReaction
         self.activateMessagePinch = activateMessagePinch
+        // MARK: NAGRAM
+        self.nagramPerformMessageDoubleTapAction = nagramPerformMessageDoubleTapAction
         self.openMessageContextActions = openMessageContextActions
         self.navigateToMessage = navigateToMessage
         self.navigateToMessageStandalone = navigateToMessageStandalone
