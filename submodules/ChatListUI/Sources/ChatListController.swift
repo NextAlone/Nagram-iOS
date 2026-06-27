@@ -106,6 +106,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     
     public let location: ChatListControllerLocation
     public let previewing: Bool
+    private var sourceChatListFilter: Int32? // MARK: NAGRAM — 进入 forum 子列表时保留来源分组。
     
     let openMessageFromSearchDisposable: MetaDisposable = MetaDisposable()
     
@@ -248,13 +249,22 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         }
     }
     
-    public init(context: AccountContext, location: ChatListControllerLocation, controlsHistoryPreload: Bool, hideNetworkActivityStatus: Bool = false, previewing: Bool = false, enableDebugActions: Bool) {
+    private var currentChatListFilterId: Int32? {
+        return self.chatListDisplayNode.mainContainerNode.currentItemNode.chatListFilter?.id ?? self.sourceChatListFilter
+    }
+    
+    public func updateSourceChatListFilter(_ value: Int32?) {
+        self.sourceChatListFilter = value
+    }
+    
+    public init(context: AccountContext, location: ChatListControllerLocation, controlsHistoryPreload: Bool, hideNetworkActivityStatus: Bool = false, previewing: Bool = false, enableDebugActions: Bool, sourceChatListFilter: Int32? = nil) {
         self.context = context
         self.controlsHistoryPreload = controlsHistoryPreload
         self.hideNetworkActivityStatus = hideNetworkActivityStatus
         
         self.location = location
         self.previewing = previewing
+        self.sourceChatListFilter = sourceChatListFilter
         
         self.presentationData = (context.sharedContext.currentPresentationData.with { $0 })
         self.presentationDataValue.set(.single(self.presentationData))
@@ -1488,6 +1498,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                                 isNotAvailable: false
                             )),
                             subject: subject,
+                            chatListFilter: self.currentChatListFilterId, // MARK: NAGRAM — 话题聊天也保留当前分组。
                             keepStack: .always
                         ))
                         
@@ -1515,7 +1526,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                             animated: !scrollToEndIfExists,
                             options: navigationAnimationOptions,
                             parentGroupId: groupId._asGroup(),
-                            chatListFilter: self.chatListDisplayNode.mainContainerNode.currentItemNode.chatListFilter?.id, completion: { [weak self] controller in
+                            chatListFilter: self.currentChatListFilterId, completion: { [weak self] controller in
                                 guard let self else {
                                     return
                                 }

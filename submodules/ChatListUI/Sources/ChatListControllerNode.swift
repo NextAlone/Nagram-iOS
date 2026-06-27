@@ -1556,7 +1556,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                 }
 
                 let selectedTab: HorizontalTabsComponent.Tab.Id
-                switch self.effectiveContainerNode.currentItemFilter {
+                switch self.mainContainerNode.currentItemFilter { // MARK: NAGRAM — inline 话题列表不应覆盖主列表分组选中态。
                 case .all:
                     selectedTab = AnyHashable(Int32.min)
                 case let .filter(id):

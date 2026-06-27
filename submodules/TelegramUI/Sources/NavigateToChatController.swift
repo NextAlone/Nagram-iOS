@@ -104,6 +104,7 @@ public func navigateToChatControllerImpl(_ params: NavigateToChatControllerParam
                     }
                     
                     if matches {
+                        chatListController.updateSourceChatListFilter(params.chatListFilter) // MARK: NAGRAM — 复用 forum 子列表时更新来源分组。
                         let _ = params.navigationController.popToViewController(controller, animated: params.animated)
                         if let activateMessageSearch = params.activateMessageSearch {
                             chatListController.activateSearch(query: activateMessageSearch.1)
@@ -120,7 +121,7 @@ public func navigateToChatControllerImpl(_ params: NavigateToChatControllerParam
                 chatListLocation = .forum(peerId: peer.id)
             }
             
-            let controller = ChatListControllerImpl(context: params.context, location: chatListLocation, controlsHistoryPreload: false, enableDebugActions: false)
+            let controller = ChatListControllerImpl(context: params.context, location: chatListLocation, controlsHistoryPreload: false, enableDebugActions: false, sourceChatListFilter: params.chatListFilter) // MARK: NAGRAM — forum 子列表记住来源分组。
             
             let activateMessageSearch = params.activateMessageSearch
             let chatListCompletion = params.chatListCompletion

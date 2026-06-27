@@ -5542,7 +5542,7 @@ extension ChatControllerImpl {
                 case .same:
                     nextFolderId = strongSelf.currentChatListFilter
                 default:
-                    nextFolderId = nil
+                    nextFolderId = threadData != nil ? strongSelf.currentChatListFilter : nil // MARK: NAGRAM — 跳到下一个话题时保留当前分组。
                 }
                 
                 var updatedChatNavigationStack = strongSelf.chatNavigationStack
