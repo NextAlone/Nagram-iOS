@@ -24,6 +24,10 @@ extension ChatControllerImpl {
         if self.presentationInterfaceState.interfaceState.selectionState != nil {
             return
         }
+        // MARK: NAGRAM
+        guard self.currentContextController == nil, self.nagramOpeningMessageContextMenuId == nil else {
+            return
+        }
         let presentationData = self.presentationData
         
         self.dismissAllTooltips()
@@ -45,6 +49,8 @@ extension ChatControllerImpl {
             guard let topMessage = messages.first else {
                 return
             }
+            // MARK: NAGRAM
+            self.nagramOpeningMessageContextMenuId = message.id
 
             let canBypassReactionRestrictions = canBypassRestrictions(chatPresentationInterfaceState: self.presentationInterfaceState)
 
@@ -66,6 +72,10 @@ extension ChatControllerImpl {
                 switch actions.content {
                 case let .list(itemList):
                     if itemList.isEmpty {
+                        // MARK: NAGRAM
+                        if self.nagramOpeningMessageContextMenuId == message.id {
+                            self.nagramOpeningMessageContextMenuId = nil
+                        }
                         return
                     }
                 case .custom, .twoLists:
@@ -334,7 +344,14 @@ extension ChatControllerImpl {
                 let isSecret = self.presentationInterfaceState.copyProtectionEnabled || self.presentationInterfaceState.myCopyProtectionEnabled || self.chatLocation.peerId?.namespace == Namespaces.Peer.SecretChat
                 let controller = makeContextController(presentationData: self.presentationData, source: source, items: actionsSignal, recognizer: recognizer, gesture: gesture, disableScreenshots: isSecret, hideReactionPanelTail: hideReactionPanelTail)
                 controller.dismissed = { [weak self] in
-                    self?.canReadHistory.set(true)
+                    guard let self else {
+                        return
+                    }
+                    self.canReadHistory.set(true)
+                    // MARK: NAGRAM
+                    if self.nagramOpeningMessageContextMenuId == message.id {
+                        self.nagramOpeningMessageContextMenuId = nil
+                    }
                 }
                 controller.immediateItemsTransitionAnimation = disableTransitionAnimations
                 self.currentContextController = controller

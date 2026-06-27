@@ -79,6 +79,8 @@ final class ContextControllerNode: ViewControllerTracingNode, ASScrollViewDelega
     
     private var animatedIn = false
     private var isAnimatingOut = false
+    // MARK: NAGRAM
+    private var nagramPendingDismissResult: ContextMenuActionResult?
     
     private let itemsDisposable = MetaDisposable()
     
@@ -343,7 +345,15 @@ final class ContextControllerNode: ViewControllerTracingNode, ASScrollViewDelega
         self.initializeContent()
         
         self.dismissAccessibilityArea.activate = { [weak self] in
-            self?.dimNodeTapped()
+            guard let self else {
+                return true
+            }
+            // MARK: NAGRAM
+            if self.nagramDeferDismissIfAnimatingIn(result: .default) {
+                return true
+            }
+            self.dismissedForCancel?()
+            self.beginDismiss(.default)
             return true
         }
         
@@ -366,19 +376,39 @@ final class ContextControllerNode: ViewControllerTracingNode, ASScrollViewDelega
     override func didLoad() {
         super.didLoad()
         
-        self.dismissNode.view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(self.dimNodeTapped)))
+        self.dismissNode.view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(self.dimNodeTapped(_:))))
         
         if #available(iOS 13.0, *) {
             self.view.addGestureRecognizer(UIHoverGestureRecognizer(target: self, action: #selector(self.hoverGesture(_:))))
         }
     }
     
-    @objc private func dimNodeTapped() {
-        guard self.animatedIn else {
+    @objc private func dimNodeTapped(_ recognizer: UITapGestureRecognizer) {
+        // MARK: NAGRAM
+        if self.nagramDeferDismissIfAnimatingIn(result: .default) {
             return
         }
         self.dismissedForCancel?()
         self.beginDismiss(.default)
+    }
+    
+    // MARK: NAGRAM
+    func nagramDeferDismissIfAnimatingIn(result: ContextMenuActionResult) -> Bool {
+        if case .default = result, !self.didCompleteAnimationIn {
+            self.nagramPendingDismissResult = result
+            return true
+        }
+        return false
+    }
+    
+    // MARK: NAGRAM
+    private func nagramPerformPendingDismissIfNeeded() {
+        guard let result = self.nagramPendingDismissResult else {
+            return
+        }
+        self.nagramPendingDismissResult = nil
+        self.dismissedForCancel?()
+        self.beginDismiss(result)
     }
     
     @available(iOS 13.0, *)
@@ -495,8 +525,17 @@ final class ContextControllerNode: ViewControllerTracingNode, ASScrollViewDelega
         self.hapticFeedback.impact()
         
         if let sourceContainer = self.sourceContainer {
-            self.didCompleteAnimationIn = true
             sourceContainer.animateIn()
+            // MARK: NAGRAM
+            Queue.mainQueue().after(0.5 * animationDurationFactor) { [weak self] in
+                guard let self else {
+                    return
+                }
+                self.didCompleteAnimationIn = true
+                self.animatedIn = true
+                self.hapticFeedback.prepareTap()
+                self.nagramPerformPendingDismissIfNeeded()
+            }
             return
         }
         
@@ -677,6 +716,8 @@ final class ContextControllerNode: ViewControllerTracingNode, ASScrollViewDelega
     
     private var delayLayoutUpdate = false
     func animateOut(result initialResult: ContextMenuActionResult, completion: @escaping () -> Void) {
+        // MARK: NAGRAM
+        self.nagramPendingDismissResult = nil
         self.isUserInteractionEnabled = false
         
         self.beganAnimatingOut()

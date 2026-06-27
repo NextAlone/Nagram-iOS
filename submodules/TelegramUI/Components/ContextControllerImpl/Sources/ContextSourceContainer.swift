@@ -100,6 +100,10 @@ final class ContextSourceContainer: ASDisplayNode {
                         guard let self, let controller = self.controller else {
                             return
                         }
+                        // MARK: NAGRAM
+                        if controller.controllerNode.nagramDeferDismissIfAnimatingIn(result: result) {
+                            return
+                        }
                         controller.controllerNode.dismissedForCancel?()
                         controller.controllerNode.beginDismiss(result)
                     },
@@ -139,6 +143,10 @@ final class ContextSourceContainer: ASDisplayNode {
                     },
                     requestDismiss: { [weak self] result in
                         guard let self, let controller = self.controller else {
+                            return
+                        }
+                        // MARK: NAGRAM
+                        if controller.controllerNode.nagramDeferDismissIfAnimatingIn(result: result) {
                             return
                         }
                         controller.controllerNode.dismissedForCancel?()
@@ -182,8 +190,13 @@ final class ContextSourceContainer: ASDisplayNode {
                         guard let self, let controller = self.controller else {
                             return
                         }
+                        // MARK: NAGRAM
                         if let _ = self.closeActionTitle {
                         } else {
+                            // MARK: NAGRAM
+                            if controller.controllerNode.nagramDeferDismissIfAnimatingIn(result: result) {
+                                return
+                            }
                             controller.controllerNode.dismissedForCancel?()
                             controller.controllerNode.beginDismiss(result)
                         }
@@ -224,6 +237,10 @@ final class ContextSourceContainer: ASDisplayNode {
                     },
                     requestDismiss: { [weak self] result in
                         guard let self, let controller = self.controller else {
+                            return
+                        }
+                        // MARK: NAGRAM
+                        if controller.controllerNode.nagramDeferDismissIfAnimatingIn(result: result) {
                             return
                         }
                         controller.controllerNode.dismissedForCancel?()

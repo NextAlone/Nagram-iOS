@@ -490,6 +490,8 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     weak var slowmodeTooltipController: ChatSlowmodeHintController?
     
     weak var currentContextController: ContextController?
+    // MARK: NAGRAM
+    var nagramOpeningMessageContextMenuId: EngineMessage.Id?
     public var visibleContextController: ViewController? {
         return self.currentContextController
     }
