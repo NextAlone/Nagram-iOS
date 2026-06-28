@@ -1,32 +1,88 @@
 {
+  "features" : [
+    "refractivity"
+  ],
   "fill" : {
-    "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+    "solid" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
   },
   "groups" : [
     {
+      "blur-material" : null,
       "layers" : [
         {
           "blend-mode" : "normal",
-          "fill" : "automatic",
+          "fill" : {
+            "solid" : "extended-gray:1.00000,0.75000"
+          },
           "glass" : true,
-          "image-name" : "ic_launcher_nagram_blue-playstore.png",
-          "name" : "ic_launcher_nagram_blue-playstore",
+          "image-name" : "Middle.svg",
+          "name" : "Middle"
+        }
+      ],
+      "lighting" : "individual",
+      "refractivity" : {
+        "depth" : 0.03,
+        "enabled" : true,
+        "strength" : 0.5
+      },
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.6
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0.2
+      }
+    },
+    {
+      "blur-material" : null,
+      "layers" : [
+        {
+          "blend-mode" : "normal",
+          "fill" : {
+            "solid" : "extended-gray:1.00000,0.75000"
+          },
+          "glass" : true,
+          "image-name" : "Vertical.svg",
+          "name" : "Left",
           "position" : {
-            "scale" : 2.2,
+            "scale" : 1,
             "translation-in-points" : [
-              0,
-              5.684341886080802e-14
+              -154.00000073352703,
+              0
+            ]
+          }
+        },
+        {
+          "fill" : {
+            "solid" : "extended-gray:1.00000,0.75000"
+          },
+          "glass" : true,
+          "image-name" : "Vertical.svg",
+          "name" : "Right",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              153.97024562726472,
+              0
             ]
           }
         }
       ],
+      "lighting" : "individual",
+      "refractivity" : {
+        "depth" : 0,
+        "enabled" : false,
+        "strength" : 0.5
+      },
       "shadow" : {
         "kind" : "neutral",
-        "opacity" : 0.5
+        "opacity" : 0.6
       },
       "translucency" : {
-        "enabled" : true,
-        "value" : 0.5
+        "enabled" : false,
+        "value" : 0.2
       }
     }
   ],
