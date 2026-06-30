@@ -438,7 +438,7 @@ plist_fragment(
             <string>{telegram_bundle_id}</string>
             <key>CFBundleURLSchemes</key>
             <array>
-                <string>telegram</string>
+                <string>nagram</string>
             </array>
         </dict>
         <dict>
@@ -448,7 +448,7 @@ plist_fragment(
             <string>{telegram_bundle_id}.compatibility</string>
             <key>CFBundleURLSchemes</key>
             <array>
-                <string>tg</string>
+                <string>na</string>
                 <string>tonsite</string>
             </array>
         </dict>
