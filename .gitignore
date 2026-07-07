@@ -95,3 +95,4 @@ local.bazelrc
 
 # wip 相关 spec 文档（本地保留，不入库）
 docs/local/
+CLAUDE.local.md
