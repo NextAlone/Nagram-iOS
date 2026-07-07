@@ -9,6 +9,8 @@ swift_library(
     copts = [
     ],
     deps = [
+        # MARK: NAGRAM
+        "//Nagram/MediaMetadata:NagramMediaMetadata",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/Display:Display",
