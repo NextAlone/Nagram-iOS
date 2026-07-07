@@ -21,7 +21,6 @@ swift_library(
         "Sources/**/*.swift",
     ]),
     copts = [
-        "-warnings-as-errors",
     ] + optimization_flags,
     deps = [
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",

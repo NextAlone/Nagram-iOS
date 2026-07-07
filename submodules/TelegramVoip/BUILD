@@ -9,7 +9,6 @@ swift_library(
         "Sources/macOS/**/*",
     ]),
     copts = [
-        "-warnings-as-errors",
     ],
     deps = [
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",

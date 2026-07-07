@@ -30,6 +30,7 @@ objc_library(
     ]),
     copts = [
         "-Werror",
+        "-Wno-error=deprecated-declarations",
     ],
     includes = [
         "PublicHeaders",

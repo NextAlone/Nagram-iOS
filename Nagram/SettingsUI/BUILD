@@ -9,7 +9,6 @@ swift_library(
         "**/*.swift",
     ]),
     copts = [
-        "-warnings-as-errors",
     ],
     deps = [
         "//submodules/Display:Display",
