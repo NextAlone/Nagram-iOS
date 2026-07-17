@@ -801,16 +801,18 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
 
         self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .immediate)
         // MARK: NAGRAM
-        self.nagramLayoutSettingsDisposable = (combineLatest(
-            nagramBottomBarSettingsSignal(),
-            nagramBoolSignal("nagram.chatListFolderTabsCompact", defaultValue: false),
-            nagramStringSignal("nagram.chatListFolderTabDisplayMode", defaultValue: NagramChatListFolderTabDisplayMode.text.rawValue),
-            nagramBoolSignal("nagram.hideAllChatsFolder", defaultValue: false)
-        )
-        |> deliverOnMainQueue).startStrict(next: { [weak self] _ in
-            self?.requestLayout(transition: .animated(duration: 0.3, curve: .linear))
-            self?.reloadFilters()
-        })
+        if case .chatList(.root) = self.location {
+            self.nagramLayoutSettingsDisposable = (combineLatest(
+                nagramBottomBarSettingsSignal(),
+                nagramBoolSignal("nagram.chatListFolderTabsCompact", defaultValue: false),
+                nagramStringSignal("nagram.chatListFolderTabDisplayMode", defaultValue: NagramChatListFolderTabDisplayMode.text.rawValue),
+                nagramBoolSignal("nagram.hideAllChatsFolder", defaultValue: false)
+            )
+            |> deliverOnMainQueue).startStrict(next: { [weak self] _ in
+                self?.requestLayout(transition: .animated(duration: 0.3, curve: .linear))
+                self?.reloadFilters()
+            })
+        }
         
         self.globalControlPanelsContextStateDisposable = (self.globalControlPanelsContext.state
         |> deliverOnMainQueue).startStrict(next: { [weak self] state in
