@@ -1112,6 +1112,8 @@ private final class ItemComponent: Component {
                     .foregroundColor: component.theme.chat.inputPanel.panelControlColor
                 ], range: NSRange(location: 0, length: titleString.length))
                 
+                // MARK: NAGRAM - Give emoji glyphs vertical room so folder-tab icons are not clipped by the text bounds.
+                let titleInset: CGFloat = 4.0
                 titleContentSize = titleContent.update(
                     transition: .immediate,
                     component: AnyComponent(MultilineTextWithEntitiesComponent(
@@ -1120,7 +1122,8 @@ private final class ItemComponent: Component {
                         animationRenderer: component.context?.animationRenderer,
                         placeholderColor: component.theme.chat.inputPanel.panelControlColor.withMultipliedAlpha(0.1),
                         text: .plain(titleString),
-                        displaysAsynchronously: false
+                        displaysAsynchronously: false,
+                        insets: UIEdgeInsets(top: titleInset, left: 0.0, bottom: titleInset, right: 0.0)
                     )),
                     environment: {},
                     containerSize: CGSize(width: 300.0, height: 100.0)
