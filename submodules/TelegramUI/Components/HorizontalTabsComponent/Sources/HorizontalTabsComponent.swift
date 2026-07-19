@@ -1122,8 +1122,8 @@ private final class ItemComponent: Component {
                         animationRenderer: component.context?.animationRenderer,
                         placeholderColor: component.theme.chat.inputPanel.panelControlColor.withMultipliedAlpha(0.1),
                         text: .plain(titleString),
-                        displaysAsynchronously: false,
-                        insets: UIEdgeInsets(top: titleInset, left: 0.0, bottom: titleInset, right: 0.0)
+                        insets: UIEdgeInsets(top: titleInset, left: 0.0, bottom: titleInset, right: 0.0),
+                        displaysAsynchronously: false
                     )),
                     environment: {},
                     containerSize: CGSize(width: 300.0, height: 100.0)
