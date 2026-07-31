@@ -25,6 +25,7 @@ swift_library(
         "//Nagram/LinkMetadata:NagramLinkMetadata",
         "//Nagram/Strings:NagramStrings",
         "//Nagram/SettingsSignal:NagramSettingsSignal",
+        "//Nagram/Translate:NagramTranslate",
         # MARK: NAGRAM — 贴纸尺寸滑杆(SliderComponent,复刻省电模式粗轨道)
         "//submodules/AsyncDisplayKit",
         "//submodules/ComponentFlow",

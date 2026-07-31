@@ -36,6 +36,10 @@
 "Nagram.TranslationLLMFetchingModels" = "Fetching Models…";
 "Nagram.TranslationLLMFetchedModels" = "Fetched Models";
 "Nagram.TranslationLLMFetchModelsFailed" = "Failed to fetch models. Check API format, Base URL, and API Key.";
+"Nagram.TranslationLLMTestModel" = "Test Model";
+"Nagram.TranslationLLMTestingModel" = "Testing Model…";
+"Nagram.TranslationLLMTestModelSucceeded" = "Model test succeeded.";
+"Nagram.TranslationLLMTestModelFailed" = "Model test failed. Check API format, Base URL, Endpoint, API Key, and model.";
 "Nagram.TranslationLLMPrompt" = "User Prompt";
 "Nagram.TranslationLLMPrompt.Footer" = "Use @toLang for the target language and @text for the source text. If @text is omitted, the source text is appended.";
 "Nagram.TranslationLLMUseContext" = "Use Context";

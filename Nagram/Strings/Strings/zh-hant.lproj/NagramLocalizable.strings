@@ -36,6 +36,10 @@
 "Nagram.TranslationLLMFetchingModels" = "正在取得模型…";
 "Nagram.TranslationLLMFetchedModels" = "已取得模型";
 "Nagram.TranslationLLMFetchModelsFailed" = "取得模型失敗。請檢查 API 格式、Base URL 和 API Key。";
+"Nagram.TranslationLLMTestModel" = "測試模型";
+"Nagram.TranslationLLMTestingModel" = "正在測試模型…";
+"Nagram.TranslationLLMTestModelSucceeded" = "模型測試成功。";
+"Nagram.TranslationLLMTestModelFailed" = "模型測試失敗。請檢查 API 格式、Base URL、Endpoint、API Key 和模型。";
 "Nagram.TranslationLLMPrompt" = "使用者提示詞";
 "Nagram.TranslationLLMPrompt.Footer" = "使用 @toLang 表示目標語言，@text 表示原文；省略 @text 時會將原文附加到末尾。";
 "Nagram.TranslationLLMUseContext" = "使用上下文";
