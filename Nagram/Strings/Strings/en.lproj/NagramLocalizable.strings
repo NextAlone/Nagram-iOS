@@ -331,3 +331,15 @@
 "Nagram.RecentStickerLimit.120" = "120";
 "Nagram.RecentStickerLimit.150" = "150";
 "Nagram.RecentStickerLimit.200" = "200";
+
+"Nagram.InviteLinks.BulkRevoke" = "Revoke Invitation Links…";
+"Nagram.InviteLinks.ScopeInfo" = "Only additional, non-permanent invite links will be processed. The main link will not be affected.";
+"Nagram.InviteLinks.RevokeAll" = "Revoke All Links";
+"Nagram.InviteLinks.RevokeUnavailable" = "Revoke All Unavailable Links";
+"Nagram.InviteLinks.ConfirmAll" = "Revoke all additional invite links you created (%@ total)? The main link and other permanent links will not be affected. This cannot be undone.";
+"Nagram.InviteLinks.ConfirmUnavailable" = "Revoke unavailable additional invite links (%@ total) that have expired or reached their usage limit? The main link, other permanent links, and usable additional links will not be affected. This cannot be undone.";
+"Nagram.InviteLinks.NoAdditional" = "No additional invite links can be revoked.";
+"Nagram.InviteLinks.NoUnavailable" = "No unavailable additional invite links.";
+"Nagram.InviteLinks.FetchFailed" = "Couldn't load the complete list of additional invite links. Please try again later.";
+"Nagram.InviteLinks.Success" = "Revoked additional invite links: %@.";
+"Nagram.InviteLinks.PartialFailure" = "Revoked: %1$@. Failed: %2$@. The list is refreshing.";
