@@ -5,6 +5,7 @@ enum NagramSettingsSyncKeys {
 
     private static let explicitKeys: Set<String> = [
         "nagram.forceCopyEnabled",
+        "nagram.skipSensitiveContentWarning",
         "nagram.hideReactions",
         "nagram.disableScrollToNextChannel",
         "nagram.disableScrollToNextTopic",

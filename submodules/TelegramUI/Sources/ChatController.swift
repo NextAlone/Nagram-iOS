@@ -5403,6 +5403,10 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     reveal()
                 })
             } else {
+                if NagramSettings.shared.skipSensitiveContentWarning { // MARK: NAGRAM
+                    reveal()
+                    return
+                }
                 let controller = chatAgeRestrictionAlertController(context: self.context, updatedPresentationData: self.updatedPresentationData, parentController: self, completion: { alwaysShow in
                     if alwaysShow {
                         let _ = updateRemoteContentSettingsConfiguration(postbox: context.account.postbox, network: context.account.network, sensitiveContentEnabled: true).start()

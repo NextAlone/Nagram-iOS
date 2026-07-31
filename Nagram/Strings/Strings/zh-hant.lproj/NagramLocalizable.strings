@@ -95,6 +95,8 @@
 "Nagram.DisableGalleryCameraPreview" = "停用圖庫相機預覽";
 "Nagram.DisableFiltering" = "關閉敏感內容過濾";
 "Nagram.DisableFiltering.Footer" = "可用時，顯示敏感內容而不是過濾隱藏。此項是 Telegram 同步的帳號設定。";
+"Nagram.SkipSensitiveContentWarning" = "略過 18+ 內容確認";
+"Nagram.SkipSensitiveContentWarning.Footer" = "開啟後，點擊 18+ 媒體時直接顯示，不再彈出確認提示。此項不會修改 Telegram 的敏感內容設定。";
 "Nagram.ICloudSync" = "iCloud 同步";
 "Nagram.ICloudSync.Footer" = "開啟後，Nagram 設定和部分 Telegram 原生本機設定會透過 iCloud 在同一 Apple ID 的裝置間同步。關閉不會刪除雲端既有設定。";
 "Nagram.ForceCopy" = "強制複製";

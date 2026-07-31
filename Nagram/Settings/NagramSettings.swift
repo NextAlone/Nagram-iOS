@@ -169,6 +169,11 @@ public final class NagramSettings {
     @NagramDefault("nagram.forceCopyEnabled", false)
     public var forceCopyEnabled: Bool
 
+    // MARK: 敏感内容
+    /// 跳过 18+ 媒体确认弹窗，直接揭示当前媒体
+    @NagramDefault("nagram.skipSensitiveContentWarning", false)
+    public var skipSensitiveContentWarning: Bool
+
     // MARK: 波次 3 批 A — 纯 UI 单点开关
     /// 隐藏消息反应
     @NagramDefault("nagram.hideReactions", false)
