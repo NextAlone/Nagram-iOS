@@ -4,6 +4,7 @@ import sys
 import shutil
 import tempfile
 import plistlib
+import urllib.parse
 
 from BuildEnvironment import run_executable_with_output, check_run_system
 from DecryptMatch import decrypt_match_data
@@ -21,7 +22,8 @@ class BuildConfiguration:
         app_specific_url_scheme,
         premium_iap_product_id,
         enable_siri,
-        enable_icloud
+        enable_icloud,
+        review_session
     ):
         self.bundle_id = bundle_id
         self.api_id = api_id
@@ -35,6 +37,43 @@ class BuildConfiguration:
         self.premium_iap_product_id = premium_iap_product_id
         self.enable_siri = enable_siri
         self.enable_icloud = enable_icloud
+        self.review_session = review_session
+
+    def write_review_session_configuration(self, path):
+        values = {} if self.review_session is None else self.review_session
+        if not isinstance(values, dict):
+            print('review_session must be an object')
+            sys.exit(1)
+
+        required_keys = ['endpoint', 'bearer_token']
+        unsupported_keys = [key for key in values if key not in required_keys]
+        if unsupported_keys:
+            print('review_session contains unsupported keys: {}'.format(', '.join(unsupported_keys)))
+            sys.exit(1)
+
+        present_keys = [key for key in required_keys if values.get(key)]
+        if values and len(present_keys) != len(required_keys):
+            missing_keys = [key for key in required_keys if not values.get(key)]
+            print('review_session is missing required keys: {}'.format(', '.join(missing_keys)))
+            sys.exit(1)
+
+        output = {}
+        if present_keys:
+            for key in required_keys:
+                value = values[key]
+                if not isinstance(value, str):
+                    print('review_session.{} must be a string'.format(key))
+                    sys.exit(1)
+                output[key] = value
+
+            endpoint = urllib.parse.urlparse(output['endpoint'])
+            if endpoint.scheme != 'https' or not endpoint.netloc or endpoint.username or endpoint.password:
+                print('review_session.endpoint must be an HTTPS URL without embedded credentials')
+                sys.exit(1)
+
+        with open(path, 'wb') as file:
+            plistlib.dump(output, file, fmt=plistlib.FMT_BINARY, sort_keys=True)
+        os.chmod(path, 0o600)
 
     def write_to_variables_file(self, bazel_path, use_xcode_managed_codesigning, aps_environment, path):
         string = ''
@@ -96,7 +135,8 @@ def build_configuration_from_json(path):
             app_specific_url_scheme=configuration_dict['app_specific_url_scheme'],
             premium_iap_product_id=configuration_dict['premium_iap_product_id'],
             enable_siri=configuration_dict['enable_siri'],
-            enable_icloud=configuration_dict['enable_icloud']
+            enable_icloud=configuration_dict['enable_icloud'],
+            review_session=configuration_dict.get('review_session')
         )
 
 

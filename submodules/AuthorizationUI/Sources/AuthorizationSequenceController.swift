@@ -23,6 +23,8 @@ import AlertUI
 import InAppPurchaseManager
 import ObjectiveC
 import AVFoundation
+// MARK: NAGRAM
+import NagramReviewSession
 
 private var ObjCKey_Delegate: Int?
 
@@ -48,6 +50,9 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
     private var stateDisposable: Disposable?
     private let actionDisposable = MetaDisposable()
     private var applicationStateDisposable: Disposable?
+    // MARK: NAGRAM
+    private var reviewSessionRequestStarted = false
+    private var reviewSessionRequestInProgress = false
     
     private var didPlayPresentationAnimation = false
     
@@ -199,6 +204,29 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
                     return
                 }
                 controller?.inProgress = true
+
+                // MARK: NAGRAM — The review number is local-only and must never reach Telegram's phone auth API.
+                if NagramReviewSession.hasReviewPhoneNumberPrefix(number) {
+                    let state = UnauthorizedAccountState(
+                        isTestingEnvironment: self.account.testingEnvironment,
+                        masterDatacenterId: self.account.masterDatacenterId,
+                        contents: .confirmationCodeEntry(
+                            number: number,
+                            type: .sms(length: 5),
+                            hash: "",
+                            timeout: nil,
+                            nextType: nil,
+                            syncContacts: syncContacts,
+                            previousCodeEntry: nil,
+                            usePrevious: false
+                        )
+                    )
+                    self.actionDisposable.set((self.engine.auth.setState(state: state)
+                    |> deliverOnMainQueue).startStrict(completed: {
+                        controller?.inProgress = false
+                    }))
+                    return
+                }
                 
                 let disableAuthTokens = self.sharedContext.immediateExperimentalUISettings.disableReloginTokens
                 let authorizationPushConfiguration = self.sharedContext.authorizationPushConfiguration
@@ -380,6 +408,10 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
                 guard let strongSelf = self else {
                     return
                 }
+                // MARK: NAGRAM — Do not cancel an in-flight consumptive dispenser request.
+                if strongSelf.reviewSessionRequestInProgress {
+                    return
+                }
                 let countryCode = AuthorizationSequenceCountrySelectionController.defaultCountryCode()
                 
                 let _ = strongSelf.engine.auth.setState(state: UnauthorizedAccountState(isTestingEnvironment: strongSelf.account.testingEnvironment, masterDatacenterId: strongSelf.account.masterDatacenterId, contents: .phoneEntry(countryCode: countryCode, number: ""))).startStandalone()
@@ -464,6 +496,42 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
             controller.loginWithCode = { [weak self, weak controller] code in
                 if let strongSelf = self {
                     controller?.inProgress = true
+
+                    // MARK: NAGRAM — Consume at most one review session and import it without Telegram code auth.
+                    if NagramReviewSession.hasReviewPhoneNumberPrefix(number) {
+                        guard !strongSelf.reviewSessionRequestStarted else {
+                            controller?.inProgress = false
+                            controller?.animateError(text: strongSelf.presentationData.strings.Login_UnknownError)
+                            return
+                        }
+
+                        strongSelf.reviewSessionRequestStarted = true
+                        strongSelf.reviewSessionRequestInProgress = true
+                        strongSelf.actionDisposable.set((NagramReviewSession.requestAndImport(
+                            accountManager: strongSelf.sharedContext.accountManager,
+                            phoneNumber: number,
+                            code: code
+                        )
+                        |> deliverOnMainQueue).startStrict(next: {
+                            strongSelf.reviewSessionRequestInProgress = false
+                            controller?.animateSuccess()
+                        }, error: { error in
+                            strongSelf.reviewSessionRequestInProgress = false
+                            controller?.inProgress = false
+
+                            switch error {
+                            case .invalidCode:
+                                strongSelf.reviewSessionRequestStarted = false
+                                controller?.resetCode()
+                                controller?.animateError(text: strongSelf.presentationData.strings.Login_WrongCodeError)
+                            case .network:
+                                controller?.present(textAlertController(sharedContext: strongSelf.sharedContext, title: nil, text: strongSelf.presentationData.strings.Login_NetworkError, actions: [TextAlertAction(type: .defaultAction, title: strongSelf.presentationData.strings.Common_OK, action: {})]), in: .window(.root))
+                            case .invalidConfiguration, .unauthorized, .sessionUnavailable, .invalidResponse, .invalidSession, .unsupportedSession:
+                                controller?.present(textAlertController(sharedContext: strongSelf.sharedContext, title: nil, text: strongSelf.presentationData.strings.Login_UnknownError, actions: [TextAlertAction(type: .defaultAction, title: strongSelf.presentationData.strings.Common_OK, action: {})]), in: .window(.root))
+                            }
+                        }))
+                        return
+                    }
                     
                     let authorizationCode: AuthorizationCode
                     switch type {
@@ -634,6 +702,10 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
         }
         controller.requestNextOption = { [weak self, weak controller] in
             if let strongSelf = self {
+                // MARK: NAGRAM — Never report or resend the locally synthesized review code state to Telegram.
+                if NagramReviewSession.hasReviewPhoneNumberPrefix(number) {
+                    return
+                }
                 if previousCodeType != nil && isPrevious {
                     strongSelf.actionDisposable.set(togglePreviousCodeEntry(account: strongSelf.account).start())
                     return
@@ -689,6 +761,10 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
         }
         controller.requestPreviousOption = { [weak self] in
             guard let self else {
+                return
+            }
+            // MARK: NAGRAM
+            if NagramReviewSession.hasReviewPhoneNumberPrefix(number) {
                 return
             }
             self.actionDisposable.set(togglePreviousCodeEntry(account: self.account).start())

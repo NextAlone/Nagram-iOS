@@ -499,8 +499,12 @@ def resolve_configuration(base_path, bazel_command_line: BazelCommandLine, argum
     with open(configuration_repository_path + '/MODULE.bazel', 'w+') as file:
         file.write('module(\n    name = "build_configuration",\n)\n')
 
+    build_configuration.write_review_session_configuration(
+        path=configuration_repository_path + '/NagramReviewSession.plist'
+    )
+
     with open(configuration_repository_path + '/BUILD', 'w+') as file:
-        pass
+        file.write('exports_files(["NagramReviewSession.plist"])\n')
 
     provisioning_path = '{}/provisioning'.format(configuration_repository_path)
     if os.path.exists(provisioning_path):

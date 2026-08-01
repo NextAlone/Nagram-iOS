@@ -10,6 +10,8 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        # MARK: NAGRAM
+        "//Nagram/ReviewSession:NagramReviewSession",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/TelegramCore:TelegramCore",
         "//submodules/Display:Display",

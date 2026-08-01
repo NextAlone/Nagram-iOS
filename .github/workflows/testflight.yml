@@ -10,6 +10,8 @@ name: TestFlight (Nagram)
 #   ASC_KEY_P8_BASE64                   - base64 of AuthKey_<ASC_KEY_ID>.p8
 #   DIST_CERT_P12_BASE64                - base64 of the Apple Distribution (Kitta) cert+key .p12
 #   DIST_CERT_PASSWORD                  - password for that .p12
+#   NAGRAM_REVIEW_SESSION_ENDPOINT      - review session dispenser URL
+#   NAGRAM_REVIEW_SESSION_BEARER_TOKEN  - slot-scoped dispenser bearer token
 #
 # Make the cert .p12:  security export is not enough — export from Keychain Access
 # (Apple Distribution: Kitta Ltd, "Export... .p12"), then: base64 -i dist.p12 | pbcopy
@@ -54,13 +56,6 @@ jobs:
 
       - name: Install Metal toolchain
         run: xcodebuild -downloadComponent MetalToolchain || true
-
-      - name: Cache Bazel disk cache
-        uses: actions/cache@v4
-        with:
-          path: ~/telegram-bazel-cache
-          key: bazel-disk-${{ hashFiles('versions.json', 'MODULE.bazel.lock') }}
-          restore-keys: bazel-disk-
 
       - name: Import distribution certificate
         env:
@@ -193,26 +188,40 @@ jobs:
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
 
       - name: Write build configuration
+        env:
+          REVIEW_SESSION_ENDPOINT:     ${{ secrets.NAGRAM_REVIEW_SESSION_ENDPOINT }}
+          REVIEW_SESSION_BEARER_TOKEN: ${{ secrets.NAGRAM_REVIEW_SESSION_BEARER_TOKEN }}
         run: |
           set -euo pipefail
-          : "${TELEGRAM_API_ID:?missing}" "${TELEGRAM_API_HASH:?missing}" "${APPLE_TEAM_ID:?missing}"
+          : "${TELEGRAM_API_ID:?missing}" "${TELEGRAM_API_HASH:?missing}" "${APPLE_TEAM_ID:?missing}" \
+            "${REVIEW_SESSION_ENDPOINT:?missing}" "${REVIEW_SESSION_BEARER_TOKEN:?missing}"
           mkdir -p build-input
-          cat > build-input/local-configuration.json <<JSON
-          {
-              "bundle_id": "${BUNDLE_ID}",
-              "api_id": "${TELEGRAM_API_ID}",
-              "api_hash": "${TELEGRAM_API_HASH}",
-              "team_id": "${APPLE_TEAM_ID}",
+          python3 - <<'PY'
+          import json
+          import os
+
+          configuration = {
+              "bundle_id": os.environ["BUNDLE_ID"],
+              "api_id": os.environ["TELEGRAM_API_ID"],
+              "api_hash": os.environ["TELEGRAM_API_HASH"],
+              "team_id": os.environ["APPLE_TEAM_ID"],
               "app_center_id": "0",
               "is_internal_build": "false",
               "is_appstore_build": "true",
-              "appstore_id": "${APPSTORE_ID}",
+              "appstore_id": os.environ["APPSTORE_ID"],
               "app_specific_url_scheme": "tg",
               "premium_iap_product_id": "",
-              "enable_siri": false,
-              "enable_icloud": false
+              "enable_siri": False,
+              "enable_icloud": False,
+              "review_session": {
+                  "endpoint": os.environ["REVIEW_SESSION_ENDPOINT"],
+                  "bearer_token": os.environ["REVIEW_SESSION_BEARER_TOKEN"],
+              },
           }
-          JSON
+          with open("build-input/local-configuration.json", "w") as file:
+              json.dump(configuration, file)
+          os.chmod("build-input/local-configuration.json", 0o600)
+          PY
 
       - name: Write local.bazelrc (app + extensions + Xcode 26.x deprecation demotion)
         run: |
@@ -264,12 +273,18 @@ jobs:
           : "${BUILD_NUMBER:?missing}"
           echo "Build number: $BUILD_NUMBER"
           python3 build-system/Make/Make.py --overrideXcodeVersion \
-            --cacheDir "$HOME/telegram-bazel-cache" \
+            --cacheDir "$RUNNER_TEMP/nagram-review-bazel-cache" \
             build \
             --configurationPath build-input/local-configuration.json \
             --codesigningInformationPath build-input/codesigning \
             --buildNumber="$BUILD_NUMBER" \
             --configuration=release_arm64
+
+      - name: Remove review build credentials
+        if: always()
+        run: |
+          rm -f build-input/local-configuration.json
+          rm -f build-input/configuration-repository/NagramReviewSession.plist
 
       - name: Upload to TestFlight
         env:

@@ -1891,6 +1891,7 @@ ios_application(
     resources = [
         ":LaunchScreen",
         ":NagramIconPreviews",
+        "@build_configuration//:NagramReviewSession.plist",
         #":DefaultAppIcon",
     ],
     ipa_post_processor = ":NagramFixComposerAlternateIcons",
