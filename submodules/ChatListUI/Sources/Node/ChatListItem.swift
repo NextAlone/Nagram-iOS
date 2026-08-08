@@ -163,6 +163,7 @@ public enum ChatListItemContent {
         public var displayAsTopicList: Bool
         public var tags: [Tag]
         public var customMessageListData: CustomMessageListData?
+        public var nagramSuppressActivateInput: Bool // MARK: NAGRAM
         
         public init(
             messages: [EngineMessage],
@@ -189,7 +190,8 @@ public enum ChatListItemContent {
             requiresPremiumForMessaging: Bool,
             displayAsTopicList: Bool,
             tags: [Tag],
-            customMessageListData: CustomMessageListData? = nil
+            customMessageListData: CustomMessageListData? = nil,
+            nagramSuppressActivateInput: Bool = false // MARK: NAGRAM
         ) {
             self.messages = messages
             self.peer = peer
@@ -216,6 +218,7 @@ public enum ChatListItemContent {
             self.displayAsTopicList = displayAsTopicList
             self.tags = tags
             self.customMessageListData = customMessageListData
+            self.nagramSuppressActivateInput = nagramSuppressActivateInput // MARK: NAGRAM
         }
     }
     
@@ -629,13 +632,33 @@ public class ChatListItem: ListViewItem {
                 }
                 self.interaction.messageSelected(selectedPeer, threadId, message, peerData.promoInfo)
             } else if let peer = peerData.peer.peer {
+                if self.nagramSelectPeerWithoutActivatingInput(peer, peerData) { // MARK: NAGRAM
+                    return
+                }
                 self.interaction.peerSelected(peer, nil, nil, peerData.promoInfo, false)
             } else if let peer = peerData.peer.peers[peerData.peer.peerId] {
+                if self.nagramSelectPeerWithoutActivatingInput(peer, peerData) { // MARK: NAGRAM
+                    return
+                }
                 self.interaction.peerSelected(peer, nil, nil, peerData.promoInfo, false)
             }
         case let .groupReference(groupReferenceData):
             self.interaction.groupSelected(groupReferenceData.groupId)
         }
+    }
+
+    // MARK: NAGRAM — 预览消息被 hide 规则清空的条目不是真的空会话，走这条路径避免 activateInput 自动弹键盘；
+    // 同时补回 upstream 空会话分支丢掉的 threadId，保证论坛话题仍然进入话题本身。
+    private func nagramSelectPeerWithoutActivatingInput(_ peer: EnginePeer, _ peerData: ChatListItemContent.PeerData) -> Bool {
+        guard peerData.nagramSuppressActivateInput, let action = self.interaction.nagramPeerSelectedWithoutActivatingInput else {
+            return false
+        }
+        var threadId: Int64?
+        if case let .forum(_, _, threadIdValue, _, _) = self.index {
+            threadId = threadIdValue
+        }
+        action(peer, threadId, peerData.promoInfo)
+        return true
     }
         
     static func mergeType(item: ChatListItem, previousItem: ListViewItem?, nextItem: ListViewItem?) -> (first: Bool, last: Bool, firstWithHeader: Bool, nextIsPinned: Bool, nextHasActiveRevealControls: Bool) {

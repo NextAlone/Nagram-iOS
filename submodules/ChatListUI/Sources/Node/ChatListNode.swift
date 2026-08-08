@@ -130,6 +130,8 @@ public final class ChatListNodeInteraction {
     let openUrl: (String) -> Void
     
     public var searchTextHighightState: String?
+    // MARK: NAGRAM — hide 规则清空预览消息后走这条路径打开会话，等价于 peerSelected 但不激活输入框。
+    public var nagramPeerSelectedWithoutActivatingInput: ((EnginePeer, Int64?, ChatListNodeEntryPromoInfo?) -> Void)?
     var highlightedChatLocation: ChatListHighlightedLocation?
     
     var isSearchMode: Bool = false
@@ -460,6 +462,7 @@ private func mappedInsertEntries(context: AccountContext, nodeInteraction: ChatL
             let topForumTopicItems = peerEntry.topForumTopicItems
             let revealed = peerEntry.revealed
             let nagramIgnoreUnreadBadge = peerEntry.nagramIgnoreUnreadBadge // MARK: NAGRAM
+            let nagramSuppressActivateInput = peerEntry.nagramSuppressActivateInput // MARK: NAGRAM
         
             switch mode {
                 case .chatList:
@@ -498,7 +501,8 @@ private func mappedInsertEntries(context: AccountContext, nodeInteraction: ChatL
                             },
                             requiresPremiumForMessaging: peerEntry.requiresPremiumForMessaging,
                             displayAsTopicList: peerEntry.displayAsTopicList,
-                            tags: chatListItemTags(location: location, accountPeerId: context.account.peerId, isPremium: isPremium, peer: peer.chatMainPeer, isUnread: (combinedReadState?.isUnread ?? false) && !nagramIgnoreUnreadBadge, isMuted: isRemovedFromTotalUnreadCount, isContact: isContact, hasUnseenMentions: hasUnseenMentions, chatListFilters: chatListFilters)
+                            tags: chatListItemTags(location: location, accountPeerId: context.account.peerId, isPremium: isPremium, peer: peer.chatMainPeer, isUnread: (combinedReadState?.isUnread ?? false) && !nagramIgnoreUnreadBadge, isMuted: isRemovedFromTotalUnreadCount, isContact: isContact, hasUnseenMentions: hasUnseenMentions, chatListFilters: chatListFilters),
+                            nagramSuppressActivateInput: nagramSuppressActivateInput // MARK: NAGRAM
                         )),
                         editing: editing,
                         hasActiveRevealControls: hasActiveRevealControls,
@@ -828,6 +832,7 @@ private func mappedUpdateEntries(context: AccountContext, nodeInteraction: ChatL
                 let topForumTopicItems = peerEntry.topForumTopicItems
                 let revealed = peerEntry.revealed
                 let nagramIgnoreUnreadBadge = peerEntry.nagramIgnoreUnreadBadge // MARK: NAGRAM
+                let nagramSuppressActivateInput = peerEntry.nagramSuppressActivateInput // MARK: NAGRAM
             
                 switch mode {
                     case .chatList:
@@ -866,7 +871,8 @@ private func mappedUpdateEntries(context: AccountContext, nodeInteraction: ChatL
                                 },
                                 requiresPremiumForMessaging: peerEntry.requiresPremiumForMessaging,
                                 displayAsTopicList: peerEntry.displayAsTopicList,
-                                tags: chatListItemTags(location: location, accountPeerId: context.account.peerId, isPremium: isPremium, peer: peer.chatMainPeer, isUnread: (combinedReadState?.isUnread ?? false) && !nagramIgnoreUnreadBadge, isMuted: isRemovedFromTotalUnreadCount, isContact: isContact, hasUnseenMentions: hasUnseenMentions, chatListFilters: chatListFilters)
+                                tags: chatListItemTags(location: location, accountPeerId: context.account.peerId, isPremium: isPremium, peer: peer.chatMainPeer, isUnread: (combinedReadState?.isUnread ?? false) && !nagramIgnoreUnreadBadge, isMuted: isRemovedFromTotalUnreadCount, isContact: isContact, hasUnseenMentions: hasUnseenMentions, chatListFilters: chatListFilters),
+                                nagramSuppressActivateInput: nagramSuppressActivateInput // MARK: NAGRAM
                             )),
                             editing: editing,
                             hasActiveRevealControls: hasActiveRevealControls,
@@ -2810,6 +2816,13 @@ public final class ChatListNode: ListViewImpl {
                 if !refreshStoryPeerIds.isEmpty {
                     strongSelf.context.account.viewTracker.refreshStoryStatsForPeerIds(peerIds: refreshStoryPeerIds)
                 }
+            }
+        }
+        
+        // MARK: NAGRAM — 预览消息被 hide 规则清空的条目按普通消息处理，不要沿用空会话的 activateInput。
+        nodeInteraction.nagramPeerSelectedWithoutActivatingInput = { [weak self] peer, threadId, promoInfo in
+            if let strongSelf = self, let peerSelected = strongSelf.peerSelected {
+                peerSelected(peer, threadId, true, false, promoInfo)
             }
         }
         
