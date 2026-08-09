@@ -736,8 +736,8 @@ final class ChatImageGalleryItemNode: ZoomableContentGalleryItemNode {
                     }
                     f(.default)
                 })))
-                
-                if !message.isCopyProtected() && !self.peerIsCopyProtected && message.paidContent == nil, let media = self.contextAndMedia?.1 {
+                // Respect forceCopyEnabled setting
+                if (NagramSettings.shared.forceCopyEnabled || (!message.isCopyProtected() && !self.peerIsCopyProtected)) && message.paidContent == nil, let media = self.contextAndMedia?.1 {
                     items.append(.action(ContextMenuActionItem(text: self.presentationData.strings.Gallery_CreateSticker, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Sticker"), color: theme.actionSheet.primaryTextColor) }, action: { [weak self] _, f in
                         f(.default)
                         guard let self else {
