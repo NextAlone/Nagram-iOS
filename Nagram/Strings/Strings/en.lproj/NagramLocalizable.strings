@@ -356,3 +356,34 @@
 "Nagram.RecentStickerLimit.120" = "120";
 "Nagram.RecentStickerLimit.150" = "150";
 "Nagram.RecentStickerLimit.200" = "200";
+
+// MARK: NAGRAM — Session backup / restore (Pyrogram session strings)
+"Nagram.SessionBackup" = "Session Backup";
+"Nagram.Section.SessionBackup" = "Session Backup";
+"Nagram.SessionBackup.Footer" = "Export this account as a Pyrogram session string, or add an account from one. Session strings are interchangeable with Mithka and other Pyrogram-based tools.";
+"Nagram.SessionBackup.Title" = "Session Backup";
+"Nagram.SessionBackup.Current" = "Current Account";
+"Nagram.SessionBackup.Current.Footer" = "A session string grants full access to this account without a login code. Anyone who obtains it can read your messages and act as you. Keychain backups stay on this device; iCloud Keychain backups also sync to your other devices.";
+"Nagram.SessionBackup.CopySessionString" = "Copy Session String";
+"Nagram.SessionBackup.CopySessionString.Warning" = "The session string gives complete access to this account with no login code required. Copy it only to paste it into software you trust.";
+"Nagram.SessionBackup.CopySessionString.Confirm" = "Copy";
+"Nagram.SessionBackup.Copied" = "Copied to the clipboard.";
+"Nagram.SessionBackup.BackUpSynced" = "Back Up to iCloud Keychain";
+"Nagram.SessionBackup.BackUpLocal" = "Back Up to This Device Only";
+"Nagram.SessionBackup.SaveSucceeded" = "The session was backed up.";
+"Nagram.SessionBackup.Import" = "Import a Session";
+"Nagram.SessionBackup.Import.Placeholder" = "Paste a Pyrogram session string";
+"Nagram.SessionBackup.Import.Paste" = "Paste from Clipboard";
+"Nagram.SessionBackup.Import.Action" = "Add Account from Session String";
+"Nagram.SessionBackup.Import.Footer" = "Accepts Pyrogram session strings, including the ones Mithka exports. The account is added alongside your existing accounts.";
+"Nagram.SessionBackup.Import.Warning" = "Importing signs this device in as that account. Continue only with a session string you produced yourself.";
+"Nagram.SessionBackup.Import.Confirm" = "Import";
+"Nagram.SessionBackup.Saved" = "Saved Backups";
+"Nagram.SessionBackup.Saved.Empty" = "No saved backups yet.";
+"Nagram.SessionBackup.Saved.Footer" = "Tap a backup to restore it, copy its session string, or delete it.";
+"Nagram.SessionBackup.Storage.Synced" = "iCloud Keychain";
+"Nagram.SessionBackup.Storage.Local" = "This device";
+"Nagram.SessionBackup.Restore" = "Restore";
+"Nagram.SessionBackup.Delete" = "Delete";
+"Nagram.SessionBackup.DeleteAll" = "Delete All Backups";
+"Nagram.SessionBackup.DeleteAll.Warning" = "This removes every saved session backup from the keychain. Accounts you are signed in to are not affected.";

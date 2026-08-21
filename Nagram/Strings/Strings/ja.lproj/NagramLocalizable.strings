@@ -356,3 +356,34 @@
 "Nagram.RecentStickerLimit.120" = "120";
 "Nagram.RecentStickerLimit.150" = "150";
 "Nagram.RecentStickerLimit.200" = "200";
+
+// MARK: NAGRAM — Session backup / restore (Pyrogram session strings)
+"Nagram.SessionBackup" = "セッションバックアップ";
+"Nagram.Section.SessionBackup" = "セッションバックアップ";
+"Nagram.SessionBackup.Footer" = "現在のアカウントを Pyrogram セッション文字列として書き出したり、文字列からアカウントを追加できます。セッション文字列は Mithka などの Pyrogram 系ツールと相互に使えます。";
+"Nagram.SessionBackup.Title" = "セッションバックアップ";
+"Nagram.SessionBackup.Current" = "現在のアカウント";
+"Nagram.SessionBackup.Current.Footer" = "セッション文字列は、ログインコードなしでこのアカウントへの完全なアクセスを許します。入手した人はメッセージを読み、あなたとして操作できます。この端末のみのバックアップは端末外に出ません。iCloud キーチェーンのバックアップは他の端末にも同期されます。";
+"Nagram.SessionBackup.CopySessionString" = "セッション文字列をコピー";
+"Nagram.SessionBackup.CopySessionString.Warning" = "セッション文字列はログインコードなしでこのアカウントへの完全なアクセスを許します。信頼できるソフトウェアに貼り付ける場合のみコピーしてください。";
+"Nagram.SessionBackup.CopySessionString.Confirm" = "コピー";
+"Nagram.SessionBackup.Copied" = "クリップボードにコピーしました。";
+"Nagram.SessionBackup.BackUpSynced" = "iCloud キーチェーンにバックアップ";
+"Nagram.SessionBackup.BackUpLocal" = "この端末のみにバックアップ";
+"Nagram.SessionBackup.SaveSucceeded" = "セッションをバックアップしました。";
+"Nagram.SessionBackup.Import" = "セッションを読み込む";
+"Nagram.SessionBackup.Import.Placeholder" = "Pyrogram セッション文字列を貼り付け";
+"Nagram.SessionBackup.Import.Paste" = "クリップボードから貼り付け";
+"Nagram.SessionBackup.Import.Action" = "セッション文字列からアカウントを追加";
+"Nagram.SessionBackup.Import.Footer" = "Mithka が書き出したものを含む Pyrogram セッション文字列に対応します。追加したアカウントは既存のアカウントと併存します。";
+"Nagram.SessionBackup.Import.Warning" = "読み込むと、この端末がそのアカウントでログインします。自分で作成したセッション文字列のみを使用してください。";
+"Nagram.SessionBackup.Import.Confirm" = "読み込む";
+"Nagram.SessionBackup.Saved" = "保存済みのバックアップ";
+"Nagram.SessionBackup.Saved.Empty" = "保存済みのバックアップはありません。";
+"Nagram.SessionBackup.Saved.Footer" = "バックアップをタップすると、復元、セッション文字列のコピー、削除ができます。";
+"Nagram.SessionBackup.Storage.Synced" = "iCloud キーチェーン";
+"Nagram.SessionBackup.Storage.Local" = "この端末";
+"Nagram.SessionBackup.Restore" = "復元";
+"Nagram.SessionBackup.Delete" = "削除";
+"Nagram.SessionBackup.DeleteAll" = "すべてのバックアップを削除";
+"Nagram.SessionBackup.DeleteAll.Warning" = "キーチェーンに保存されたすべてのセッションバックアップを削除します。ログイン中のアカウントには影響しません。";
