@@ -395,6 +395,29 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
         if !self.animatingIn {
             self.controllerNode.activateInput()
         }
+
+        // MARK: NAGRAM — 见 nagramRunPendingTransitionIn 的说明：键盘不出现时兜底。
+        Queue.mainQueue().after(1.0) { [weak self] in
+            self?.nagramRunPendingTransitionIn()
+        }
+    }
+
+    // MARK: NAGRAM — 播放来自 splash 的入场动画。
+    //
+    // 原本这个动画只在软键盘出现（layout.inputHeight > 0）时才触发。viewWillAppear
+    // 里的 willAnimateIn 已经把 splash 的截图贴到了本屏上，所以键盘一旦不出现，
+    // 截图就会一直留着，看起来像点了「Start with Nagram」之后卡死——模拟器连着
+    // 硬件键盘时必现。这里把触发点收敛到一处，并在 viewDidAppear 之后兜底调用，
+    // 保证动画一定会跑完；键盘正常出现时仍由 containerLayoutUpdated 先触发。
+    private func nagramRunPendingTransitionIn() {
+        guard self.isNodeLoaded, self.shouldAnimateIn else {
+            return
+        }
+        guard let (buttonFrame, buttonTitle, animationSnapshot, textSnapshot) = self.transitionInArguments else {
+            return
+        }
+        self.shouldAnimateIn = false
+        self.controllerNode.animateIn(buttonFrame: buttonFrame, buttonTitle: buttonTitle, animationSnapshot: animationSnapshot, textSnapshot: textSnapshot)
     }
     
     override public func viewWillDisappear(_ animated: Bool) {
@@ -420,11 +443,8 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
     
         self.controllerNode.containerLayoutUpdated(layout, navigationBarHeight: self.navigationLayout(layout: layout).navigationFrame.maxY, transition: transition)
         
-        if self.shouldAnimateIn, let inputHeight = layout.inputHeight, inputHeight > 0.0 {
-            if let (buttonFrame, buttonTitle, animationSnapshot, textSnapshot) = self.transitionInArguments {
-                self.shouldAnimateIn = false
-                self.controllerNode.animateIn(buttonFrame: buttonFrame, buttonTitle: buttonTitle, animationSnapshot: animationSnapshot, textSnapshot: textSnapshot)
-            }
+        if let inputHeight = layout.inputHeight, inputHeight > 0.0 {
+            self.nagramRunPendingTransitionIn()
         }
     }
     
