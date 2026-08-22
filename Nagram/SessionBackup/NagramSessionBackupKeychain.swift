@@ -110,8 +110,14 @@ public final class NagramSessionBackupKeychain {
         return newestByAccount.values.sorted(by: { $0.createdAt > $1.createdAt })
     }
 
-    public func allRecords() -> [NagramSessionBackupRecord] {
-        let combined = self.records(storage: .synced) + self.records(storage: .local)
+    // `includeSynced` is a parameter rather than a setting lookup so this module
+    // stays free of dependencies and testable on its own; the policy lives with
+    // the caller.
+    public func allRecords(includeSynced: Bool = true) -> [NagramSessionBackupRecord] {
+        var combined = self.records(storage: .local)
+        if includeSynced {
+            combined += self.records(storage: .synced)
+        }
         return combined.sorted(by: { $0.createdAt > $1.createdAt })
     }
 

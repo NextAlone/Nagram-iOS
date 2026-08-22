@@ -3,6 +3,7 @@ import Display
 import Foundation
 import ItemListUI
 import NagramSessionBackup
+import NagramSettings
 import NagramStrings
 import PresentationDataUtils
 import SwiftSignalKit
@@ -210,7 +211,11 @@ private func nagramSessionBackupEntries(presentationData: PresentationData, reco
 
     entries.append(.header(section: NagramSessionBackupSection.current.rawValue, text: ngI18n("Nagram.SessionBackup.Current", lang)))
     entries.append(.copySessionString(title: ngI18n("Nagram.SessionBackup.CopySessionString", lang), isEnabled: !isWorking))
-    entries.append(.backUp(storage: .synced, title: ngI18n("Nagram.SessionBackup.BackUpSynced", lang), isEnabled: !isWorking))
+    // Only offered while the iCloud Keychain switch is on, so the two settings
+    // cannot contradict each other.
+    if NagramSettings.shared.sessionBackupICloudSync {
+        entries.append(.backUp(storage: .synced, title: ngI18n("Nagram.SessionBackup.BackUpSynced", lang), isEnabled: !isWorking))
+    }
     entries.append(.backUp(storage: .local, title: ngI18n("Nagram.SessionBackup.BackUpLocal", lang), isEnabled: !isWorking))
     entries.append(.footer(section: NagramSessionBackupSection.current.rawValue, text: ngI18n("Nagram.SessionBackup.Current.Footer", lang)))
 
@@ -244,12 +249,15 @@ public func nagramSessionBackupController(context: AccountContext) -> ViewContro
     let keychain = NagramSessionBackupKeychain.shared
     let updatePromise = ValuePromise<Int32>(0, ignoreRepeated: false)
     var updateValue: Int32 = 0
-    var records: [NagramSessionBackupRecord] = keychain.allRecords()
+    // Loaded asynchronously: a synchronizable keychain query can block, and
+    // this runs while the screen is being built on the main thread.
+    var records: [NagramSessionBackupRecord] = []
     var importText = ""
     var isWorking = false
 
     let exportDisposable = MetaDisposable()
     let importDisposable = MetaDisposable()
+    let recordsDisposable = MetaDisposable()
 
     var presentControllerImpl: ((ViewController, ViewControllerPresentationArguments?) -> Void)?
     var dismissInputImpl: (() -> Void)?
@@ -259,9 +267,18 @@ public func nagramSessionBackupController(context: AccountContext) -> ViewContro
         updatePromise.set(updateValue)
     }
     let reload: () -> Void = {
-        records = keychain.allRecords()
-        bump()
+        recordsDisposable.set((Signal<[NagramSessionBackupRecord], NoError> { subscriber in
+            subscriber.putNext(keychain.allRecords(includeSynced: NagramSettings.shared.sessionBackupICloudSync))
+            subscriber.putCompletion()
+            return EmptyDisposable
+        }
+        |> runOn(Queue.concurrentDefaultQueue())
+        |> deliverOnMainQueue).start(next: { loaded in
+            records = loaded
+            bump()
+        }))
     }
+    reload()
     let presentAlert: (String, String) -> Void = { title, text in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         presentControllerImpl?(textAlertController(context: context, title: title, text: text, actions: [
@@ -436,6 +453,7 @@ public func nagramSessionBackupController(context: AccountContext) -> ViewContro
     |> afterDisposed {
         exportDisposable.dispose()
         importDisposable.dispose()
+        recordsDisposable.dispose()
     }
 
     let controller = ItemListController(context: context, state: signal)

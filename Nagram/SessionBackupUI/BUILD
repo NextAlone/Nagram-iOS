@@ -23,6 +23,7 @@ swift_library(
         "//submodules/MtProtoKit:MtProtoKit",
         "//submodules/Postbox:Postbox",
         "//Nagram/SessionBackup:NagramSessionBackup",
+        "//Nagram/Settings:NagramSettings",
         "//Nagram/Strings:NagramStrings",
     ],
     visibility = [

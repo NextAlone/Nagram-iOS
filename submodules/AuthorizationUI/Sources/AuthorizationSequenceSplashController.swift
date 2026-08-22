@@ -7,6 +7,7 @@ import SSignalKit
 import SwiftSignalKit
 import TelegramPresentationData
 import LegacyComponents
+import NagramLoginUI
 import SolidRoundedButtonNode
 import RMIntro
 
@@ -30,12 +31,11 @@ public final class AuthorizationSequenceSplashController: ViewController {
     
     private let startButton: SolidRoundedButtonNode
 
-    // MARK: NAGRAM — 首次启动的备用登录入口。Splash 只持有按钮和回调，
+    // MARK: NAGRAM — 首次启动的账号入口。Splash 只持有按钮和回调，
     // 具体界面由 AuthorizationSequenceController 呈现（那里才有 SharedAccountContext）。
-    // 点按扫码登录，长按用会话串登录。
-    private let nagramLoginButton: HighlightableButtonNode
-    private var nagramQrLoginPressed: (() -> Void)?
-    private var nagramImportSessionPressed: (() -> Void)?
+    private var nagramLoginButton: NagramLoginOptionsButton?
+    private var nagramLoginOptionsPressed: (() -> Void)?
+    private var nagramPendingBadgeCount: Int = 0
     
     init(accountManager: AccountManager<TelegramAccountManagerTypes>, account: UnauthorizedAccount, theme: PresentationTheme) {
         self.accountManager = accountManager
@@ -83,10 +83,6 @@ public final class AuthorizationSequenceSplashController: ViewController {
         self.startButton = SolidRoundedButtonNode(title: "Start with Nagram", theme: SolidRoundedButtonTheme(theme: theme), glass: false, height: 50.0, cornerRadius: 50.0 * 0.5, isShimmering: true)
         self.startButton.accessibilityIdentifier = "Auth.Welcome.StartButton"
 
-        // MARK: NAGRAM
-        self.nagramLoginButton = HighlightableButtonNode()
-        self.nagramLoginButton.accessibilityIdentifier = "Auth.Welcome.NagramQrLoginButton"
-        self.nagramLoginButton.isHidden = true
 
         super.init(navigationBarPresentationData: nil)
         
@@ -96,8 +92,6 @@ public final class AuthorizationSequenceSplashController: ViewController {
         
         self.statusBar.statusBarStyle = theme.intro.statusBarStyle.style
 
-        // MARK: NAGRAM
-        self.nagramLoginButton.addTarget(self, action: #selector(self.nagramLoginButtonPressed), forControlEvents: .touchUpInside)
         
         self.controller.startMessaging = { [weak self] in
             self?.activateLocalization("en")
@@ -122,33 +116,34 @@ public final class AuthorizationSequenceSplashController: ViewController {
         fatalError("init(coder:) has not been implemented")
     }
 
-    // MARK: NAGRAM — 由 AuthorizationSequenceController 在构造后调用。
-    func setNagramLoginActions(accessibilityLabel: String, qrLogin: @escaping () -> Void, importSession: @escaping () -> Void) {
-        self.nagramQrLoginPressed = qrLogin
-        self.nagramImportSessionPressed = importSession
-        self.nagramLoginButton.setImage(generateTintedImage(image: UIImage(bundleImageName: "Settings/QrIcon"), color: self.theme.list.itemAccentColor), for: .normal)
-        self.nagramLoginButton.accessibilityLabel = accessibilityLabel
-        self.nagramLoginButton.isHidden = false
-        // Long press is the only affordance for session login, so it must not
-        // wait for the tap recognizer to fail.
-        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(self.nagramLoginButtonLongPressed(_:)))
-        longPress.minimumPressDuration = 0.4
-        self.nagramLoginButton.view.addGestureRecognizer(longPress)
+    // MARK: NAGRAM — 由 AuthorizationSequenceController 在构造后调用。点按打开菜单。
+    func setNagramLoginOptions(accessibilityLabel: String, action: @escaping () -> Void) {
+        self.nagramLoginOptionsPressed = action
+        let button = NagramLoginOptionsButton(
+            icon: generateTintedImage(image: UIImage(bundleImageName: "Premium/Account"), color: self.theme.list.itemAccentColor),
+            accessibilityLabel: accessibilityLabel
+        )
+        button.accessibilityIdentifier = "Auth.Welcome.NagramAccountButton"
+        button.addTarget(self, action: #selector(self.nagramLoginButtonPressed), for: .touchUpInside)
+        button.setBadgeCount(self.nagramPendingBadgeCount)
+        self.nagramLoginButton = button
+        if self.isNodeLoaded {
+            self.displayNode.view.addSubview(button)
+        }
         if let layout = self.validLayout {
             self.containerLayoutUpdated(layout, transition: .immediate)
         }
     }
 
-    // MARK: NAGRAM
-    @objc private func nagramLoginButtonPressed() {
-        self.nagramQrLoginPressed?()
+    // MARK: NAGRAM — 钥匙串里有未登录账号时在图标上显示红点数字。
+    func setNagramLoginBadgeCount(_ count: Int) {
+        self.nagramPendingBadgeCount = count
+        self.nagramLoginButton?.setBadgeCount(count)
     }
 
     // MARK: NAGRAM
-    @objc private func nagramLoginButtonLongPressed(_ recognizer: UILongPressGestureRecognizer) {
-        if case .began = recognizer.state {
-            self.nagramImportSessionPressed?()
-        }
+    @objc private func nagramLoginButtonPressed() {
+        self.nagramLoginOptionsPressed?()
     }
     
     deinit {
@@ -158,7 +153,9 @@ public final class AuthorizationSequenceSplashController: ViewController {
     public override func loadDisplayNode() {
         self.displayNode = AuthorizationSequenceSplashControllerNode(theme: self.theme)
         // MARK: NAGRAM
-        self.displayNode.addSubnode(self.nagramLoginButton)
+        if let button = self.nagramLoginButton {
+            self.displayNode.view.addSubview(button)
+        }
         self.displayNodeDidLoad()
     }
     
@@ -228,12 +225,12 @@ public final class AuthorizationSequenceSplashController: ViewController {
         self.addControllerIfNeeded()
 
         // MARK: NAGRAM — RMIntro 的 view 是后加进来的，按钮要重新提到最上层再摆位。
-        if !self.nagramLoginButton.isHidden {
-            self.displayNode.view.bringSubviewToFront(self.nagramLoginButton.view)
-            let buttonSide: CGFloat = 44.0
+        if let button = self.nagramLoginButton {
+            self.displayNode.view.bringSubviewToFront(button)
+            let buttonSize = NagramLoginOptionsButton.preferredSize
             let topInset = (layout.statusBarHeight ?? 20.0) + 4.0
             let rightInset = max(layout.safeInsets.right, 8.0)
-            self.nagramLoginButton.frame = CGRect(origin: CGPoint(x: layout.size.width - rightInset - buttonSide, y: topInset), size: CGSize(width: buttonSide, height: buttonSide))
+            button.frame = CGRect(origin: CGPoint(x: layout.size.width - rightInset - buttonSize.width, y: topInset), size: buttonSize)
         }
 
         if case .immediate = transition {

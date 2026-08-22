@@ -360,7 +360,9 @@
 // MARK: NAGRAM — Session backup / restore (Pyrogram session strings)
 "Nagram.SessionBackup" = "Session Backup";
 "Nagram.Section.SessionBackup" = "Session Backup";
-"Nagram.SessionBackup.Footer" = "Export this account as a Pyrogram session string, or add an account from one. Session strings are interchangeable with Mithka and other Pyrogram-based tools.";
+"Nagram.SessionBackup.Footer" = "Export this account as a Pyrogram session string, or add an account from one. Session strings are interchangeable with Mithka and other Pyrogram-based tools.
+
+With iCloud Keychain sync on, backups follow your other devices and appear on the login screen there. Turn it off to keep backups on this device only.";
 "Nagram.SessionBackup.Title" = "Session Backup";
 "Nagram.SessionBackup.Current" = "Current Account";
 "Nagram.SessionBackup.Current.Footer" = "A session string grants full access to this account without a login code. Anyone who obtains it can read your messages and act as you. Keychain backups stay on this device; iCloud Keychain backups also sync to your other devices.";
@@ -390,4 +392,17 @@
 "Nagram.SessionBackup.Import.Short" = "Import Session";
 "Nagram.SessionBackup.Saved.RestoreFooter" = "Tap a saved backup to sign in with it.";
 "Nagram.QrLogin.Title" = "Log in by QR Code";
-"Nagram.QrLogin.Text" = "1. Open Telegram on a device where you are already signed in.\n2. Go to Settings → Devices → Link Desktop Device.\n3. Point that device at this code to confirm.\n\nLong press the icon on the previous screen to log in with a session string instead.";
+"Nagram.QrLogin.Text" = "1. Open Telegram on a device where you are already signed in.\n2. Go to Settings → Devices → Link Desktop Device.\n3. Point that device at this code to confirm.";
+"Nagram.LoginOptions.Title" = "Other Ways to Log In";
+"Nagram.QrLogin.Accepted.Title" = "Signing In";
+"Nagram.QrLogin.Accepted.Text" = "The code was accepted. Finishing sign-in…";
+"Nagram.SessionBackup.Import.Progress.Adding" = "Adding the account…";
+"Nagram.SessionBackup.Import.Progress.Checking" = "Checking which datacenter serves this account…";
+"Nagram.SessionBackup.Import.Progress.Moving" = "Moving the account to datacenter %@…";
+"Nagram.SavedAccounts.Title" = "Saved Accounts";
+"Nagram.SavedAccounts.MenuItem" = "Saved Accounts (%@)";
+"Nagram.SavedAccounts.Header" = "Not signed in on this device";
+"Nagram.SavedAccounts.Footer" = "These accounts were backed up from this app and follow your devices through iCloud Keychain. Choose one to sign in without a code.";
+"Nagram.SavedAccounts.Confirm" = "Sign in as this account on this device?";
+"Nagram.QrLogin.Retrying" = "Could not get a code. Retrying…";
+"Nagram.SessionBackup.ICloud" = "Sync Backups via iCloud Keychain";

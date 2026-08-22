@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import Display
+import NagramLoginUI
 import AsyncDisplayKit
 import SwiftSignalKit
 import TelegramCore
@@ -107,6 +108,54 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
         self.termsDisposable.dispose()
     }
     
+    // MARK: NAGRAM — 添加账号时也要有账号入口。这条路径没有 splash 屏，
+    // 手机号页就是导航栈根，所以按钮放在右上角（宽屏下上游不占用该位置；
+    // 窄屏时上游的“下一步”会覆盖它）。
+    private var nagramLoginButton: NagramLoginOptionsButton?
+    private var nagramLoginOptionsPressed: (() -> Void)?
+    private var nagramPendingBadgeCount: Int = 0
+
+    // MARK: NAGRAM — 点按打开菜单。
+    func setNagramLoginOptions(accessibilityLabel: String, action: @escaping () -> Void) {
+        self.nagramLoginOptionsPressed = action
+        let button = NagramLoginOptionsButton(
+            icon: generateTintedImage(image: UIImage(bundleImageName: "Premium/Account"), color: self.presentationData.theme.list.itemAccentColor),
+            accessibilityLabel: accessibilityLabel
+        )
+        button.accessibilityIdentifier = "Auth.PhoneEntry.NagramAccountButton"
+        button.addTarget(self, action: #selector(self.nagramLoginButtonPressed), for: .touchUpInside)
+        button.setBadgeCount(self.nagramPendingBadgeCount)
+        self.nagramLoginButton = button
+    }
+
+    // MARK: NAGRAM — 用浮层按钮而不是 UIBarButtonItem：这一屏的导航栏是透明且通常没有
+    // 其他按钮，栏内按钮不会显示；而且在构造阶段动 navigationItem 会提前触发 view
+    // 加载，把 splash 的过渡动画卡在中途。挂载与摆位都放到布局阶段。
+    private func nagramLayoutLoginButton(_ layout: ContainerViewLayout) {
+        guard let button = self.nagramLoginButton, self.isNodeLoaded else {
+            return
+        }
+        if button.superview == nil {
+            self.displayNode.view.addSubview(button)
+        }
+        let size = NagramLoginOptionsButton.preferredSize
+        let topInset = (layout.statusBarHeight ?? 20.0) + 4.0
+        let rightInset = max(layout.safeInsets.right, 8.0)
+        button.frame = CGRect(origin: CGPoint(x: layout.size.width - rightInset - size.width, y: topInset), size: size)
+        self.displayNode.view.bringSubviewToFront(button)
+    }
+
+    // MARK: NAGRAM
+    func setNagramLoginBadgeCount(_ count: Int) {
+        self.nagramPendingBadgeCount = count
+        self.nagramLoginButton?.setBadgeCount(count)
+    }
+
+    // MARK: NAGRAM
+    @objc private func nagramLoginButtonPressed() {
+        self.nagramLoginOptionsPressed?()
+    }
+
     @objc private func cancelPressed() {
         self.back()
     }
@@ -361,6 +410,9 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
         
         let hadLayout = self.validLayout != nil
         self.validLayout = layout
+
+        // MARK: NAGRAM
+        self.nagramLayoutLoginButton(layout)
         
         if !hadLayout {
             self.updateNavigationItems()

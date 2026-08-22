@@ -45,6 +45,7 @@ private enum NagramSessionImportEntryStableId: Hashable {
     case input
     case paste
     case action
+    case progress
     case backup(String)
 }
 
@@ -54,13 +55,14 @@ private enum NagramSessionImportEntry: ItemListNodeEntry {
     case input(text: String, placeholder: String)
     case paste(title: String)
     case action(title: String, isEnabled: Bool)
+    case progress(text: String)
     case backup(index: Int32, record: NagramSessionBackupRecord, detail: String)
 
     var section: ItemListSectionId {
         switch self {
         case let .header(section, _), let .footer(section, _):
             return ItemListSectionId(section)
-        case .input, .paste, .action:
+        case .input, .paste, .action, .progress:
             return ItemListSectionId(NagramSessionImportSection.importSession.rawValue)
         case .backup:
             return ItemListSectionId(NagramSessionImportSection.backups.rawValue)
@@ -79,6 +81,8 @@ private enum NagramSessionImportEntry: ItemListNodeEntry {
             return .paste
         case .action:
             return .action
+        case .progress:
+            return .progress
         case let .backup(_, record, _):
             return .backup("\(record.storage.rawValue):\(record.accountId)")
         }
@@ -96,6 +100,8 @@ private enum NagramSessionImportEntry: ItemListNodeEntry {
             return NagramSessionImportSection.importSession.rawValue * 1000 + 20
         case .action:
             return NagramSessionImportSection.importSession.rawValue * 1000 + 30
+        case .progress:
+            return NagramSessionImportSection.importSession.rawValue * 1000 + 40
         case let .backup(index, _, _):
             return NagramSessionImportSection.backups.rawValue * 1000 + 10 + index
         }
@@ -117,6 +123,9 @@ private enum NagramSessionImportEntry: ItemListNodeEntry {
             return false
         case let .action(lTitle, lEnabled):
             if case let .action(rTitle, rEnabled) = rhs { return lTitle == rTitle && lEnabled == rEnabled }
+            return false
+        case let .progress(lText):
+            if case let .progress(rText) = rhs { return lText == rText }
             return false
         case let .backup(lIndex, lRecord, lDetail):
             if case let .backup(rIndex, rRecord, rDetail) = rhs { return lIndex == rIndex && lRecord == rRecord && lDetail == rDetail }
@@ -147,6 +156,8 @@ private enum NagramSessionImportEntry: ItemListNodeEntry {
             return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: title, kind: isEnabled ? .generic : .disabled, alignment: .natural, sectionId: self.section, style: .blocks, action: {
                 arguments.importSession()
             })
+        case let .progress(text):
+            return ItemListActivityTextItem(displayActivity: true, presentationData: presentationData, text: text, color: .generic, sectionId: self.section)
         case let .backup(_, record, detail):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: record.displayName, label: detail, labelStyle: .multilineDetailText, sectionId: self.section, style: .blocks, action: {
                 arguments.restore(record)
@@ -155,7 +166,7 @@ private enum NagramSessionImportEntry: ItemListNodeEntry {
     }
 }
 
-private func nagramSessionImportEntries(lang: String, records: [NagramSessionBackupRecord], text: String, isWorking: Bool) -> [NagramSessionImportEntry] {
+private func nagramSessionImportEntries(lang: String, records: [NagramSessionBackupRecord], text: String, isWorking: Bool, statusText: String?) -> [NagramSessionImportEntry] {
     let dateFormatter = DateFormatter()
     dateFormatter.dateStyle = .medium
     dateFormatter.timeStyle = .short
@@ -165,6 +176,9 @@ private func nagramSessionImportEntries(lang: String, records: [NagramSessionBac
     entries.append(.input(text: text, placeholder: ngI18n("Nagram.SessionBackup.Import.Placeholder", lang)))
     entries.append(.paste(title: ngI18n("Nagram.SessionBackup.Import.Paste", lang)))
     entries.append(.action(title: ngI18n("Nagram.SessionBackup.Import.Action", lang), isEnabled: !isWorking && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
+    if let statusText {
+        entries.append(.progress(text: statusText))
+    }
     entries.append(.footer(section: NagramSessionImportSection.importSession.rawValue, text: ngI18n("Nagram.SessionBackup.Import.Footer", lang)))
 
     if !records.isEmpty {
@@ -184,15 +198,17 @@ private func nagramSessionImportEntries(lang: String, records: [NagramSessionBac
 }
 
 public func nagramSessionImportController(sharedContext: SharedAccountContext, presentationData: PresentationData) -> ViewController {
-    let keychain = NagramSessionBackupKeychain.shared
     let updatePromise = ValuePromise<Int32>(0, ignoreRepeated: false)
     var updateValue: Int32 = 0
-    // Read-only here: this screen imports, it never edits the keychain.
-    let records: [NagramSessionBackupRecord] = keychain.allRecords()
+    // Loaded asynchronously: a synchronizable keychain query can block, and
+    // this screen is built on the main thread.
+    var records: [NagramSessionBackupRecord] = []
     var text = ""
     var isWorking = false
+    var statusText: String?
 
     let importDisposable = MetaDisposable()
+    let recordsDisposable = MetaDisposable()
     var presentControllerImpl: ((ViewController) -> Void)?
     var dismissImpl: (() -> Void)?
     var dismissInputImpl: (() -> Void)?
@@ -202,6 +218,11 @@ public func nagramSessionImportController(sharedContext: SharedAccountContext, p
         updatePromise.set(updateValue)
     }
     let lang = presentationData.strings.baseLanguageCode
+    recordsDisposable.set((nagramRestorableBackups(sharedContext: sharedContext)
+    |> deliverOnMainQueue).start(next: { loaded in
+        records = loaded
+        bump()
+    }))
     let presentError: (Error) -> Void = { error in
         presentControllerImpl?(textAlertController(sharedContext: sharedContext, title: ngI18n("Nagram.SessionBackup.Import.Action", lang), text: "\(error)", actions: [
             TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
@@ -214,14 +235,29 @@ public func nagramSessionImportController(sharedContext: SharedAccountContext, p
             return
         }
         isWorking = true
+        statusText = ngI18n("Nagram.SessionBackup.Import.Progress.Adding", lang)
         bump()
-        importDisposable.set((nagramImportSessionString(sharedContext: sharedContext, sessionString: sessionString, makeCurrent: true)
+        importDisposable.set((nagramImportSessionString(sharedContext: sharedContext, sessionString: sessionString, makeCurrent: true, progress: { stage in
+            Queue.mainQueue().async {
+                switch stage {
+                case .addingAccount:
+                    statusText = ngI18n("Nagram.SessionBackup.Import.Progress.Adding", lang)
+                case .checkingDatacenter:
+                    statusText = ngI18n("Nagram.SessionBackup.Import.Progress.Checking", lang)
+                case let .movingToDatacenter(datacenterId):
+                    statusText = String(format: ngI18n("Nagram.SessionBackup.Import.Progress.Moving", lang), "\(datacenterId)")
+                }
+                bump()
+            }
+        })
         |> deliverOnMainQueue).start(next: { _ in
             isWorking = false
+            statusText = nil
             bump()
             dismissImpl?()
         }, error: { error in
             isWorking = false
+            statusText = nil
             bump()
             presentError(error)
         }))
@@ -261,7 +297,7 @@ public func nagramSessionImportController(sharedContext: SharedAccountContext, p
         updatePromise.get()
     )
     |> map { presentationData, _ -> (ItemListControllerState, (ItemListNodeState, NagramSessionImportArguments)) in
-        let entries = nagramSessionImportEntries(lang: presentationData.strings.baseLanguageCode, records: records, text: text, isWorking: isWorking)
+        let entries = nagramSessionImportEntries(lang: presentationData.strings.baseLanguageCode, records: records, text: text, isWorking: isWorking, statusText: statusText)
         let controllerState = ItemListControllerState(
             presentationData: ItemListPresentationData(presentationData),
             title: .text(ngI18n("Nagram.SessionBackup.Import", presentationData.strings.baseLanguageCode)),
@@ -276,6 +312,7 @@ public func nagramSessionImportController(sharedContext: SharedAccountContext, p
     }
     |> afterDisposed {
         importDisposable.dispose()
+        recordsDisposable.dispose()
     }
 
     let controller = ItemListController(

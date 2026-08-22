@@ -2,6 +2,7 @@ import AccountContext
 import Foundation
 import MtProtoKit
 import NagramSessionBackup
+import NagramSettings
 import Postbox
 import SwiftSignalKit
 import TelegramCore
@@ -17,6 +18,14 @@ import TelegramCore
 // an MTProto auth key is bound to its datacenter, not to an api_id, and this app
 // always connects with its own `BuildConfig.apiId`. Exported strings therefore
 // carry Nagram's api_id, and imported ones keep running under it.
+
+// Importing used to be instant. Migration can keep it busy for a minute or
+// more, so the caller needs something to show meanwhile.
+public enum NagramSessionImportProgress {
+    case addingAccount
+    case checkingDatacenter
+    case movingToDatacenter(Int32)
+}
 
 public enum NagramSessionBackupServiceError: Error, CustomStringConvertible {
     case noSessionData
@@ -99,7 +108,7 @@ public func nagramExportActiveSessionRecord(context: AccountContext, storage: Na
 // marks the new record current and clears the pending unauthorized account, so
 // the login flow ends by itself. Adding an account from settings passes false
 // and switches through `switchToAccount` instead.
-public func nagramImportSessionString(sharedContext: SharedAccountContext, sessionString: String, makeCurrent: Bool = false) -> Signal<AccountRecordId, NagramSessionBackupServiceError> {
+public func nagramImportSessionString(sharedContext: SharedAccountContext, sessionString: String, makeCurrent: Bool = false, progress: @escaping (NagramSessionImportProgress) -> Void = { _ in }) -> Signal<AccountRecordId, NagramSessionBackupServiceError> {
     let session: PyrogramSessionString
     do {
         session = try PyrogramSessionString(decoding: sessionString)
@@ -112,6 +121,7 @@ public func nagramImportSessionString(sharedContext: SharedAccountContext, sessi
     |> take(1)
     |> castError(NagramSessionBackupServiceError.self)
     |> mapToSignal { _, accounts, _ -> Signal<AccountRecordId, NagramSessionBackupServiceError> in
+        progress(.addingAccount)
         let signedInUserIds = accounts.map { $0.1.account.peerId.id._internalGetInt64Value() }
         if signedInUserIds.contains(session.userId) {
             return .fail(.alreadyLoggedIn(session.userId))
@@ -151,7 +161,7 @@ public func nagramImportSessionString(sharedContext: SharedAccountContext, sessi
         }
         |> castError(NagramSessionBackupServiceError.self)
         |> mapToSignal { recordId -> Signal<AccountRecordId, NagramSessionBackupServiceError> in
-            return nagramMigrateImportedAccount(sharedContext: sharedContext, recordId: recordId, session: session)
+            return nagramMigrateImportedAccount(sharedContext: sharedContext, recordId: recordId, session: session, progress: progress)
         }
         |> mapToSignal { finalRecordId -> Signal<AccountRecordId, NagramSessionBackupServiceError> in
             guard makeCurrent else {
@@ -178,7 +188,8 @@ public func nagramImportSessionString(sharedContext: SharedAccountContext, sessi
 private func nagramMigrateImportedAccount(
     sharedContext: SharedAccountContext,
     recordId: AccountRecordId,
-    session: PyrogramSessionString
+    session: PyrogramSessionString,
+    progress: @escaping (NagramSessionImportProgress) -> Void
 ) -> Signal<AccountRecordId, NagramSessionBackupServiceError> {
     let accountManager = sharedContext.accountManager
     Logger.shared.log("NagramMigration", "imported record \(recordId.int64), waiting for it to load")
@@ -197,6 +208,7 @@ private func nagramMigrateImportedAccount(
             return .single(recordId)
         }
         Logger.shared.log("NagramMigration", "account loaded, probing (session dc \(session.dcId))")
+        progress(.checkingDatacenter)
         return nagramHomeDatacenterId(network: account.network)
         |> castError(NagramSessionBackupServiceError.self)
         |> mapToSignal { homeDatacenterId -> Signal<AccountRecordId, NagramSessionBackupServiceError> in
@@ -205,6 +217,7 @@ private func nagramMigrateImportedAccount(
                 return .single(recordId)
             }
             Logger.shared.log("NagramMigration", "migrating from dc \(session.dcId) to home dc \(homeDatacenterId)")
+            progress(.movingToDatacenter(homeDatacenterId))
             return nagramAuthorizedDatacenterKey(network: account.network, datacenterId: homeDatacenterId, masterDatacenterId: session.dcId)
             |> castError(NagramSessionBackupServiceError.self)
             |> mapToSignal { migrated -> Signal<AccountRecordId, NagramSessionBackupServiceError> in
@@ -272,6 +285,32 @@ private func nagramMigrateImportedAccount(
     |> timeout(120.0, queue: Queue.concurrentDefaultQueue(), alternate: .single(recordId))
 }
 
-public func nagramRestoreBackupRecord(sharedContext: SharedAccountContext, record: NagramSessionBackupRecord, makeCurrent: Bool = false) -> Signal<AccountRecordId, NagramSessionBackupServiceError> {
-    return nagramImportSessionString(sharedContext: sharedContext, sessionString: record.sessionString, makeCurrent: makeCurrent)
+// Accounts stored in the keychain — synced across the user's devices by iCloud
+// Keychain — that are not signed in here. This is what the login screen badges
+// and what the account picker lists.
+public func nagramRestorableBackups(sharedContext: SharedAccountContext) -> Signal<[NagramSessionBackupRecord], NoError> {
+    return sharedContext.activeAccountContexts
+    |> take(1)
+    |> map { _, accounts, _ -> Set<Int64> in
+        return Set(accounts.map { $0.1.account.peerId.id._internalGetInt64Value() })
+    }
+    |> mapToSignal { signedInUserIds -> Signal<[NagramSessionBackupRecord], NoError> in
+        // Off the main thread on purpose: a synchronizable keychain query can
+        // block while iCloud Keychain answers, and this runs while the login
+        // screens are being built.
+        return Signal { subscriber in
+            let includeSynced = NagramSettings.shared.sessionBackupICloudSync
+            let records = NagramSessionBackupKeychain.shared.allRecords(includeSynced: includeSynced).filter { record in
+                return !signedInUserIds.contains(record.userId)
+            }
+            subscriber.putNext(records)
+            subscriber.putCompletion()
+            return EmptyDisposable
+        }
+        |> runOn(Queue.concurrentDefaultQueue())
+    }
+}
+
+public func nagramRestoreBackupRecord(sharedContext: SharedAccountContext, record: NagramSessionBackupRecord, makeCurrent: Bool = false, progress: @escaping (NagramSessionImportProgress) -> Void = { _ in }) -> Signal<AccountRecordId, NagramSessionBackupServiceError> {
+    return nagramImportSessionString(sharedContext: sharedContext, sessionString: record.sessionString, makeCurrent: makeCurrent, progress: progress)
 }

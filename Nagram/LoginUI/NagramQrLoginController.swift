@@ -1,4 +1,5 @@
 import AccountContext
+import ActivityIndicator
 import AsyncDisplayKit
 import Display
 import Foundation
@@ -25,7 +26,10 @@ private final class NagramQrLoginControllerNode: ASDisplayNode {
     private let titleNode: ImmediateTextNode
     private let textNode: ImmediateTextNode
     private let qrBackgroundNode: ASDisplayNode
-    let qrImageNode: ASImageNode
+    private let qrImageNode: ASImageNode
+    private let activityIndicator: ActivityIndicator
+    private var isCompleting = false
+    private let defaultCaption: String
 
     init(presentationData: PresentationData) {
         self.presentationData = presentationData
@@ -48,6 +52,11 @@ private final class NagramQrLoginControllerNode: ASDisplayNode {
         self.qrImageNode = ASImageNode()
         self.qrImageNode.contentMode = .scaleAspectFit
 
+        // Visible until the first code arrives: fetching the token needs a
+        // network round trip, and an empty white square reads as broken.
+        self.activityIndicator = ActivityIndicator(type: .custom(presentationData.theme.list.itemAccentColor, 28.0, 2.0, false))
+        self.defaultCaption = ngI18n("Nagram.QrLogin.Text", presentationData.strings.baseLanguageCode)
+
         super.init()
 
         self.backgroundColor = presentationData.theme.list.plainBackgroundColor
@@ -68,6 +77,34 @@ private final class NagramQrLoginControllerNode: ASDisplayNode {
         self.addSubnode(self.qrBackgroundNode)
         self.addSubnode(self.qrImageNode)
         self.addSubnode(self.textNode)
+        self.addSubnode(self.activityIndicator)
+    }
+
+    // The token has been accepted but the authorization state takes a moment to
+    // catch up. Without this the screen would simply vanish and leave the user
+    // looking at the intro for several seconds.
+    func setCode(_ image: UIImage) {
+        self.qrImageNode.image = image
+        self.activityIndicator.isHidden = true
+        self.setCaption(self.defaultCaption)
+    }
+
+    func setCaption(_ text: String) {
+        self.textNode.attributedText = NSAttributedString(
+            string: text,
+            font: Font.regular(15.0),
+            textColor: self.presentationData.theme.list.itemSecondaryTextColor
+        )
+    }
+
+    func setCompleting(title: String, text: String) {
+        self.isCompleting = true
+        self.qrBackgroundNode.isHidden = true
+        self.qrImageNode.isHidden = true
+        self.activityIndicator.isHidden = false
+        self.qrImageNode.image = nil
+        self.titleNode.attributedText = NSAttributedString(string: title, font: Font.semibold(24.0), textColor: self.presentationData.theme.list.itemPrimaryTextColor)
+        self.textNode.attributedText = NSAttributedString(string: text, font: Font.regular(15.0), textColor: self.presentationData.theme.list.itemSecondaryTextColor)
     }
 
     func containerLayoutUpdated(_ layout: ContainerViewLayout, navigationBarHeight: CGFloat, transition: ContainedViewLayoutTransition) {
@@ -87,6 +124,8 @@ private final class NagramQrLoginControllerNode: ASDisplayNode {
         let qrFrame = CGRect(origin: CGPoint(x: floor((layout.size.width - qrSide) / 2.0), y: originY), size: CGSize(width: qrSide, height: qrSide))
         transition.updateFrame(node: self.qrBackgroundNode, frame: qrFrame)
         transition.updateFrame(node: self.qrImageNode, frame: qrFrame.insetBy(dx: 12.0, dy: 12.0))
+        let indicatorSize = CGSize(width: 28.0, height: 28.0)
+        transition.updateFrame(node: self.activityIndicator, frame: CGRect(origin: CGPoint(x: floor((layout.size.width - indicatorSize.width) / 2.0), y: originY + floor((qrSide - indicatorSize.height) / 2.0)), size: indicatorSize))
         originY += qrSide + 28.0
 
         transition.updateFrame(node: self.textNode, frame: CGRect(origin: CGPoint(x: floor((layout.size.width - textSize.width) / 2.0), y: originY), size: textSize))
@@ -102,6 +141,10 @@ public final class NagramQrLoginController: ViewController {
     private var account: UnauthorizedAccount
     private let presentationData: PresentationData
     private let accountUpdated: (UnauthorizedAccount) -> Void
+
+    // Set once Telegram accepts the code, so the sequence controller only
+    // dismisses this screen after it has served its purpose.
+    public private(set) var hasBeenAccepted = false
 
     private let tokenDisposable = MetaDisposable()
     private let tokenEventsDisposable = MetaDisposable()
@@ -189,11 +232,34 @@ public final class NagramQrLoginController: ViewController {
                 }))
                 strongSelf.refreshToken()
             case .loggedIn, .passwordRequested:
-                // The authorization state has moved on; the sequence controller
-                // takes it from here.
+                // Accepted. The sequence controller advances the flow and
+                // dismisses this screen; until it does, say what is happening
+                // rather than disappearing into the intro for several seconds.
                 strongSelf.tokenDisposable.set(nil)
-                strongSelf.dismiss()
+                strongSelf.hasBeenAccepted = true
+                let language = strongSelf.presentationData.strings.baseLanguageCode
+                strongSelf.controllerNode.setCompleting(
+                    title: ngI18n("Nagram.QrLogin.Accepted.Title", language),
+                    text: ngI18n("Nagram.QrLogin.Accepted.Text", language)
+                )
+                strongSelf.navigationItem.leftBarButtonItem = nil
+                if let layout = strongSelf.validLayout {
+                    strongSelf.containerLayoutUpdated(layout, transition: .immediate)
+                }
             }
+        }, error: { [weak self] _ in
+            // A cold start often races the connection (CONNECTION_NOT_INITED).
+            // Without this the screen keeps an empty square forever, because the
+            // token request only ever runs once.
+            guard let strongSelf = self else {
+                return
+            }
+            let language = strongSelf.presentationData.strings.baseLanguageCode
+            strongSelf.controllerNode.setCaption(ngI18n("Nagram.QrLogin.Retrying", language))
+            strongSelf.tokenDisposable.set((Signal<Never, NoError>.complete()
+            |> delay(3.0, queue: .mainQueue())).startStrict(completed: { [weak self] in
+                self?.refreshToken()
+            }))
         }))
     }
 
@@ -206,7 +272,7 @@ public final class NagramQrLoginController: ViewController {
             }
             let context = generate(TransformImageArguments(corners: ImageCorners(), imageSize: CGSize(width: side, height: side), boundingSize: CGSize(width: side, height: side), intrinsicInsets: UIEdgeInsets()))
             if let image = context?.generateImage() {
-                strongSelf.controllerNode.qrImageNode.image = image
+                strongSelf.controllerNode.setCode(image)
             }
         })
     }

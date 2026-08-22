@@ -360,7 +360,9 @@
 // MARK: NAGRAM — Session backup / restore (Pyrogram session strings)
 "Nagram.SessionBackup" = "セッションバックアップ";
 "Nagram.Section.SessionBackup" = "セッションバックアップ";
-"Nagram.SessionBackup.Footer" = "現在のアカウントを Pyrogram セッション文字列として書き出したり、文字列からアカウントを追加できます。セッション文字列は Mithka などの Pyrogram 系ツールと相互に使えます。";
+"Nagram.SessionBackup.Footer" = "現在のアカウントを Pyrogram セッション文字列として書き出したり、文字列からアカウントを追加できます。セッション文字列は Mithka などの Pyrogram 系ツールと相互に使えます。
+
+iCloud キーチェーン同期を有効にすると、バックアップは他の端末にも同期され、その端末のログイン画面に表示されます。無効にすると、この端末にのみ保存されます。";
 "Nagram.SessionBackup.Title" = "セッションバックアップ";
 "Nagram.SessionBackup.Current" = "現在のアカウント";
 "Nagram.SessionBackup.Current.Footer" = "セッション文字列は、ログインコードなしでこのアカウントへの完全なアクセスを許します。入手した人はメッセージを読み、あなたとして操作できます。この端末のみのバックアップは端末外に出ません。iCloud キーチェーンのバックアップは他の端末にも同期されます。";
@@ -390,4 +392,17 @@
 "Nagram.SessionBackup.Import.Short" = "セッションを読み込む";
 "Nagram.SessionBackup.Saved.RestoreFooter" = "保存済みのバックアップをタップするとそれでログインします。";
 "Nagram.QrLogin.Title" = "QRコードでログイン";
-"Nagram.QrLogin.Text" = "1. すでにログイン済みの端末で Telegram を開きます。\n2. 設定 → デバイス → デスクトップデバイスをリンク を開きます。\n3. その端末でこのコードを読み取って確認します。\n\n前の画面でアイコンを長押しすると、セッション文字列でログインできます。";
+"Nagram.QrLogin.Text" = "1. すでにログイン済みの端末で Telegram を開きます。\n2. 設定 → デバイス → デスクトップデバイスをリンク を開きます。\n3. その端末でこのコードを読み取って確認します。";
+"Nagram.LoginOptions.Title" = "その他のログイン方法";
+"Nagram.QrLogin.Accepted.Title" = "ログインしています";
+"Nagram.QrLogin.Accepted.Text" = "コードが受理されました。ログインを完了しています…";
+"Nagram.SessionBackup.Import.Progress.Adding" = "アカウントを追加しています…";
+"Nagram.SessionBackup.Import.Progress.Checking" = "このアカウントを扱うデータセンターを確認しています…";
+"Nagram.SessionBackup.Import.Progress.Moving" = "アカウントをデータセンター %@ に移行しています…";
+"Nagram.SavedAccounts.Title" = "保存済みのアカウント";
+"Nagram.SavedAccounts.MenuItem" = "保存済みのアカウント（%@）";
+"Nagram.SavedAccounts.Header" = "この端末では未ログイン";
+"Nagram.SavedAccounts.Footer" = "これらのアカウントはこのアプリでバックアップされ、iCloud キーチェーンで各端末に同期されます。選ぶとコードなしでログインできます。";
+"Nagram.SavedAccounts.Confirm" = "この端末でこのアカウントとしてログインしますか？";
+"Nagram.QrLogin.Retrying" = "コードを取得できませんでした。再試行しています…";
+"Nagram.SessionBackup.ICloud" = "iCloud キーチェーンでバックアップを同期";

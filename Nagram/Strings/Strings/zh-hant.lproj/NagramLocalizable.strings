@@ -360,7 +360,9 @@
 // MARK: NAGRAM — Session backup / restore (Pyrogram session strings)
 "Nagram.SessionBackup" = "工作階段備份";
 "Nagram.Section.SessionBackup" = "工作階段備份";
-"Nagram.SessionBackup.Footer" = "把目前帳號匯出為 Pyrogram 工作階段字串，或用字串新增帳號。字串與 Mithka 及其他基於 Pyrogram 的工具通用。";
+"Nagram.SessionBackup.Footer" = "把目前帳號匯出為 Pyrogram 工作階段字串，或用字串新增帳號。字串與 Mithka 及其他基於 Pyrogram 的工具通用。
+
+開啟 iCloud 鑰匙圈同步後，備份會同步到你的其他裝置，並出現在那些裝置的登入頁。關閉後備份僅保存在本機。";
 "Nagram.SessionBackup.Title" = "工作階段備份";
 "Nagram.SessionBackup.Current" = "目前帳號";
 "Nagram.SessionBackup.Current.Footer" = "工作階段字串可在不需登入驗證碼的情況下完全存取此帳號。取得它的人能讀取你的訊息並以你的身分操作。僅存本機的備份不會離開這台裝置；iCloud 鑰匙圈備份還會同步到你的其他裝置。";
@@ -390,4 +392,17 @@
 "Nagram.SessionBackup.Import.Short" = "匯入工作階段";
 "Nagram.SessionBackup.Saved.RestoreFooter" = "點按已儲存的備份即可用它登入。";
 "Nagram.QrLogin.Title" = "掃碼登入";
-"Nagram.QrLogin.Text" = "1. 在已登入的裝置上開啟 Telegram。\n2. 進入 設定 → 裝置 → 連結桌面裝置。\n3. 用該裝置掃描此二維碼並確認。\n\n在上一畫面長按圖示可改用工作階段字串登入。";
+"Nagram.QrLogin.Text" = "1. 在已登入的裝置上開啟 Telegram。\n2. 進入 設定 → 裝置 → 連結桌面裝置。\n3. 用該裝置掃描此二維碼並確認。";
+"Nagram.LoginOptions.Title" = "其他登入方式";
+"Nagram.QrLogin.Accepted.Title" = "正在登入";
+"Nagram.QrLogin.Accepted.Text" = "二維碼已被接受，正在完成登入…";
+"Nagram.SessionBackup.Import.Progress.Adding" = "正在新增帳號…";
+"Nagram.SessionBackup.Import.Progress.Checking" = "正在確認該帳號所屬的資料中心…";
+"Nagram.SessionBackup.Import.Progress.Moving" = "正在遷移帳號到資料中心 %@…";
+"Nagram.SavedAccounts.Title" = "已儲存的帳號";
+"Nagram.SavedAccounts.MenuItem" = "已儲存的帳號（%@）";
+"Nagram.SavedAccounts.Header" = "未在本裝置登入";
+"Nagram.SavedAccounts.Footer" = "這些帳號由本應用備份，並透過 iCloud 鑰匙圈同步到你的裝置。選擇一個即可免驗證碼登入。";
+"Nagram.SavedAccounts.Confirm" = "在本裝置以該帳號登入？";
+"Nagram.QrLogin.Retrying" = "無法取得二維碼，正在重試…";
+"Nagram.SessionBackup.ICloud" = "透過 iCloud 鑰匙圈同步備份";

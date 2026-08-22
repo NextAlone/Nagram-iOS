@@ -521,6 +521,7 @@ private func nagramGroups(
         ]),
         NagramGroup(tab: .other, headerKey: "Nagram.Section.SessionBackup", footerKey: "Nagram.SessionBackup.Footer", rows: [
             .navigation(titleKey: "Nagram.SessionBackup", action: sessionBackupAction),
+            .toggle(titleKey: "Nagram.SessionBackup.ICloud", get: { NagramSettings.shared.sessionBackupICloudSync }, set: { NagramSettings.shared.sessionBackupICloudSync = $0 }),
         ]),
     ]
 }
