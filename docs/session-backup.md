@@ -12,10 +12,21 @@
 - 粘贴会话串新增账号，成功后自动切换到该账号。
 - 把当前账号存入钥匙串（iCloud 钥匙串同步 / 仅本机），并可恢复、复制、删除。
 
+设置 → Nagram 里另有一个 iCloud 同步开关（`nagram.sessionBackupICloudSync`，默认开）。
+关掉之后所有读写只走 local 那个 service，已同步的条目不再被列出，也不再新增同步条目。
+
 ### 首次启动：登录页
 
-全新安装时还没有账号，设置页不可达，所以登录首屏（Splash，"Start with Nagram" 那一屏）
-右上角提供"导入会话"按钮，打开只做导入的精简页面：粘贴会话串，或直接点选钥匙串里已同步过来的备份。
+全新安装时还没有账号，设置页不可达，所以登录首屏（Splash，"Start with Nagram" 那一屏）和
+手机号输入页的右上角都放了一个账号按钮，点开是一个三项菜单：
+
+1. **扫码登录** — `NagramQrLoginController`，见下。
+2. **导入会话** — 打开只做导入的精简页面：粘贴会话串，或直接点选钥匙串里已同步过来的备份。
+3. **已保存的账号（N）** — `NagramSavedAccountsController`，列出钥匙串里存在、但本机没登录的账号，
+   点一个直接恢复。N 为该数量，同时以红点角标显示在按钮上；为 0 时这一项和角标都不出现。
+
+两个入口共用 `NagramLoginOptionsButton`（含角标与图标），呈现逻辑集中在
+`AuthorizationSequenceController`——只有那里拿得到 `SharedAccountContext`。
 
 两处入口的差别只在于上下文：
 
@@ -23,13 +34,22 @@
 | --- | --- | --- |
 | 依赖 | `AccountContext` | 仅 `SharedAccountContext` |
 | 导入后 | `switchToAccount` 切号 | `setCurrentId` + `removeAuth`，登录流程自行结束 |
-| 功能 | 导出 + 导入 + 钥匙串管理 | 仅导入 / 恢复 |
+| 功能 | 导出 + 导入 + 钥匙串管理 | 扫码 / 导入 / 恢复 |
 
 导入后不采用会话串里的 `apiId`（原因见下），登录页那条路径与上游手机号登录完成时做的事一致
 （见 `TelegramCore/Sources/Authorization.swift`）。
 
-为什么按钮放在 Splash 而不是手机号输入页：首次启动时 Splash 是导航栈根，手机号页是被 push 上去的，
-左上角是返回按钮；只有在"已有其他账号、再加一个"时那个位置才是关闭按钮。占用它会让用户退不回 Splash。
+### 扫码登录
+
+`Nagram/LoginUI/NagramQrLoginController.swift`。令牌交换复用上游 TelegramCore 的实现，
+这里补的是界面——上游只有一个隐藏的调试手势会画出二维码。
+
+两个容易踩的点：
+
+- **令牌请求要自带重试。** 冷启动时首个请求常见 `CONNECTION_NOT_INITED`，没有错误分支的话
+  界面就是一个永远不会填充的空白方块。这里每 3 秒重试一次。
+- **确认之后到登录完成之间有空窗。** 手机上点了确认，客户端还要拉账号状态、可能再要两步验证密码，
+  实测能有十秒。用 `hasBeenAccepted` 标记切到"正在登录"文案，不然用户以为扫失败了。
 
 ## Pyrogram 会话串
 
@@ -82,6 +102,32 @@ slot          Mithka 的本地槽位，Nagram 无此概念，恒为 0（Mithka �
 用自己的 `BuildConfig.apiId` 建连。因此导出的串带 Nagram 的 api_id，导入进来的账号也继续以
 Nagram 的 api_id 运行。
 
+## 数据中心迁移
+
+会话串里的 `dcId` 是**这把密钥所属的**数据中心，不一定是账号的归属（home）数据中心——
+Pyrogram 之外的实现（包括 Mithka）可能导出一把非归属 DC 的密钥。直接拿它当归属 DC 建连，
+所有请求都会被 `303 USER_MIGRATE_N` 顶回来。
+
+`submodules/TelegramCore/Sources/Account/NagramSessionMigration.swift` 处理这件事：
+
+1. `nagramHomeDatacenterId` 发一个 `updates.getState` 探针，从 `303` 错误里读出归属 DC。
+   探针必须直接构造 `MTRequest` 并设 `shouldContinueExecutionWithErrorContext = { _ in false }`；
+   走 `Network.request` 的话，它内部的重试钩子会吞掉 303，请求永远不返回。
+2. 探针要选一个**只有归属 DC 能回答**的方法。`users.getUsers` 任何 DC 都答得出来，
+   用它探不到迁移。
+3. 拿到归属 DC 后等 MtProtoKit 通过 `auth.exportAuthorization` / `importAuthorization`
+   把授权搬过去（`MTContext.authTokenForDatacenter`，不是 `authInfoForDatacenter`——
+   后者只是新建一把密钥，不会转移授权）。
+4. 超时（30 次 × 1 秒）就丢弃这条记录并明确报错，不留一个连不上的账号。
+
+`makeCurrent` 必须放在**第二个** `AccountManager` 事务里。和 `createRecord` 挤在同一个事务里，
+登录流程会在迁移完成前就被拆掉，迁移把自己取消掉。
+
+> 已知未覆盖：第 3 步（跨 DC 授权转移真的成功）没有端到端验证过——手上的测试会话串正是
+> 一把非归属 DC 的密钥，而 Telegram 把 `auth.exportAuthorization` 本身也路由到归属 DC，
+> 于是 31 次尝试全部返回 `303 USER_MIGRATE_1`，任何客户端都无法用它自举。失败路径
+> （探针、303 解析、超时丢弃、报错文案）是验证过的。
+
 ## 代码位置
 
 - `Nagram/SessionBackup/` — 纯数据层：会话串编解码、信封、钥匙串。零 Telegram 依赖，可独立编译测试。
@@ -91,13 +137,26 @@ Nagram 的 api_id 运行。
 - `Nagram/SessionBackupUI/NagramSessionBackupController.swift` — 设置页 UI（需要账号）。
 - `Nagram/SessionBackupUI/NagramSessionImportController.swift` — 登录页 UI（无账号，
   用 `ItemListController` 不带 context 的构造器）。
+- `Nagram/SessionBackupUI/NagramSavedAccountsController.swift` — 钥匙串账号选择页。
+- `Nagram/LoginUI/` — 登录页新增的界面：扫码登录、右上角账号按钮（含红点角标）。
+- `submodules/TelegramCore/Sources/Account/NagramSessionMigration.swift` — 归属 DC 探测与迁移。
 
 UI 层单独成模块而不是塞进 `Nagram/SettingsUI`，是为了让 `AuthorizationUI` 依赖它时
 不会把整个设置页（含 FaceScanScreen、SliderComponent 等）拖进登录流程。
 
-上游改动只有三处，均带 `// MARK: NAGRAM`：`AuthorizationUI/BUILD`、
-`AuthorizationSequenceSplashController.swift`（按钮与回调）、
-`AuthorizationSequenceController.swift`（呈现导入页，那里才有 `SharedAccountContext`）。
+上游改动都带 `// MARK: NAGRAM`，集中在 `AuthorizationUI`：`BUILD`（依赖）、
+`AuthorizationSequenceSplashController.swift` 与 `AuthorizationSequencePhoneEntryController.swift`
+（各挂一个账号按钮，只持有回调），以及 `AuthorizationSequenceController.swift`
+（真正呈现菜单与各个页面，那里才有 `SharedAccountContext`）。
+
+两个按钮都用 overlay subview，而不是 `UIBarButtonItem`：Splash 没有导航栏，手机号页左上角是
+返回按钮、右上角在"再加一个账号"时才是关闭按钮，占用它会让用户退不回去。
+
+顺带修了一个上游既有的问题（`AuthorizationSequencePhoneEntryController`）：`viewWillAppear`
+无条件把 Splash 的快照钉到手机号页上，而负责把它们动画移除的 `animateIn(...)` 却只在
+`layout.inputHeight > 0`（软键盘出现）时才被调用。模拟器接了硬件键盘时软键盘永不出现，
+快照就永久留在屏幕上，看起来像"Start with Nagram"点了没反应。现在两个调用点都过
+`nagramRunPendingTransitionIn()`，并在 `viewDidAppear` 里加了 1 秒兜底。
 
 ## 测试
 

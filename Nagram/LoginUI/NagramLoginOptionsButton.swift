@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import Display
 
 // MARK: NAGRAM — 登录页右上角的账号按钮。
 //
@@ -12,6 +13,17 @@ public final class NagramLoginOptionsButton: UIButton {
     private var badgeCount: Int = 0
 
     public static let preferredSize = CGSize(width: 44.0, height: 44.0)
+
+    // MARK: NAGRAM — 图标在这里统一，两个入口不会各画各的。
+    //
+    // "Add user" rather than a plain person silhouette: on a login screen there
+    // is no profile to show yet, and every item behind this button (scan a QR
+    // code, import a session, pick a saved account) is a way to put an account
+    // on the device. The asset is 24x24, which `layoutSubviews` relies on when
+    // it parks the badge on the glyph's corner.
+    public static func defaultIcon(color: UIColor) -> UIImage? {
+        return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/AddUser"), color: color)
+    }
 
     public init(icon: UIImage?, accessibilityLabel: String) {
         self.badgeBackgroundView = UIView()

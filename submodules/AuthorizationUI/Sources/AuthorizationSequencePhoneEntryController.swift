@@ -119,7 +119,7 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
     func setNagramLoginOptions(accessibilityLabel: String, action: @escaping () -> Void) {
         self.nagramLoginOptionsPressed = action
         let button = NagramLoginOptionsButton(
-            icon: generateTintedImage(image: UIImage(bundleImageName: "Premium/Account"), color: self.presentationData.theme.list.itemAccentColor),
+            icon: NagramLoginOptionsButton.defaultIcon(color: self.presentationData.theme.list.itemAccentColor),
             accessibilityLabel: accessibilityLabel
         )
         button.accessibilityIdentifier = "Auth.PhoneEntry.NagramAccountButton"
