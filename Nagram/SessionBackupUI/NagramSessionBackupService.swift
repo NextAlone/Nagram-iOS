@@ -89,7 +89,14 @@ public func nagramExportActiveSessionRecord(context: AccountContext, storage: Na
     }
 }
 
-public func nagramImportSessionString(context: AccountContext, sessionString: String) -> Signal<AccountRecordId, NagramSessionBackupServiceError> {
+// Import only needs the shared context, so it also works before any account
+// exists — that is what makes it reachable from the login screen on a fresh
+// install.
+// `makeCurrent` mirrors what upstream does when a phone login completes: it
+// marks the new record current and clears the pending unauthorized account, so
+// the login flow ends by itself. Adding an account from settings passes false
+// and switches through `switchToAccount` instead.
+public func nagramImportSessionString(sharedContext: SharedAccountContext, sessionString: String, makeCurrent: Bool = false) -> Signal<AccountRecordId, NagramSessionBackupServiceError> {
     let session: PyrogramSessionString
     do {
         session = try PyrogramSessionString(decoding: sessionString)
@@ -97,8 +104,8 @@ public func nagramImportSessionString(context: AccountContext, sessionString: St
         return .fail(.invalidSessionString("\(error)"))
     }
 
-    let accountManager = context.sharedContext.accountManager
-    return context.sharedContext.activeAccountContexts
+    let accountManager = sharedContext.accountManager
+    return sharedContext.activeAccountContexts
     |> take(1)
     |> castError(NagramSessionBackupServiceError.self)
     |> mapToSignal { _, accounts, _ -> Signal<AccountRecordId, NagramSessionBackupServiceError> in
@@ -134,12 +141,17 @@ public func nagramImportSessionString(context: AccountContext, sessionString: St
                 }
             }
             attributes.append(.sortOrder(AccountSortOrderAttribute(order: maxSortOrder + 1)))
-            return transaction.createRecord(attributes)
+            let recordId = transaction.createRecord(attributes)
+            if makeCurrent {
+                transaction.setCurrentId(recordId)
+                transaction.removeAuth()
+            }
+            return recordId
         }
         |> castError(NagramSessionBackupServiceError.self)
     }
 }
 
-public func nagramRestoreBackupRecord(context: AccountContext, record: NagramSessionBackupRecord) -> Signal<AccountRecordId, NagramSessionBackupServiceError> {
-    return nagramImportSessionString(context: context, sessionString: record.sessionString)
+public func nagramRestoreBackupRecord(sharedContext: SharedAccountContext, record: NagramSessionBackupRecord, makeCurrent: Bool = false) -> Signal<AccountRecordId, NagramSessionBackupServiceError> {
+    return nagramImportSessionString(sharedContext: sharedContext, sessionString: record.sessionString, makeCurrent: makeCurrent)
 }

@@ -387,3 +387,5 @@
 "Nagram.SessionBackup.Delete" = "Delete";
 "Nagram.SessionBackup.DeleteAll" = "Delete All Backups";
 "Nagram.SessionBackup.DeleteAll.Warning" = "This removes every saved session backup from the keychain. Accounts you are signed in to are not affected.";
+"Nagram.SessionBackup.Import.Short" = "Import Session";
+"Nagram.SessionBackup.Saved.RestoreFooter" = "Tap a saved backup to sign in with it.";

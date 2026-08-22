@@ -4,11 +4,32 @@
 
 ## 入口
 
+### 已登录：设置页
+
 设置 → Nagram → 其他 → 会话备份（`Nagram.SessionBackup`）。页面提供三件事：
 
 - 导出当前账号为 Pyrogram 会话串（复制到剪贴板）。
 - 粘贴会话串新增账号，成功后自动切换到该账号。
 - 把当前账号存入钥匙串（iCloud 钥匙串同步 / 仅本机），并可恢复、复制、删除。
+
+### 首次启动：登录页
+
+全新安装时还没有账号，设置页不可达，所以登录首屏（Splash，"Start with Nagram" 那一屏）
+右上角提供"导入会话"按钮，打开只做导入的精简页面：粘贴会话串，或直接点选钥匙串里已同步过来的备份。
+
+两处入口的差别只在于上下文：
+
+| | 设置页 | 登录页 |
+| --- | --- | --- |
+| 依赖 | `AccountContext` | 仅 `SharedAccountContext` |
+| 导入后 | `switchToAccount` 切号 | `setCurrentId` + `removeAuth`，登录流程自行结束 |
+| 功能 | 导出 + 导入 + 钥匙串管理 | 仅导入 / 恢复 |
+
+导入后不采用会话串里的 `apiId`（原因见下），登录页那条路径与上游手机号登录完成时做的事一致
+（见 `TelegramCore/Sources/Authorization.swift`）。
+
+为什么按钮放在 Splash 而不是手机号输入页：首次启动时 Splash 是导航栈根，手机号页是被 push 上去的，
+左上角是返回按钮；只有在"已有其他账号、再加一个"时那个位置才是关闭按钮。占用它会让用户退不回 Splash。
 
 ## Pyrogram 会话串
 
@@ -64,10 +85,19 @@ Nagram 的 api_id 运行。
 ## 代码位置
 
 - `Nagram/SessionBackup/` — 纯数据层：会话串编解码、信封、钥匙串。零 Telegram 依赖，可独立编译测试。
-- `Nagram/SettingsUI/NagramSessionBackupService.swift` — 桥接账号存储。导出走上游
+- `Nagram/SessionBackupUI/NagramSessionBackupService.swift` — 桥接账号存储。导出走上游
   `accountBackupData(postbox:)`，导入通过 `AccountBackupData` + `transaction.createRecord`，
-  不重复实现 MTProto 细节。
-- `Nagram/SettingsUI/NagramSessionBackupController.swift` — 设置页 UI。
+  不重复实现 MTProto 细节。导入只需要 `SharedAccountContext`，这是登录页也能用的前提。
+- `Nagram/SessionBackupUI/NagramSessionBackupController.swift` — 设置页 UI（需要账号）。
+- `Nagram/SessionBackupUI/NagramSessionImportController.swift` — 登录页 UI（无账号，
+  用 `ItemListController` 不带 context 的构造器）。
+
+UI 层单独成模块而不是塞进 `Nagram/SettingsUI`，是为了让 `AuthorizationUI` 依赖它时
+不会把整个设置页（含 FaceScanScreen、SliderComponent 等）拖进登录流程。
+
+上游改动只有三处，均带 `// MARK: NAGRAM`：`AuthorizationUI/BUILD`、
+`AuthorizationSequenceSplashController.swift`（按钮与回调）、
+`AuthorizationSequenceController.swift`（呈现导入页，那里才有 `SharedAccountContext`）。
 
 ## 测试
 

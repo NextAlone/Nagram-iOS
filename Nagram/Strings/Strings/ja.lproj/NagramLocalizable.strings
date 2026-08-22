@@ -387,3 +387,5 @@
 "Nagram.SessionBackup.Delete" = "削除";
 "Nagram.SessionBackup.DeleteAll" = "すべてのバックアップを削除";
 "Nagram.SessionBackup.DeleteAll.Warning" = "キーチェーンに保存されたすべてのセッションバックアップを削除します。ログイン中のアカウントには影響しません。";
+"Nagram.SessionBackup.Import.Short" = "セッションを読み込む";
+"Nagram.SessionBackup.Saved.RestoreFooter" = "保存済みのバックアップをタップするとそれでログインします。";

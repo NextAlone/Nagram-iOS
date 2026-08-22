@@ -349,7 +349,7 @@ public func nagramSessionBackupController(context: AccountContext) -> ViewContro
         confirm(ngI18n("Nagram.SessionBackup.Import.Action", lang), ngI18n("Nagram.SessionBackup.Import.Warning", lang), ngI18n("Nagram.SessionBackup.Import.Confirm", lang), {
             isWorking = true
             bump()
-            importDisposable.set((nagramImportSessionString(context: context, sessionString: sessionString)
+            importDisposable.set((nagramImportSessionString(sharedContext: context.sharedContext, sessionString: sessionString)
             |> deliverOnMainQueue).start(next: { recordId in
                 isWorking = false
                 importText = ""
@@ -378,7 +378,7 @@ public func nagramSessionBackupController(context: AccountContext) -> ViewContro
                     }
                     isWorking = true
                     bump()
-                    importDisposable.set((nagramRestoreBackupRecord(context: context, record: record)
+                    importDisposable.set((nagramRestoreBackupRecord(sharedContext: context.sharedContext, record: record)
                     |> deliverOnMainQueue).start(next: { recordId in
                         isWorking = false
                         bump()

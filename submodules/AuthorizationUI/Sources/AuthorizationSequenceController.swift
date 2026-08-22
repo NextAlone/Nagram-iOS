@@ -2,6 +2,8 @@ import Foundation
 import UIKit
 import AsyncDisplayKit
 import Display
+import NagramSessionBackupUI
+import NagramStrings
 import TelegramCore
 import SwiftSignalKit
 import MtProtoKit
@@ -141,6 +143,18 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
             controller = currentController
         } else {
             controller = AuthorizationSequenceSplashController(accountManager: self.sharedContext.accountManager, account: self.account, theme: self.presentationData.theme)
+            // MARK: NAGRAM — 首次启动时用 Pyrogram 会话串导入账号（与 iebb/mithka 双向兼容）。
+            // Presented from the splash controller, not from self: this class is a
+            // NavigationController (a UINavigationController), which has no
+            // present(_:in:) — same reason the proxy settings screen below is
+            // presented from its child controller.
+            controller.setNagramImportSession(title: ngI18n("Nagram.SessionBackup.Import.Short", self.presentationData.strings.baseLanguageCode), action: { [weak self, weak controller] in
+                guard let strongSelf = self, let controller else {
+                    return
+                }
+                let importController = nagramSessionImportController(sharedContext: strongSelf.sharedContext, presentationData: strongSelf.presentationData)
+                controller.present(importController, in: .window(.root), with: ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
+            })
             controller.nextPressed = { [weak self] strings in
                 if let strongSelf = self {
                     if let strings = strings {

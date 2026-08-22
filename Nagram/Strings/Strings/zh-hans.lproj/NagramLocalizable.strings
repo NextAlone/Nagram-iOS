@@ -387,3 +387,5 @@
 "Nagram.SessionBackup.Delete" = "删除";
 "Nagram.SessionBackup.DeleteAll" = "删除所有备份";
 "Nagram.SessionBackup.DeleteAll.Warning" = "将从钥匙串中删除所有已保存的会话备份。已登录的账号不受影响。";
+"Nagram.SessionBackup.Import.Short" = "导入会话";
+"Nagram.SessionBackup.Saved.RestoreFooter" = "点按已保存的备份即可用它登录。";

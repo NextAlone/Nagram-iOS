@@ -387,3 +387,5 @@
 "Nagram.SessionBackup.Delete" = "刪除";
 "Nagram.SessionBackup.DeleteAll" = "刪除所有備份";
 "Nagram.SessionBackup.DeleteAll.Warning" = "將從鑰匙圈中刪除所有已儲存的工作階段備份。已登入的帳號不受影響。";
+"Nagram.SessionBackup.Import.Short" = "匯入工作階段";
+"Nagram.SessionBackup.Saved.RestoreFooter" = "點按已儲存的備份即可用它登入。";

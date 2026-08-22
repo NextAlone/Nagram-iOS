@@ -29,6 +29,11 @@ public final class AuthorizationSequenceSplashController: ViewController {
     private let activateLocalizationDisposable = MetaDisposable()
     
     private let startButton: SolidRoundedButtonNode
+
+    // MARK: NAGRAM — 首次启动导入会话入口。Splash 只持有按钮和回调，
+    // 具体界面由 AuthorizationSequenceController 呈现（那里才有 SharedAccountContext）。
+    private let nagramImportButton: HighlightableButtonNode
+    private var nagramImportPressed: (() -> Void)?
     
     init(accountManager: AccountManager<TelegramAccountManagerTypes>, account: UnauthorizedAccount, theme: PresentationTheme) {
         self.accountManager = accountManager
@@ -76,6 +81,11 @@ public final class AuthorizationSequenceSplashController: ViewController {
         self.startButton = SolidRoundedButtonNode(title: "Start with Nagram", theme: SolidRoundedButtonTheme(theme: theme), glass: false, height: 50.0, cornerRadius: 50.0 * 0.5, isShimmering: true)
         self.startButton.accessibilityIdentifier = "Auth.Welcome.StartButton"
 
+        // MARK: NAGRAM
+        self.nagramImportButton = HighlightableButtonNode()
+        self.nagramImportButton.accessibilityIdentifier = "Auth.Welcome.NagramImportSessionButton"
+        self.nagramImportButton.isHidden = true
+
         super.init(navigationBarPresentationData: nil)
         
         self._hasGlassStyle = true
@@ -83,6 +93,9 @@ public final class AuthorizationSequenceSplashController: ViewController {
         self.supportedOrientations = ViewControllerSupportedOrientations(regularSize: .all, compactSize: .portrait)
         
         self.statusBar.statusBarStyle = theme.intro.statusBarStyle.style
+
+        // MARK: NAGRAM
+        self.nagramImportButton.addTarget(self, action: #selector(self.nagramImportButtonPressed), forControlEvents: .touchUpInside)
         
         self.controller.startMessaging = { [weak self] in
             self?.activateLocalization("en")
@@ -106,6 +119,21 @@ public final class AuthorizationSequenceSplashController: ViewController {
     required init(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+
+    // MARK: NAGRAM — 由 AuthorizationSequenceController 在构造后调用，提供标题与动作。
+    func setNagramImportSession(title: String, action: @escaping () -> Void) {
+        self.nagramImportPressed = action
+        self.nagramImportButton.setTitle(title, with: Font.medium(15.0), with: self.theme.list.itemAccentColor, for: .normal)
+        self.nagramImportButton.isHidden = false
+        if let layout = self.validLayout {
+            self.containerLayoutUpdated(layout, transition: .immediate)
+        }
+    }
+
+    // MARK: NAGRAM
+    @objc private func nagramImportButtonPressed() {
+        self.nagramImportPressed?()
+    }
     
     deinit {
         self.activateLocalizationDisposable.dispose()
@@ -113,6 +141,8 @@ public final class AuthorizationSequenceSplashController: ViewController {
     
     public override func loadDisplayNode() {
         self.displayNode = AuthorizationSequenceSplashControllerNode(theme: self.theme)
+        // MARK: NAGRAM
+        self.displayNode.addSubnode(self.nagramImportButton)
         self.displayNodeDidLoad()
     }
     
@@ -180,6 +210,16 @@ public final class AuthorizationSequenceSplashController: ViewController {
         self.controllerNode.containerLayoutUpdated(layout, navigationBarHeight: 0.0, transition: transition)
         
         self.addControllerIfNeeded()
+
+        // MARK: NAGRAM — RMIntro 的 view 是后加进来的，按钮要重新提到最上层再摆位。
+        if !self.nagramImportButton.isHidden {
+            self.displayNode.view.bringSubviewToFront(self.nagramImportButton.view)
+            let buttonSize = self.nagramImportButton.measure(CGSize(width: layout.size.width, height: 44.0))
+            let topInset = (layout.statusBarHeight ?? 20.0) + 8.0
+            let rightInset = max(layout.safeInsets.right, 16.0)
+            self.nagramImportButton.frame = CGRect(origin: CGPoint(x: layout.size.width - rightInset - buttonSize.width, y: topInset), size: CGSize(width: buttonSize.width, height: 44.0))
+        }
+
         if case .immediate = transition {
             self.controller.view.frame = controllerFrame
         } else {
