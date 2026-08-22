@@ -389,3 +389,5 @@
 "Nagram.SessionBackup.DeleteAll.Warning" = "This removes every saved session backup from the keychain. Accounts you are signed in to are not affected.";
 "Nagram.SessionBackup.Import.Short" = "Import Session";
 "Nagram.SessionBackup.Saved.RestoreFooter" = "Tap a saved backup to sign in with it.";
+"Nagram.QrLogin.Title" = "Log in by QR Code";
+"Nagram.QrLogin.Text" = "1. Open Telegram on a device where you are already signed in.\n2. Go to Settings → Devices → Link Desktop Device.\n3. Point that device at this code to confirm.\n\nLong press the icon on the previous screen to log in with a session string instead.";

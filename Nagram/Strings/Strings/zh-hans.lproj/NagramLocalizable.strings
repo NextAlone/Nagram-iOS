@@ -389,3 +389,5 @@
 "Nagram.SessionBackup.DeleteAll.Warning" = "将从钥匙串中删除所有已保存的会话备份。已登录的账号不受影响。";
 "Nagram.SessionBackup.Import.Short" = "导入会话";
 "Nagram.SessionBackup.Saved.RestoreFooter" = "点按已保存的备份即可用它登录。";
+"Nagram.QrLogin.Title" = "扫码登录";
+"Nagram.QrLogin.Text" = "1. 在已登录的设备上打开 Telegram。\n2. 进入 设置 → 设备 → 关联桌面设备。\n3. 用该设备扫描此二维码并确认。\n\n在上一屏长按图标可改用会话串登录。";

@@ -389,3 +389,5 @@
 "Nagram.SessionBackup.DeleteAll.Warning" = "將從鑰匙圈中刪除所有已儲存的工作階段備份。已登入的帳號不受影響。";
 "Nagram.SessionBackup.Import.Short" = "匯入工作階段";
 "Nagram.SessionBackup.Saved.RestoreFooter" = "點按已儲存的備份即可用它登入。";
+"Nagram.QrLogin.Title" = "掃碼登入";
+"Nagram.QrLogin.Text" = "1. 在已登入的裝置上開啟 Telegram。\n2. 進入 設定 → 裝置 → 連結桌面裝置。\n3. 用該裝置掃描此二維碼並確認。\n\n在上一畫面長按圖示可改用工作階段字串登入。";

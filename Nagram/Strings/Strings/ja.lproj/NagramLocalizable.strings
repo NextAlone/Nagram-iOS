@@ -389,3 +389,5 @@
 "Nagram.SessionBackup.DeleteAll.Warning" = "キーチェーンに保存されたすべてのセッションバックアップを削除します。ログイン中のアカウントには影響しません。";
 "Nagram.SessionBackup.Import.Short" = "セッションを読み込む";
 "Nagram.SessionBackup.Saved.RestoreFooter" = "保存済みのバックアップをタップするとそれでログインします。";
+"Nagram.QrLogin.Title" = "QRコードでログイン";
+"Nagram.QrLogin.Text" = "1. すでにログイン済みの端末で Telegram を開きます。\n2. 設定 → デバイス → デスクトップデバイスをリンク を開きます。\n3. その端末でこのコードを読み取って確認します。\n\n前の画面でアイコンを長押しすると、セッション文字列でログインできます。";
