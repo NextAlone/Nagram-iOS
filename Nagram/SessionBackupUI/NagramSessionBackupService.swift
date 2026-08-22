@@ -23,6 +23,7 @@ public enum NagramSessionBackupServiceError: Error, CustomStringConvertible {
     case invalidAuthKey(Int)
     case invalidSessionString(String)
     case alreadyLoggedIn(Int64)
+    case datacenterUnreachable(sessionDatacenter: Int32, homeDatacenter: Int32)
 
     public var description: String {
         switch self {
@@ -34,6 +35,8 @@ public enum NagramSessionBackupServiceError: Error, CustomStringConvertible {
             return message
         case let .alreadyLoggedIn(userId):
             return "User \(userId) is already signed in on this device."
+        case let .datacenterUnreachable(sessionDatacenter, homeDatacenter):
+            return "This session's key belongs to datacenter \(sessionDatacenter), but the account lives on datacenter \(homeDatacenter). Telegram answers every request for it — including the authorization transfer that would move it — with USER_MIGRATE, so the session cannot be used from here. Export a new session string from the account's own datacenter."
         }
     }
 }
@@ -141,15 +144,132 @@ public func nagramImportSessionString(sharedContext: SharedAccountContext, sessi
                 }
             }
             attributes.append(.sortOrder(AccountSortOrderAttribute(order: maxSortOrder + 1)))
-            let recordId = transaction.createRecord(attributes)
-            if makeCurrent {
-                transaction.setCurrentId(recordId)
-                transaction.removeAuth()
-            }
-            return recordId
+            // Deliberately not current yet. Switching now tears down the login
+            // flow, which deallocates the screen that owns this signal and
+            // cancels the migration below before it can finish.
+            return transaction.createRecord(attributes)
         }
         |> castError(NagramSessionBackupServiceError.self)
+        |> mapToSignal { recordId -> Signal<AccountRecordId, NagramSessionBackupServiceError> in
+            return nagramMigrateImportedAccount(sharedContext: sharedContext, recordId: recordId, session: session)
+        }
+        |> mapToSignal { finalRecordId -> Signal<AccountRecordId, NagramSessionBackupServiceError> in
+            guard makeCurrent else {
+                return .single(finalRecordId)
+            }
+            return accountManager.transaction { transaction -> AccountRecordId in
+                transaction.setCurrentId(finalRecordId)
+                transaction.removeAuth()
+                return finalRecordId
+            }
+            |> castError(NagramSessionBackupServiceError.self)
+        }
     }
+}
+
+// A session string names the datacenter its key belongs to, which is not
+// always the datacenter the account is homed on. When they differ every
+// request comes back USER_MIGRATE_N and upstream has no handler, so the
+// account would sit at "Updating..." forever. Here the freshly imported
+// account is asked where it really lives; if that is elsewhere, MTProto is
+// told to authorize that datacenter (it does so by exporting authorization
+// from the imported one), and the account is rebuilt around the correct
+// master datacenter. The original key is kept as an additional datacenter key.
+private func nagramMigrateImportedAccount(
+    sharedContext: SharedAccountContext,
+    recordId: AccountRecordId,
+    session: PyrogramSessionString
+) -> Signal<AccountRecordId, NagramSessionBackupServiceError> {
+    let accountManager = sharedContext.accountManager
+    Logger.shared.log("NagramMigration", "imported record \(recordId.int64), waiting for it to load")
+    let loadedAccount = sharedContext.activeAccountContexts
+    |> map { _, accounts, _ -> Account? in
+        return accounts.first(where: { $0.0 == recordId })?.1.account
+    }
+    |> filter { $0 != nil }
+    |> take(1)
+
+    return loadedAccount
+    |> castError(NagramSessionBackupServiceError.self)
+    |> mapToSignal { account -> Signal<AccountRecordId, NagramSessionBackupServiceError> in
+        guard let account else {
+            Logger.shared.log("NagramMigration", "account context never arrived")
+            return .single(recordId)
+        }
+        Logger.shared.log("NagramMigration", "account loaded, probing (session dc \(session.dcId))")
+        return nagramHomeDatacenterId(network: account.network)
+        |> castError(NagramSessionBackupServiceError.self)
+        |> mapToSignal { homeDatacenterId -> Signal<AccountRecordId, NagramSessionBackupServiceError> in
+            guard let homeDatacenterId, homeDatacenterId != session.dcId else {
+                Logger.shared.log("NagramMigration", "no migration needed (session dc \(session.dcId))")
+                return .single(recordId)
+            }
+            Logger.shared.log("NagramMigration", "migrating from dc \(session.dcId) to home dc \(homeDatacenterId)")
+            return nagramAuthorizedDatacenterKey(network: account.network, datacenterId: homeDatacenterId, masterDatacenterId: session.dcId)
+            |> castError(NagramSessionBackupServiceError.self)
+            |> mapToSignal { migrated -> Signal<AccountRecordId, NagramSessionBackupServiceError> in
+                guard let migrated else {
+                    // Telegram redirects even auth.exportAuthorization to the home
+                    // datacenter, so there is no way to bootstrap authorization
+                    // there from here. Drop the record rather than leaving a
+                    // permanently reconnecting account behind.
+                    Logger.shared.log("NagramMigration", "home dc unreachable from dc \(session.dcId); discarding imported record")
+                    return accountManager.transaction { transaction -> Void in
+                        transaction.updateRecord(recordId, { _ in return nil })
+                    }
+                    |> castError(NagramSessionBackupServiceError.self)
+                    |> mapToSignal { _ -> Signal<AccountRecordId, NagramSessionBackupServiceError> in
+                        return .fail(.datacenterUnreachable(sessionDatacenter: session.dcId, homeDatacenter: homeDatacenterId))
+                    }
+                }
+                Logger.shared.log("NagramMigration", "authorized home dc \(homeDatacenterId), rebuilding record")
+                let peerId = PeerId(namespace: Namespaces.Peer.CloudUser, id: PeerId.Id._internalFromInt64Value(session.userId))
+                let backupData = AccountBackupData(
+                    masterDatacenterId: homeDatacenterId,
+                    peerId: peerId.toInt64(),
+                    masterDatacenterKey: migrated.key,
+                    masterDatacenterKeyId: migrated.keyId,
+                    notificationEncryptionKeyId: nil,
+                    notificationEncryptionKey: nil,
+                    additionalDatacenterKeys: [
+                        session.dcId: AccountBackupData.DatacenterKey(
+                            id: session.dcId,
+                            keyId: nagramAuthKeyId(authKey: session.authKey),
+                            key: session.authKey
+                        )
+                    ]
+                )
+                return accountManager.transaction { transaction -> AccountRecordId in
+                    var attributes: [TelegramAccountManagerTypes.Attribute] = [
+                        .backupData(AccountBackupDataAttribute(data: backupData))
+                    ]
+                    if session.testMode {
+                        attributes.append(.environment(AccountEnvironmentAttribute(environment: .test)))
+                    }
+                    var sortOrder: Int32 = 0
+                    for record in transaction.getRecords() where record.id == recordId {
+                        for attribute in record.attributes {
+                            if case let .sortOrder(value) = attribute {
+                                sortOrder = value.order
+                            }
+                        }
+                    }
+                    attributes.append(.sortOrder(AccountSortOrderAttribute(order: sortOrder)))
+                    let migratedRecordId = transaction.createRecord(attributes)
+                    transaction.updateRecord(recordId, { _ in
+                        return nil
+                    })
+                    Logger.shared.log("NagramMigration", "rebuilt as record \(migratedRecordId.int64) on dc \(homeDatacenterId)")
+                    return migratedRecordId
+                }
+                |> castError(NagramSessionBackupServiceError.self)
+            }
+        }
+    }
+    // Never strand the caller: if the account does not load, or the datacenter
+    // never authorizes, keep the account as imported and let it report its own
+    // connection state.
+    |> timeout(120.0, queue: Queue.concurrentDefaultQueue(), alternate: .single(recordId))
 }
 
 public func nagramRestoreBackupRecord(sharedContext: SharedAccountContext, record: NagramSessionBackupRecord, makeCurrent: Bool = false) -> Signal<AccountRecordId, NagramSessionBackupServiceError> {
