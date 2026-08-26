@@ -359,3 +359,15 @@
 "Nagram.RecentStickerLimit.120" = "120";
 "Nagram.RecentStickerLimit.150" = "150";
 "Nagram.RecentStickerLimit.200" = "200";
+
+"Nagram.InviteLinks.BulkRevoke" = "批次撤銷邀請連結…";
+"Nagram.InviteLinks.ScopeInfo" = "僅處理額外的非永久邀請連結，主連結不會受到影響。";
+"Nagram.InviteLinks.RevokeAll" = "撤銷所有連結";
+"Nagram.InviteLinks.RevokeUnavailable" = "撤銷所有不可用連結";
+"Nagram.InviteLinks.ConfirmAll" = "將撤銷你建立的全部 %@ 條額外邀請連結。主連結及其他永久連結不會受到影響。此操作無法復原。";
+"Nagram.InviteLinks.ConfirmUnavailable" = "將撤銷 %@ 條已過期或達到使用次數上限的額外邀請連結。主連結、其他永久連結和仍可用的額外連結不會受到影響。此操作無法復原。";
+"Nagram.InviteLinks.NoAdditional" = "沒有可撤銷的額外邀請連結。";
+"Nagram.InviteLinks.NoUnavailable" = "沒有不可用的額外邀請連結。";
+"Nagram.InviteLinks.FetchFailed" = "無法載入完整的額外邀請連結列表，請稍後再試。";
+"Nagram.InviteLinks.Success" = "已撤銷 %@ 條額外邀請連結。";
+"Nagram.InviteLinks.PartialFailure" = "已撤銷 %1$@ 條，另有 %2$@ 條撤銷失敗。列表正在重新整理。";

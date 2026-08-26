@@ -359,3 +359,15 @@
 "Nagram.RecentStickerLimit.120" = "120";
 "Nagram.RecentStickerLimit.150" = "150";
 "Nagram.RecentStickerLimit.200" = "200";
+
+"Nagram.InviteLinks.BulkRevoke" = "招待リンクを一括取り消し…";
+"Nagram.InviteLinks.ScopeInfo" = "追加の非永久招待リンクのみを処理します。メインリンクには影響しません。";
+"Nagram.InviteLinks.RevokeAll" = "すべてのリンクを取り消す";
+"Nagram.InviteLinks.RevokeUnavailable" = "利用不可のリンクをすべて取り消す";
+"Nagram.InviteLinks.ConfirmAll" = "作成した追加の招待リンク %@ 件をすべて取り消しますか？メインリンクとその他の永久リンクには影響しません。この操作は取り消せません。";
+"Nagram.InviteLinks.ConfirmUnavailable" = "期限切れまたは使用回数の上限に達した追加の招待リンク %@ 件を取り消しますか？メインリンク、その他の永久リンク、利用可能な追加リンクには影響しません。この操作は取り消せません。";
+"Nagram.InviteLinks.NoAdditional" = "取り消せる追加の招待リンクはありません。";
+"Nagram.InviteLinks.NoUnavailable" = "利用不可の追加招待リンクはありません。";
+"Nagram.InviteLinks.FetchFailed" = "追加の招待リンクの完全な一覧を読み込めませんでした。しばらくしてからもう一度お試しください。";
+"Nagram.InviteLinks.Success" = "追加の招待リンク %@ 件を取り消しました。";
+"Nagram.InviteLinks.PartialFailure" = "%1$@ 件を取り消しました。%2$@ 件は取り消せませんでした。一覧を更新しています。";
