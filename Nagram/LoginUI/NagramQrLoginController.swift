@@ -179,6 +179,7 @@ public final class NagramQrLoginController: ViewController {
     override public func loadDisplayNode() {
         self.displayNode = NagramQrLoginControllerNode(presentationData: self.presentationData)
         self.displayNodeDidLoad()
+        self.subscribeToTokenEvents()
         self.refreshToken()
     }
 
@@ -186,6 +187,14 @@ public final class NagramQrLoginController: ViewController {
         super.containerLayoutUpdated(layout, transition: transition)
         self.validLayout = layout
         self.controllerNode.containerLayoutUpdated(layout, navigationBarHeight: self.navigationLayout(layout: layout).navigationFrame.maxY, transition: transition)
+    }
+
+    private func subscribeToTokenEvents() {
+        let account = self.account
+        self.tokenEventsDisposable.set((account.updateLoginTokenEvents
+        |> deliverOnMainQueue).startStrict(next: { [weak self] _ in
+            self?.refreshToken()
+        }))
     }
 
     private func refreshToken() {
@@ -226,10 +235,7 @@ public final class NagramQrLoginController: ViewController {
                 strongSelf.tokenDisposable.set(nil)
                 strongSelf.account = account
                 strongSelf.accountUpdated(account)
-                strongSelf.tokenEventsDisposable.set((account.updateLoginTokenEvents
-                |> deliverOnMainQueue).startStrict(next: { [weak self] _ in
-                    self?.refreshToken()
-                }))
+                strongSelf.subscribeToTokenEvents()
                 strongSelf.refreshToken()
             case .loggedIn, .passwordRequested:
                 // Accepted. The sequence controller advances the flow and

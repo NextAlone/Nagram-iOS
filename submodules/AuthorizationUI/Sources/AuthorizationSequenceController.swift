@@ -1294,10 +1294,24 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
         }
         // The sheet and these screens share the modal presentation context, so
         // presenting while it is still dismissing loses the new controller.
-        // Let the dismissal finish first.
+        // Present from the sheet's completion callback, after animateOut ends.
+        var actionAfterDismissal: (() -> Void)?
+        actionSheet.dismissed = { cancelled in
+            let next = actionAfterDismissal
+            actionAfterDismissal = nil
+            guard !cancelled, let next else {
+                return
+            }
+            // ActionSheetController removes itself immediately after invoking
+            // this callback. Defer one turn so the next modal cannot be removed
+            // by that final dismissal.
+            Queue.mainQueue().async {
+                next()
+            }
+        }
         let dismissThen: (@escaping () -> Void) -> Void = { next in
+            actionAfterDismissal = next
             dismissAction()
-            Queue.mainQueue().after(0.2, next)
         }
         var items: [ActionSheetItem] = [
             ActionSheetTextItem(title: ngI18n("Nagram.LoginOptions.Title", language)),
