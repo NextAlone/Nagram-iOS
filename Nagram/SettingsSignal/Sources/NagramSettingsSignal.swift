@@ -82,11 +82,20 @@ public func nagramGlassTransparencySignal() -> Signal<Int32, NoError> {
     let initial = Signal<Int32, NoError>.single(0)
     let changes = Signal<Int32, NoError> { subscriber in
         var version: Int32 = 0
+        var glassTransparencyMode = NagramSettings.shared.glassTransparencyMode
+        var glassTransparencyPercent = NagramSettings.shared.glassTransparencyPercent
         let defaultsObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
             object: UserDefaults.standard,
             queue: nil
         ) { _ in
+            let updatedMode = NagramSettings.shared.glassTransparencyMode
+            let updatedPercent = NagramSettings.shared.glassTransparencyPercent
+            guard updatedMode != glassTransparencyMode || updatedPercent != glassTransparencyPercent else {
+                return
+            }
+            glassTransparencyMode = updatedMode
+            glassTransparencyPercent = updatedPercent
             version += 1
             subscriber.putNext(version)
         }
