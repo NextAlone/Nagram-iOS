@@ -114,6 +114,9 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
     private var nagramLoginButton: NagramLoginOptionsButton?
     private var nagramLoginOptionsPressed: (() -> Void)?
     private var nagramPendingBadgeCount: Int = 0
+    // Recounted on every appearance: the keychain can gain an account while this
+    // screen is up (iCloud sync) and loses one whenever the user restores it.
+    var nagramRefreshLoginBadge: (() -> Void)?
 
     // MARK: NAGRAM — 点按打开菜单。
     func setNagramLoginOptions(accessibilityLabel: String, action: @escaping () -> Void) {
@@ -375,6 +378,9 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
     private var animatingIn = false
     override public func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        
+        // MARK: NAGRAM
+        self.nagramRefreshLoginBadge?()
         
         if self.shouldAnimateIn {
             self.animatingIn = true

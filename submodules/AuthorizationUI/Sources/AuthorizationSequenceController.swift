@@ -146,17 +146,19 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
             controller = AuthorizationSequenceSplashController(accountManager: self.sharedContext.accountManager, account: self.account, theme: self.presentationData.theme)
             // MARK: NAGRAM — 账号入口：点按打开菜单（扫码登录排第一）。
             // 界面从 splash 呈现，因为本类是 NavigationController，没有 present(_:in:)。
-            // MARK: NAGRAM — 账号入口：点按打开菜单（扫码登录排第一）。
-            // 界面从 splash 呈现，因为本类是 NavigationController，没有 present(_:in:)。
             controller.setNagramLoginOptions(accessibilityLabel: ngI18n("Nagram.LoginOptions.Title", self.presentationData.strings.baseLanguageCode), action: { [weak self, weak controller] in
                 guard let strongSelf = self, let controller else {
                     return
                 }
                 strongSelf.nagramPresentLoginOptions(from: controller)
             })
-            self.nagramRefreshRestorableBackups { [weak controller] count in
-                controller?.setNagramLoginBadgeCount(count)
+            let nagramRefreshBadge: () -> Void = { [weak self, weak controller] in
+                self?.nagramRefreshRestorableBackups { count in
+                    controller?.setNagramLoginBadgeCount(count)
+                }
             }
+            controller.nagramRefreshLoginBadge = nagramRefreshBadge
+            nagramRefreshBadge()
             controller.nextPressed = { [weak self] strings in
                 if let strongSelf = self {
                     if let strings = strings {
@@ -210,9 +212,13 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
                 }
                 strongSelf.nagramPresentLoginOptions(from: controller)
             })
-            self.nagramRefreshRestorableBackups { [weak controller] count in
-                controller?.setNagramLoginBadgeCount(count)
+            let nagramRefreshBadge: () -> Void = { [weak self, weak controller] in
+                self?.nagramRefreshRestorableBackups { count in
+                    controller?.setNagramLoginBadgeCount(count)
+                }
             }
+            controller.nagramRefreshLoginBadge = nagramRefreshBadge
+            nagramRefreshBadge()
             controller.accountUpdated = { [weak self] updatedAccount in
                 guard let strongSelf = self else {
                     return

@@ -36,6 +36,9 @@ public final class AuthorizationSequenceSplashController: ViewController {
     private var nagramLoginButton: NagramLoginOptionsButton?
     private var nagramLoginOptionsPressed: (() -> Void)?
     private var nagramPendingBadgeCount: Int = 0
+    // Recounted on every appearance: the keychain can gain an account while this
+    // screen is up (iCloud sync) and loses one whenever the user restores it.
+    var nagramRefreshLoginBadge: (() -> Void)?
     
     init(accountManager: AccountManager<TelegramAccountManagerTypes>, account: UnauthorizedAccount, theme: PresentationTheme) {
         self.accountManager = accountManager
@@ -193,6 +196,8 @@ public final class AuthorizationSequenceSplashController: ViewController {
         super.viewWillAppear(animated)
         self.addControllerIfNeeded()
         self.controller.viewWillAppear(false)
+        // MARK: NAGRAM
+        self.nagramRefreshLoginBadge?()
     }
     
     public override func viewDidAppear(_ animated: Bool) {
