@@ -168,3 +168,14 @@ scripts/test-session-backup-interop.sh --mithka ../mithka
 Python 写的 Pyrogram 参考实现、以及从本地 Mithka 检出里**原样抽取**的 Dart 解码器
 （`Tests/NagramSessionBackupTests/Interop/extract_mithka_harness.py` 在临时目录生成，不会把
 Mithka 源码复制进本仓库）。没装 dart 或没有 Mithka 检出时，相应阶段会跳过。
+
+这一套用 `swiftc` 直接编译，不走 Bazel——`Nagram/SessionBackup/` 是零依赖的纯数据层，正好如此。
+迁移错误的解析在 TelegramCore 里（`Api` 与网络管线是 internal 的），所以另有一个 Bazel 测试目标：
+
+```bash
+python3 build-system/Make/Make.py --overrideXcodeVersion --cacheDir ~/telegram-bazel-cache \
+  test --configurationPath build-system/appstore-configuration.json --xcodeManagedCodesigning \
+  --target //Tests/NagramSessionMigrationTests:NagramSessionMigrationTests
+```
+
+它已登记进 `Tests/AllTests`，所以默认的 `Make.py test` 也会跑到。
