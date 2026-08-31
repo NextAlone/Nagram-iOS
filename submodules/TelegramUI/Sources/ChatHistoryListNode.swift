@@ -2487,6 +2487,16 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                         }
                     }
                 }
+
+                // MARK: NAGRAM — Telegram reloads keep the previous visible item stationary. Optionally keep following index 0 when the reload began at the newest-message edge.
+                if let strongSelf = self, NagramSettings.shared.stayAtLatestMessageAfterRefresh, updatedScrollPosition == nil, mode == .bubbles, case let .known(offset) = strongSelf.visibleContentOffset(), offset <= 0.9 {
+                    switch reason {
+                    case .Reload, .HoleReload:
+                        updatedScrollPosition = .index(subject: MessageHistoryScrollToSubject(index: .upperBound, quote: nil), position: .top(0.0), directionHint: .Up, animated: false, highlight: false, displayLink: false, setupReply: false)
+                    default:
+                        break
+                    }
+                }
                 
                 let rawTransition = preparedChatHistoryViewTransition(from: previous, to: processedView, reason: reason, reverse: reverse, chatLocation: chatLocation, source: source, controllerInteraction: controllerInteraction, scrollPosition: updatedScrollPosition, scrollAnimationCurve: scrollAnimationCurve, initialData: initialData?.initialData, keyboardButtonsMessage: keyboardButtonsMessage, cachedData: initialData?.cachedData, cachedDataMessages: initialData?.cachedDataMessages, readStateData: initialData?.readStateData, flashIndicators: flashIndicators, updatedMessageSelection: previousSelectedMessages != selectedMessages, messageTransitionNode: messageTransitionNode(), allUpdated: !isSavedMusic || forceUpdateAll)
                 var mappedTransition = mappedChatHistoryViewListTransition(context: context, chatLocation: chatLocation, associatedData: associatedData, controllerInteraction: controllerInteraction, mode: mode, lastHeaderId: lastHeaderId, isSavedMusic: isSavedMusic, canReorder: processedView.filteredEntries.count > 1 && canReorder, animateFromPreviousFilter: resetScrolling, transition: rawTransition, systemStyle: systemStyle)

@@ -17,6 +17,9 @@
 "Nagram.Section.Camera" = "カメラ";
 "Nagram.Section.Camera.Footer" = "添付メニュー内のカメラ入口とライブプレビュー。";
 "Nagram.Section.MessageDisplay" = "メッセージ表示";
+"Nagram.Section.MessageList" = "メッセージ一覧";
+"Nagram.StayAtLatestMessageAfterRefresh" = "更新後も最新メッセージを表示";
+"Nagram.StayAtLatestMessageAfterRefresh.Footer" = "オフでは Telegram 標準の動作に従い、更新中も現在のメッセージ位置を維持します。オンでは、最新メッセージ位置で始まった更新後も最新メッセージを表示し続けます。";
 "Nagram.HidePrivateChatActivities" = "個人チャットのアクティビティを非表示";
 "Nagram.TranslationProvider.llm" = "LLM";
 "Nagram.TranslationLLMSettings" = "LLM 設定";

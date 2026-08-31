@@ -216,6 +216,9 @@ public final class NagramSettings {
     /// 隐藏一对一私聊中对方的输入、上传和选贴纸状态
     @NagramDefault("nagram.hidePrivateChatActivities", false)
     public var hidePrivateChatActivities: Bool
+    /// 刷新消息窗口时，若刷新前位于最新消息边界，则继续保持在最新消息
+    @NagramDefault("nagram.stayAtLatestMessageAfterRefresh", false)
+    public var stayAtLatestMessageAfterRefresh: Bool
     /// 通话前确认（默认关 = 保持原生无确认）
     @NagramDefault("nagram.confirmCalls", false)
     public var confirmCalls: Bool

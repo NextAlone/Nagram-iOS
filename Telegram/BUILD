@@ -349,22 +349,48 @@ alternate_icon_folders = [
     "PremiumTurbo",
 ]
 
-composer_source_icon_folders = ["Nagram", "NagramBlock", "NagramColorful"]
+# MARK: NAGRAM — the IPA post-processor selects the matching icon set from the
+# active Xcode toolchain. The Xcode 26 Composer sources are supplied separately.
+composer_source_icon_folders = [
+    "Nagram",
+    "NagramBlock",
+    "NagramBlockBlack",
+    "NagramBlockBlue",
+    "NagramBlockNiello",
+    "NagramBlockPurple",
+    "NagramClassic",
+    "NagramColorful",
+    "NagramCyan",
+    "NagramBlack",
+]
 composer_build_icon_folders = ["NagramBuild"]
+composer_xcode26_icon_folders = [
+    "Nagram26",
+    "NagramBlock26",
+    "NagramBlockBlack26",
+    "NagramBlockBlue26",
+    "NagramBlockNiello26",
+    "NagramBlockPurple26",
+    "NagramClassic26",
+    "NagramColorful26",
+    "NagramCyan26",
+    "NagramBlack26",
+]
 
-filegroup(
-    name = "NagramPrecompiledComposerIcons",
-    srcs = glob(
-        ["Telegram-iOS/NagramPrecompiledComposerIcons/*"],
-        allow_empty = True,
-    ),
-)
+[
+    filegroup(
+        name = "{}_icon".format(name),
+        srcs = glob(
+            ["Telegram-iOS/{}.icon/**/*".format(name)],
+            allow_empty = True,
+        ),
+    ) for name in composer_xcode26_icon_folders
+]
 
 filegroup(
     name = "NagramIconPreviews",
     srcs = glob([
-        "Telegram-iOS/NagramBlock*.png",
-        "Telegram-iOS/NagramColorful*.png",
+        "Telegram-iOS/Nagram*.png",
     ]),
 )
 
@@ -1014,10 +1040,26 @@ sh_binary(
     name = "NagramFixComposerAlternateIcons",
     data = [
         ":Icons",
+        ":Nagram26_icon",
+        ":NagramBlock26_icon",
+        ":NagramBlockBlack26_icon",
+        ":NagramBlockBlue26_icon",
+        ":NagramBlockNiello26_icon",
+        ":NagramBlockPurple26_icon",
+        ":NagramClassic26_icon",
+        ":NagramColorful26_icon",
+        ":NagramCyan26_icon",
+        ":NagramBlack26_icon",
         ":Nagram_icon",
         ":NagramBlock_icon",
+        ":NagramBlockBlack_icon",
+        ":NagramBlockBlue_icon",
+        ":NagramBlockNiello_icon",
+        ":NagramBlockPurple_icon",
+        ":NagramClassic_icon",
         ":NagramColorful_icon",
-        ":NagramPrecompiledComposerIcons",
+        ":NagramCyan_icon",
+        ":NagramBlack_icon",
         "//submodules/LegacyComponents:LegacyComponentsAssets",
         "//submodules/PasswordSetupUI:PasswordSetupUIAssets",
         "//submodules/TelegramUI:TelegramUIAssets",

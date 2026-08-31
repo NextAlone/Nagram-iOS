@@ -148,6 +148,8 @@ private func nagramRowDeepLinkAliases(titleKey: String) -> [String] {
         return ["HideChannelBottomButton"]
     case "Nagram.HideSponsoredMessages":
         return ["HideSponsoredMessages", "DisableSponsoredMessages"]
+    case "Nagram.StayAtLatestMessageAfterRefresh":
+        return ["StayAtLatestMessageAfterRefresh", "KeepLatestMessageAfterRefresh", "ChatRefreshPosition"]
     case "Nagram.ChatListMessagePreviewStyle":
         return ["ChatListLines", "CompactMessagePreview", "MessagePreviewStyle"]
     case "Nagram.ChatListCompact":
@@ -435,6 +437,9 @@ private func nagramGroups(
             .toggle(titleKey: "Nagram.HideChannelBottomButton", get: { NagramSettings.shared.hideChannelBottomButton }, set: { NagramSettings.shared.hideChannelBottomButton = $0 }),
             .toggle(titleKey: "Nagram.HideSponsoredMessages", get: { NagramSettings.shared.hideSponsoredMessages }, set: { NagramSettings.shared.hideSponsoredMessages = $0 }),
             .toggle(titleKey: "Nagram.HidePrivateChatActivities", get: { NagramSettings.shared.hidePrivateChatActivities }, set: { NagramSettings.shared.hidePrivateChatActivities = $0 }),
+        ]),
+        NagramGroup(tab: .chat, headerKey: "Nagram.Section.MessageList", footerKey: "Nagram.StayAtLatestMessageAfterRefresh.Footer", rows: [
+            .toggle(titleKey: "Nagram.StayAtLatestMessageAfterRefresh", get: { NagramSettings.shared.stayAtLatestMessageAfterRefresh }, set: { NagramSettings.shared.stayAtLatestMessageAfterRefresh = $0 }),
         ]),
         NagramGroup(tab: .chat, headerKey: "Nagram.Section.Channels", footerKey: "Nagram.HideChannelForwardButton.Footer", rows: [
             .toggle(titleKey: "Nagram.HideChannelForwardButton", get: { NagramSettings.shared.wideChannelPosts }, set: { NagramSettings.shared.wideChannelPosts = $0 }),

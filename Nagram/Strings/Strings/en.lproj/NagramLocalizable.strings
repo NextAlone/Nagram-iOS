@@ -17,6 +17,9 @@
 "Nagram.Section.Camera" = "Camera";
 "Nagram.Section.Camera.Footer" = "Camera entry and live preview in the attachment menu.";
 "Nagram.Section.MessageDisplay" = "Message Display";
+"Nagram.Section.MessageList" = "Message List";
+"Nagram.StayAtLatestMessageAfterRefresh" = "Stay at Latest After Refresh";
+"Nagram.StayAtLatestMessageAfterRefresh.Footer" = "Off follows Telegram's native behavior and preserves the current message during refresh. When enabled, a refresh that begins at the latest-message edge continues showing the latest message.";
 "Nagram.HidePrivateChatActivities" = "Hide Activity Status in Private Chats";
 "Nagram.TranslationProvider.llm" = "LLM";
 "Nagram.TranslationLLMSettings" = "LLM Settings";

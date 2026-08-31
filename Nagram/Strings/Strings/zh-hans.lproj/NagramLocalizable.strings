@@ -17,6 +17,9 @@
 "Nagram.Section.Camera" = "相机";
 "Nagram.Section.Camera.Footer" = "聊天附件面板中的相机入口与实时预览。";
 "Nagram.Section.MessageDisplay" = "消息显示";
+"Nagram.Section.MessageList" = "消息列表";
+"Nagram.StayAtLatestMessageAfterRefresh" = "刷新后保持最新消息";
+"Nagram.StayAtLatestMessageAfterRefresh.Footer" = "关闭时遵循 Telegram 原生行为，刷新会保持当前消息位置；开启后，若刷新前位于最新消息边界，则继续显示最新消息。";
 "Nagram.HidePrivateChatActivities" = "隐藏私聊活动状态";
 "Nagram.TranslationProvider.llm" = "LLM";
 "Nagram.TranslationLLMSettings" = "LLM 设置";
