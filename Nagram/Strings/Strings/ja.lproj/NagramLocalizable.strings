@@ -407,5 +407,7 @@ iCloud キーチェーン同期を有効にすると、バックアップは他�
 "Nagram.SavedAccounts.Header" = "この端末では未ログイン";
 "Nagram.SavedAccounts.Footer" = "これらのアカウントはこのアプリでバックアップされ、iCloud キーチェーンで各端末に同期されます。選ぶとコードなしでログインできます。";
 "Nagram.SavedAccounts.Confirm" = "この端末でこのアカウントとしてログインしますか？";
+"Nagram.SavedAccounts.Loading" = "保存されたアカウントを検索中…";
+"Nagram.SavedAccounts.Empty" = "このデバイスに復元できる保存済みアカウントはありません。";
 "Nagram.QrLogin.Retrying" = "コードを取得できませんでした。再試行しています…";
 "Nagram.SessionBackup.ICloud" = "iCloud キーチェーンでバックアップを同期";

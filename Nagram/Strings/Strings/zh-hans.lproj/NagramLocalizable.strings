@@ -407,5 +407,7 @@
 "Nagram.SavedAccounts.Header" = "未在本设备登录";
 "Nagram.SavedAccounts.Footer" = "这些账号由本应用备份，并通过 iCloud 钥匙串同步到你的设备。选择一个即可免验证码登录。";
 "Nagram.SavedAccounts.Confirm" = "在本设备以该账号登录？";
+"Nagram.SavedAccounts.Loading" = "正在查找已保存的账号…";
+"Nagram.SavedAccounts.Empty" = "没有可在本机恢复的已保存账号。";
 "Nagram.QrLogin.Retrying" = "无法获取二维码，正在重试…";
 "Nagram.SessionBackup.ICloud" = "通过 iCloud 钥匙串同步备份";

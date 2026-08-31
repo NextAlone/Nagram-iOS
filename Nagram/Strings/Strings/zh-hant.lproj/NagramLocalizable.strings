@@ -407,5 +407,7 @@
 "Nagram.SavedAccounts.Header" = "未在本裝置登入";
 "Nagram.SavedAccounts.Footer" = "這些帳號由本應用備份，並透過 iCloud 鑰匙圈同步到你的裝置。選擇一個即可免驗證碼登入。";
 "Nagram.SavedAccounts.Confirm" = "在本裝置以該帳號登入？";
+"Nagram.SavedAccounts.Loading" = "正在尋找已儲存的帳號…";
+"Nagram.SavedAccounts.Empty" = "沒有可在本機還原的已儲存帳號。";
 "Nagram.QrLogin.Retrying" = "無法取得二維碼，正在重試…";
 "Nagram.SessionBackup.ICloud" = "透過 iCloud 鑰匙圈同步備份";

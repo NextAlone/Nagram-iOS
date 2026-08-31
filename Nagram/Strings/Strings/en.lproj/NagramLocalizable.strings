@@ -407,5 +407,7 @@ With iCloud Keychain sync on, backups follow your other devices and appear on th
 "Nagram.SavedAccounts.Header" = "Not signed in on this device";
 "Nagram.SavedAccounts.Footer" = "These accounts were backed up from this app and follow your devices through iCloud Keychain. Choose one to sign in without a code.";
 "Nagram.SavedAccounts.Confirm" = "Sign in as this account on this device?";
+"Nagram.SavedAccounts.Loading" = "Looking for saved accounts…";
+"Nagram.SavedAccounts.Empty" = "No saved accounts left to restore on this device.";
 "Nagram.QrLogin.Retrying" = "Could not get a code. Retrying…";
 "Nagram.SessionBackup.ICloud" = "Sync Backups via iCloud Keychain";

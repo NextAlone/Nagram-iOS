@@ -35,7 +35,7 @@ private enum NagramSavedAccountsEntryStableId: Hashable {
 private enum NagramSavedAccountsEntry: ItemListNodeEntry {
     case header(text: String)
     case footer(text: String)
-    case progress(text: String)
+    case progress(text: String, activity: Bool)
     case account(index: Int32, record: NagramSessionBackupRecord, detail: String, isEnabled: Bool)
 
     var section: ItemListSectionId {
@@ -76,8 +76,8 @@ private enum NagramSavedAccountsEntry: ItemListNodeEntry {
         case let .footer(lText):
             if case let .footer(rText) = rhs { return lText == rText }
             return false
-        case let .progress(lText):
-            if case let .progress(rText) = rhs { return lText == rText }
+        case let .progress(lText, lActivity):
+            if case let .progress(rText, rActivity) = rhs { return lText == rText && lActivity == rActivity }
             return false
         case let .account(lIndex, lRecord, lDetail, lEnabled):
             if case let .account(rIndex, rRecord, rDetail, rEnabled) = rhs {
@@ -98,8 +98,8 @@ private enum NagramSavedAccountsEntry: ItemListNodeEntry {
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
         case let .footer(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
-        case let .progress(text):
-            return ItemListActivityTextItem(displayActivity: true, presentationData: presentationData, text: text, color: .generic, sectionId: self.section)
+        case let .progress(text, activity):
+            return ItemListActivityTextItem(displayActivity: activity, presentationData: presentationData, text: text, color: .generic, sectionId: self.section)
         case let .account(_, record, detail, isEnabled):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: record.displayName, enabled: isEnabled, label: detail, labelStyle: .multilineDetailText, sectionId: self.section, style: .blocks, action: {
                 arguments.select(record)
@@ -112,6 +112,7 @@ public func nagramSavedAccountsController(sharedContext: SharedAccountContext, p
     let updatePromise = ValuePromise<Int32>(0, ignoreRepeated: false)
     var updateValue: Int32 = 0
     var records: [NagramSessionBackupRecord] = []
+    var hasLoadedRecords = false
     var isWorking = false
     var statusText: String?
 
@@ -173,6 +174,7 @@ public func nagramSavedAccountsController(sharedContext: SharedAccountContext, p
     loadDisposable.set((nagramRestorableBackups(sharedContext: sharedContext)
     |> deliverOnMainQueue).start(next: { loaded in
         records = loaded
+        hasLoadedRecords = true
         bump()
     }))
 
@@ -194,7 +196,11 @@ public func nagramSavedAccountsController(sharedContext: SharedAccountContext, p
             entries.append(.account(index: Int32(index), record: record, detail: detail, isEnabled: !isWorking))
         }
         if let statusText {
-            entries.append(.progress(text: statusText))
+            entries.append(.progress(text: statusText, activity: true))
+        } else if !hasLoadedRecords {
+            entries.append(.progress(text: ngI18n("Nagram.SavedAccounts.Loading", language), activity: true))
+        } else if records.isEmpty {
+            entries.append(.progress(text: ngI18n("Nagram.SavedAccounts.Empty", language), activity: false))
         }
         entries.append(.footer(text: ngI18n("Nagram.SavedAccounts.Footer", language)))
 
