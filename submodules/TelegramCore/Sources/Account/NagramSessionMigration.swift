@@ -117,15 +117,19 @@ public func nagramAuthenticatedUserId(network: Network) -> Signal<NagramAuthenti
                 Logger.shared.log("NagramMigration", "self-user verification failed: \(error.errorCode) \(error.errorDescription ?? "nil")")
                 subscriber.putNext(.failure(errorCode: error.errorCode, errorDescription: error.errorDescription))
             } else if let users = (boxedResponse as? BoxedMessage)?.body as? [Api.User], let apiUser = users.first {
-                let userId: Int64
                 switch apiUser {
                 case let .user(userData):
-                    userId = userData.id
-                case let .userEmpty(userEmptyData):
-                    userId = userEmptyData.id
+                    Logger.shared.log("NagramMigration", "authenticated self user is \(userData.id)")
+                    subscriber.putNext(.userId(userData.id))
+                case .userEmpty:
+                    // userEmpty is a placeholder the server returns when it
+                    // cannot produce the user. It carries an id but proves
+                    // nothing about who the key authenticates as, which is the
+                    // only thing this probe exists to establish. Treat it as a
+                    // failed verification rather than a confirmed identity.
+                    Logger.shared.log("NagramMigration", "self-user verification returned userEmpty")
+                    subscriber.putNext(.failure(errorCode: 500, errorDescription: "SELF_USER_EMPTY"))
                 }
-                Logger.shared.log("NagramMigration", "authenticated self user is \(userId)")
-                subscriber.putNext(.userId(userId))
             } else {
                 Logger.shared.log("NagramMigration", "self-user verification returned no parseable user")
                 subscriber.putNext(.failure(errorCode: 500, errorDescription: "SELF_USER_NOT_RETURNED"))
