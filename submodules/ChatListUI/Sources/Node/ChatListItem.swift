@@ -2386,7 +2386,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     let peerValue = peerData.peer
                     if case .community = peerValue.peer {
                         isCommunity = true
-                    } else if !item.hideCommunityAvatarBadge, peerValue.peer?.containerPeerId != nil {
+                    } else if !item.hideCommunityAvatarBadge, !NagramSettings.shared.disableCommunityChatGrouping, peerValue.peer?.containerPeerId != nil { // MARK: NAGRAM — 拆分显示时隐藏 Community 展开徽标
                         displayCommunityAvatarBadge = true
                     }
                     let threadInfoValue = peerData.threadInfo
@@ -5941,7 +5941,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                 isCommunity = true
             }
             var shouldHitTestAvatar = !isCommunity && self.avatarNode.storyStats != nil
-            if case let .peer(peerData) = item.content, let peer = peerData.peer.peer, peer.containerPeerId != nil {
+            if !NagramSettings.shared.disableCommunityChatGrouping, case let .peer(peerData) = item.content, let peer = peerData.peer.peer, peer.containerPeerId != nil { // MARK: NAGRAM — 拆分显示时不再为 Community 入口扩大头像点击区域
                 shouldHitTestAvatar = true
             }
             if shouldHitTestAvatar {
@@ -5963,7 +5963,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             case .loading:
                 break
             case let .peer(peerData):
-                if let peer = peerData.peer.peer, let linkedCommunityId = peer.containerPeerId {
+                if !NagramSettings.shared.disableCommunityChatGrouping, let peer = peerData.peer.peer, let linkedCommunityId = peer.containerPeerId { // MARK: NAGRAM — 拆分显示时头像恢复原有动态入口
                     item.interaction.openCommunity(linkedCommunityId)
                 } else {
                     item.interaction.openStories(.peer(peerData.peer.peerId), self)

@@ -63,6 +63,7 @@
 "Nagram.ChatListMessagePreviewStyle.three" = "Three Lines";
 "Nagram.ChatListMessagePreviewStyle.two" = "Two Lines";
 "Nagram.HideSavedAndArchivedMessagesInList" = "Hide Saved and Archived Messages in List";
+"Nagram.DisableCommunityChatGrouping" = "Disable Community Chat Grouping";
 "Nagram.MessagePlaceholderInSaved" = "Here are your Saved Messages chats";
 "Nagram.MessagePlaceholderInArchived" = "Here are your Archived chats";
 "Nagram.ChatListCompact" = "Compact Chat Layout";

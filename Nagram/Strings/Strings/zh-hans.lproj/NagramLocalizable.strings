@@ -63,6 +63,7 @@
 "Nagram.ChatListMessagePreviewStyle.three" = "三行";
 "Nagram.ChatListMessagePreviewStyle.two" = "两行";
 "Nagram.HideSavedAndArchivedMessagesInList" = "在列表中隐藏收藏夹和归档会话信息";
+"Nagram.DisableCommunityChatGrouping" = "禁用社区会话合并展示";
 "Nagram.MessagePlaceholderInSaved" = "这里是您的收藏夹会话";
 "Nagram.MessagePlaceholderInArchived" = "这里是您的归档会话";
 "Nagram.ChatListCompact" = "紧凑会话布局";

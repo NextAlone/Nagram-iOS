@@ -63,6 +63,7 @@
 "Nagram.ChatListMessagePreviewStyle.three" = "3行";
 "Nagram.ChatListMessagePreviewStyle.two" = "2行";
 "Nagram.HideSavedAndArchivedMessagesInList" = "リストで保存済みとアーカイブ済みのチャット情報を隠す";
+"Nagram.DisableCommunityChatGrouping" = "コミュニティチャットのグループ表示を無効化";
 "Nagram.MessagePlaceholderInSaved" = "ここは保存済みメッセージのチャットです";
 "Nagram.MessagePlaceholderInArchived" = "ここはアーカイブ済みのチャットです";
 "Nagram.ChatListCompact" = "コンパクトなチャットレイアウト";

@@ -50,7 +50,7 @@ private func communityPeerId(item: EngineChatList.Item) -> EnginePeer.Id? {
 private func filteredCommunityChatListItems(_ items: [EngineChatList.Item]) -> [EngineChatList.Item] {
     return items.filter { item in
         if let peer = item.renderedPeer.peer, case let .community(community) = peer {
-            return community.collapsedInDialogs == true
+            return community.collapsedInDialogs == true && !NagramSettings.shared.disableCommunityChatGrouping // MARK: NAGRAM — 本地强制拆分 Community 会话
         } else {
             return true
         }
