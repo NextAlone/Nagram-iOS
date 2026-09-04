@@ -110,6 +110,103 @@ private func chatListNodeViewUpdateWithCommunitySummaries(account: Account, upda
     }
 }
 
+// MARK: NAGRAM — 最新一组消息全部命中 hide 时，使用本地历史中最近的未隐藏消息作为列表预览。
+func nagramChatListNodeViewUpdateWithPreviousUnhiddenMessages(account: Account, update: ChatListNodeViewUpdate) -> Signal<ChatListNodeViewUpdate, NoError> {
+    struct Target {
+        let itemIndex: Int
+        let peerId: EnginePeer.Id
+        let threadId: Int64?
+        let upperBound: EngineMessage.Index
+    }
+
+    var targets: [Target] = []
+    for (itemIndex, item) in update.list.items.enumerated() {
+        guard item.draft == nil, item.mediaDraftContentType == nil, let firstMessage = item.messages.min(by: { $0.index < $1.index }) else {
+            continue
+        }
+
+        let peerId: EnginePeer.Id
+        if let peer = item.renderedPeer.peer, case .community = peer, let messagePeerId = item.messages.last?.id.peerId {
+            peerId = messagePeerId
+        } else if case let .chatList(index) = item.index {
+            peerId = index.messageIndex.id.peerId
+        } else if let messagePeerId = item.messages.last?.id.peerId {
+            peerId = messagePeerId
+        } else {
+            continue
+        }
+
+        guard item.messages.allSatisfy({ message in
+            return nagramChatListMessageIsHidden(message, peerId: peerId, accountPeerId: account.peerId)
+        }) else {
+            continue
+        }
+
+        let threadId: Int64?
+        if case let .forum(_, _, value, _, _) = item.index {
+            threadId = value
+        } else {
+            threadId = nil
+        }
+        targets.append(Target(itemIndex: itemIndex, peerId: peerId, threadId: threadId, upperBound: firstMessage.index))
+    }
+
+    if targets.isEmpty {
+        return .single(update)
+    }
+
+    return account.postbox.transaction { transaction -> [Int: EngineMessage] in
+        var result: [Int: EngineMessage] = [:]
+        for target in targets {
+            let historyView = transaction.getMessagesHistoryViewState(
+                input: .single(peerId: target.peerId, threadId: target.threadId),
+                ignoreMessagesInTimestampRange: nil,
+                ignoreMessageIds: Set(),
+                count: 100,
+                clipHoles: true,
+                anchor: .index(target.upperBound),
+                namespaces: .not(Namespaces.Message.allNonRegular)
+            )
+            for entry in historyView.entries.reversed() {
+                let message = EngineMessage(entry.message)
+                guard message.index < target.upperBound else {
+                    continue
+                }
+                if !nagramChatListMessageIsHidden(message, peerId: target.peerId, accountPeerId: account.peerId) {
+                    result[target.itemIndex] = message
+                    break
+                }
+            }
+        }
+        return result
+    }
+    |> map { messagesByItemIndex -> ChatListNodeViewUpdate in
+        if messagesByItemIndex.isEmpty {
+            return update
+        }
+        let items = update.list.items.enumerated().map { itemIndex, item -> EngineChatList.Item in
+            guard let message = messagesByItemIndex[itemIndex] else {
+                return item
+            }
+            // MARK: NAGRAM — 保留隐藏的最新消息供 ChatListNodeEntries 计算未读角标；
+            // 随后现有过滤逻辑会移除它们，只留下回退消息作为预览。
+            return item.withUpdatedCommunitySummary(messages: item.messages + [message], readCounters: item.readCounters)
+        }
+        return ChatListNodeViewUpdate(
+            list: EngineChatList(
+                items: items,
+                groupItems: update.list.groupItems,
+                additionalItems: update.list.additionalItems,
+                hasEarlier: update.list.hasEarlier,
+                hasLater: update.list.hasLater,
+                isLoading: update.list.isLoading
+            ),
+            type: update.type,
+            scrollPosition: update.scrollPosition
+        )
+    }
+}
+
 public func chatListFilterPredicate(filter: ChatListFilterData, accountPeerId: EnginePeer.Id, includeRecentPeerIds: Set<EnginePeer.Id> = Set()) -> ChatListFilterPredicate {
     var includePeers = Set(filter.includePeers.peers)
     var excludePeers = Set(filter.excludePeers)

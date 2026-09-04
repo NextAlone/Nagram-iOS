@@ -619,6 +619,14 @@ struct ChatListContactPeer {
 }
 
 // MARK: NAGRAM — 对话列表预览复用聊天内正则过滤规则，仅改展示层消息副本。
+func nagramChatListMessageIsHidden(_ message: EngineMessage, peerId: EnginePeer.Id?, accountPeerId: EnginePeer.Id) -> Bool {
+    let isOutgoing = !message.effectivelyIncoming(accountPeerId)
+    guard let matcher = NagramSettings.shared.regexFilterMatcher(peerId: peerId?.toInt64(), isOutgoing: isOutgoing) else {
+        return false
+    }
+    return matcher.isHidden(text: message.text, authorPeerId: message.author?.id.id._internalGetInt64Value())
+}
+
 private func nagramFilteredChatListMessages(_ messages: [EngineMessage], peerId: EnginePeer.Id?, accountPeerId: EnginePeer.Id, presentationData: ChatListPresentationData) -> [EngineMessage] {
     let incomingMatcher = NagramSettings.shared.regexFilterMatcher(peerId: peerId?.toInt64(), isOutgoing: false)
     let outgoingMatcher = NagramSettings.shared.regexFilterMatcher(peerId: peerId?.toInt64(), isOutgoing: true)

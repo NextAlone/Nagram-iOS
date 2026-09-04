@@ -2002,6 +2002,12 @@ public final class ChatListNode: ListViewImpl {
         |> map { update, _, _ in
             return update
         }
+        |> mapToSignal { update, filter -> Signal<(ChatListNodeViewUpdate, ChatListFilter?), NoError> in
+            return nagramChatListNodeViewUpdateWithPreviousUnhiddenMessages(account: context.account, update: update)
+            |> map { updatedView in
+                return (updatedView, filter)
+            }
+        }
         
         let previousState = Atomic<ChatListNodeState>(value: self.currentState)
         let previousView = Atomic<ChatListNodeView?>(value: nil)
