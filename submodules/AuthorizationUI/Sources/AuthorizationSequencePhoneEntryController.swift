@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import Display
+import NagramLoginUI
 import AsyncDisplayKit
 import SwiftSignalKit
 import TelegramCore
@@ -107,6 +108,57 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
         self.termsDisposable.dispose()
     }
     
+    // MARK: NAGRAM — 添加账号时也要有账号入口。这条路径没有 splash 屏，
+    // 手机号页就是导航栈根，所以按钮放在右上角（宽屏下上游不占用该位置；
+    // 窄屏时上游的“下一步”会覆盖它）。
+    private var nagramLoginButton: NagramLoginOptionsButton?
+    private var nagramLoginOptionsPressed: (() -> Void)?
+    private var nagramPendingBadgeCount: Int = 0
+    // Recounted on every appearance: the keychain can gain an account while this
+    // screen is up (iCloud sync) and loses one whenever the user restores it.
+    var nagramRefreshLoginBadge: (() -> Void)?
+
+    // MARK: NAGRAM — 点按打开菜单。
+    func setNagramLoginOptions(accessibilityLabel: String, action: @escaping () -> Void) {
+        self.nagramLoginOptionsPressed = action
+        let button = NagramLoginOptionsButton(
+            icon: NagramLoginOptionsButton.defaultIcon(color: self.presentationData.theme.list.itemAccentColor),
+            accessibilityLabel: accessibilityLabel
+        )
+        button.accessibilityIdentifier = "Auth.PhoneEntry.NagramAccountButton"
+        button.addTarget(self, action: #selector(self.nagramLoginButtonPressed), for: .touchUpInside)
+        button.setBadgeCount(self.nagramPendingBadgeCount)
+        self.nagramLoginButton = button
+    }
+
+    // MARK: NAGRAM — 用浮层按钮而不是 UIBarButtonItem：这一屏的导航栏是透明且通常没有
+    // 其他按钮，栏内按钮不会显示；而且在构造阶段动 navigationItem 会提前触发 view
+    // 加载，把 splash 的过渡动画卡在中途。挂载与摆位都放到布局阶段。
+    private func nagramLayoutLoginButton(_ layout: ContainerViewLayout) {
+        guard let button = self.nagramLoginButton, self.isNodeLoaded else {
+            return
+        }
+        if button.superview == nil {
+            self.displayNode.view.addSubview(button)
+        }
+        let size = NagramLoginOptionsButton.preferredSize
+        let topInset = (layout.statusBarHeight ?? 20.0) + 4.0
+        let rightInset = max(layout.safeInsets.right, 8.0)
+        button.frame = CGRect(origin: CGPoint(x: layout.size.width - rightInset - size.width, y: topInset), size: size)
+        self.displayNode.view.bringSubviewToFront(button)
+    }
+
+    // MARK: NAGRAM
+    func setNagramLoginBadgeCount(_ count: Int) {
+        self.nagramPendingBadgeCount = count
+        self.nagramLoginButton?.setBadgeCount(count)
+    }
+
+    // MARK: NAGRAM
+    @objc private func nagramLoginButtonPressed() {
+        self.nagramLoginOptionsPressed?()
+    }
+
     @objc private func cancelPressed() {
         self.back()
     }
@@ -327,6 +379,9 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
     override public func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
+        // MARK: NAGRAM
+        self.nagramRefreshLoginBadge?()
+        
         if self.shouldAnimateIn {
             self.animatingIn = true
             if let (buttonFrame, buttonTitle, animationSnapshot, textSnapshot) = self.transitionInArguments {
@@ -346,6 +401,29 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
         if !self.animatingIn {
             self.controllerNode.activateInput()
         }
+
+        // MARK: NAGRAM — 见 nagramRunPendingTransitionIn 的说明：键盘不出现时兜底。
+        Queue.mainQueue().after(1.0) { [weak self] in
+            self?.nagramRunPendingTransitionIn()
+        }
+    }
+
+    // MARK: NAGRAM — 播放来自 splash 的入场动画。
+    //
+    // 原本这个动画只在软键盘出现（layout.inputHeight > 0）时才触发。viewWillAppear
+    // 里的 willAnimateIn 已经把 splash 的截图贴到了本屏上，所以键盘一旦不出现，
+    // 截图就会一直留着，看起来像点了「Start with Nagram」之后卡死——模拟器连着
+    // 硬件键盘时必现。这里把触发点收敛到一处，并在 viewDidAppear 之后兜底调用，
+    // 保证动画一定会跑完；键盘正常出现时仍由 containerLayoutUpdated 先触发。
+    private func nagramRunPendingTransitionIn() {
+        guard self.isNodeLoaded, self.shouldAnimateIn else {
+            return
+        }
+        guard let (buttonFrame, buttonTitle, animationSnapshot, textSnapshot) = self.transitionInArguments else {
+            return
+        }
+        self.shouldAnimateIn = false
+        self.controllerNode.animateIn(buttonFrame: buttonFrame, buttonTitle: buttonTitle, animationSnapshot: animationSnapshot, textSnapshot: textSnapshot)
     }
     
     override public func viewWillDisappear(_ animated: Bool) {
@@ -361,6 +439,9 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
         
         let hadLayout = self.validLayout != nil
         self.validLayout = layout
+
+        // MARK: NAGRAM
+        self.nagramLayoutLoginButton(layout)
         
         if !hadLayout {
             self.updateNavigationItems()
@@ -368,11 +449,8 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
     
         self.controllerNode.containerLayoutUpdated(layout, navigationBarHeight: self.navigationLayout(layout: layout).navigationFrame.maxY, transition: transition)
         
-        if self.shouldAnimateIn, let inputHeight = layout.inputHeight, inputHeight > 0.0 {
-            if let (buttonFrame, buttonTitle, animationSnapshot, textSnapshot) = self.transitionInArguments {
-                self.shouldAnimateIn = false
-                self.controllerNode.animateIn(buttonFrame: buttonFrame, buttonTitle: buttonTitle, animationSnapshot: animationSnapshot, textSnapshot: textSnapshot)
-            }
+        if let inputHeight = layout.inputHeight, inputHeight > 0.0 {
+            self.nagramRunPendingTransitionIn()
         }
     }
     

@@ -3,6 +3,7 @@ import Display
 import FaceScanScreen
 import Foundation
 import ItemListUI
+import NagramSessionBackupUI
 import NagramSettings
 import NagramStrings
 import PresentationDataUtils
@@ -380,7 +381,8 @@ private func nagramGroups(
     regexFiltersAction: @escaping () -> Void,
     inlineBotRulesAction: @escaping () -> Void,
     llmTranslationSettingsAction: @escaping () -> Void,
-    groupProfileSettingsAction: @escaping () -> Void
+    groupProfileSettingsAction: @escaping () -> Void,
+    sessionBackupAction: @escaping () -> Void
 ) -> [NagramGroup] {
     let sensitiveContentEnabled: () -> Bool = {
         return sensitiveContentConfiguration()?.sensitiveContentEnabled ?? false
@@ -521,6 +523,10 @@ private func nagramGroups(
         NagramGroup(tab: .other, headerKey: "Nagram.Section.AutoInlineBot", footerKey: "Nagram.AutoInlineBot.Footer", rows: [
             .toggle(titleKey: "Nagram.AutoInlineBot.Enabled", get: { NagramSettings.shared.autoInlineBotEnabled }, set: { NagramSettings.shared.autoInlineBotEnabled = $0 }),
             .navigation(titleKey: "Nagram.InlineBotRules", action: inlineBotRulesAction),
+        ]),
+        NagramGroup(tab: .other, headerKey: "Nagram.Section.SessionBackup", footerKey: "Nagram.SessionBackup.Footer", rows: [
+            .navigation(titleKey: "Nagram.SessionBackup", action: sessionBackupAction),
+            .toggle(titleKey: "Nagram.SessionBackup.ICloud", get: { NagramSettings.shared.sessionBackupICloudSync }, set: { NagramSettings.shared.sessionBackupICloudSync = $0 }),
         ]),
     ]
 }
@@ -711,6 +717,8 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
         pushControllerImpl?(nagramLLMTranslationSettingsController(context: context))
     }, groupProfileSettingsAction: {
         pushControllerImpl?(nagramGroupProfileSettingsController(context: context))
+    }, sessionBackupAction: {
+        pushControllerImpl?(nagramSessionBackupController(context: context))
     })
     let flatRows: [NagramRow] = groups.flatMap { $0.rows }
     let flatRowDeepLinks: [String] = groups.flatMap { group in

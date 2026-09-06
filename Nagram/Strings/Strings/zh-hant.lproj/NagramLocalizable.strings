@@ -359,3 +359,55 @@
 "Nagram.RecentStickerLimit.120" = "120";
 "Nagram.RecentStickerLimit.150" = "150";
 "Nagram.RecentStickerLimit.200" = "200";
+
+// MARK: NAGRAM — Session backup / restore (Pyrogram session strings)
+"Nagram.SessionBackup" = "工作階段備份";
+"Nagram.Section.SessionBackup" = "工作階段備份";
+"Nagram.SessionBackup.Footer" = "把目前帳號匯出為 Pyrogram 工作階段字串，或用字串新增帳號。字串與 Mithka 及其他基於 Pyrogram 的工具通用。
+
+開啟 iCloud 鑰匙圈同步後，備份會同步到你的其他裝置，並出現在那些裝置的登入頁。關閉後備份僅保存在本機。";
+"Nagram.SessionBackup.Title" = "工作階段備份";
+"Nagram.SessionBackup.Current" = "目前帳號";
+"Nagram.SessionBackup.Current.Footer" = "工作階段字串可在不需登入驗證碼的情況下完全存取此帳號。取得它的人能讀取你的訊息並以你的身分操作。僅存本機的備份不會離開這台裝置；iCloud 鑰匙圈備份還會同步到你的其他裝置。";
+"Nagram.SessionBackup.CopySessionString" = "複製工作階段字串";
+"Nagram.SessionBackup.CopySessionString.Warning" = "工作階段字串可在無需登入驗證碼的情況下完全存取此帳號。僅在準備貼到你信任的軟體時才複製。";
+"Nagram.SessionBackup.CopySessionString.Confirm" = "複製";
+"Nagram.SessionBackup.Copied" = "已複製到剪貼板。";
+"Nagram.SessionBackup.BackUpSynced" = "備份到 iCloud 鑰匙圈";
+"Nagram.SessionBackup.BackUpLocal" = "僅備份到本機";
+"Nagram.SessionBackup.SaveSucceeded" = "工作階段已備份。";
+"Nagram.SessionBackup.Import" = "匯入工作階段";
+"Nagram.SessionBackup.Import.Placeholder" = "貼上 Pyrogram 工作階段字串";
+"Nagram.SessionBackup.Import.Paste" = "從剪貼板貼上";
+"Nagram.SessionBackup.Import.Action" = "用工作階段字串新增帳號";
+"Nagram.SessionBackup.Import.Footer" = "支援 Pyrogram 工作階段字串，包括 Mithka 匯出的字串。匯入的帳號會與現有帳號並存。";
+"Nagram.SessionBackup.Import.Warning" = "匯入會讓這台裝置以該帳號登入。請只匯入你自己產生的字串。";
+"Nagram.SessionBackup.Import.Confirm" = "匯入";
+"Nagram.SessionBackup.Saved" = "已儲存的備份";
+"Nagram.SessionBackup.Saved.Empty" = "尚無已儲存的備份。";
+"Nagram.SessionBackup.Saved.Footer" = "點按備份可還原、複製其字串或刪除。";
+"Nagram.SessionBackup.Storage.Synced" = "iCloud 鑰匙圈";
+"Nagram.SessionBackup.Storage.Local" = "本機";
+"Nagram.SessionBackup.Restore" = "還原";
+"Nagram.SessionBackup.Delete" = "刪除";
+"Nagram.SessionBackup.DeleteAll" = "刪除所有備份";
+"Nagram.SessionBackup.DeleteAll.Warning" = "將從鑰匙圈中刪除所有已儲存的工作階段備份。已登入的帳號不受影響。";
+"Nagram.SessionBackup.Import.Short" = "匯入工作階段";
+"Nagram.SessionBackup.Saved.RestoreFooter" = "點按已儲存的備份即可用它登入。";
+"Nagram.QrLogin.Title" = "掃碼登入";
+"Nagram.QrLogin.Text" = "1. 在已登入的裝置上開啟 Telegram。\n2. 進入 設定 → 裝置 → 連結桌面裝置。\n3. 用該裝置掃描此二維碼並確認。";
+"Nagram.LoginOptions.Title" = "其他登入方式";
+"Nagram.QrLogin.Accepted.Title" = "正在登入";
+"Nagram.QrLogin.Accepted.Text" = "二維碼已被接受，正在完成登入…";
+"Nagram.SessionBackup.Import.Progress.Adding" = "正在新增帳號…";
+"Nagram.SessionBackup.Import.Progress.Checking" = "正在確認該帳號所屬的資料中心…";
+"Nagram.SessionBackup.Import.Progress.Moving" = "正在遷移帳號到資料中心 %@…";
+"Nagram.SavedAccounts.Title" = "已儲存的帳號";
+"Nagram.SavedAccounts.MenuItem" = "已儲存的帳號（%@）";
+"Nagram.SavedAccounts.Header" = "未在本裝置登入";
+"Nagram.SavedAccounts.Footer" = "這些帳號由本應用備份，並透過 iCloud 鑰匙圈同步到你的裝置。選擇一個即可免驗證碼登入。";
+"Nagram.SavedAccounts.Confirm" = "在本裝置以該帳號登入？";
+"Nagram.SavedAccounts.Loading" = "正在尋找已儲存的帳號…";
+"Nagram.SavedAccounts.Empty" = "沒有可在本機還原的已儲存帳號。";
+"Nagram.QrLogin.Retrying" = "無法取得二維碼，正在重試…";
+"Nagram.SessionBackup.ICloud" = "透過 iCloud 鑰匙圈同步備份";

@@ -359,3 +359,55 @@
 "Nagram.RecentStickerLimit.120" = "120";
 "Nagram.RecentStickerLimit.150" = "150";
 "Nagram.RecentStickerLimit.200" = "200";
+
+// MARK: NAGRAM — Session backup / restore (Pyrogram session strings)
+"Nagram.SessionBackup" = "セッションバックアップ";
+"Nagram.Section.SessionBackup" = "セッションバックアップ";
+"Nagram.SessionBackup.Footer" = "現在のアカウントを Pyrogram セッション文字列として書き出したり、文字列からアカウントを追加できます。セッション文字列は Mithka などの Pyrogram 系ツールと相互に使えます。
+
+iCloud キーチェーン同期を有効にすると、バックアップは他の端末にも同期され、その端末のログイン画面に表示されます。無効にすると、この端末にのみ保存されます。";
+"Nagram.SessionBackup.Title" = "セッションバックアップ";
+"Nagram.SessionBackup.Current" = "現在のアカウント";
+"Nagram.SessionBackup.Current.Footer" = "セッション文字列は、ログインコードなしでこのアカウントへの完全なアクセスを許します。入手した人はメッセージを読み、あなたとして操作できます。この端末のみのバックアップは端末外に出ません。iCloud キーチェーンのバックアップは他の端末にも同期されます。";
+"Nagram.SessionBackup.CopySessionString" = "セッション文字列をコピー";
+"Nagram.SessionBackup.CopySessionString.Warning" = "セッション文字列はログインコードなしでこのアカウントへの完全なアクセスを許します。信頼できるソフトウェアに貼り付ける場合のみコピーしてください。";
+"Nagram.SessionBackup.CopySessionString.Confirm" = "コピー";
+"Nagram.SessionBackup.Copied" = "クリップボードにコピーしました。";
+"Nagram.SessionBackup.BackUpSynced" = "iCloud キーチェーンにバックアップ";
+"Nagram.SessionBackup.BackUpLocal" = "この端末のみにバックアップ";
+"Nagram.SessionBackup.SaveSucceeded" = "セッションをバックアップしました。";
+"Nagram.SessionBackup.Import" = "セッションを読み込む";
+"Nagram.SessionBackup.Import.Placeholder" = "Pyrogram セッション文字列を貼り付け";
+"Nagram.SessionBackup.Import.Paste" = "クリップボードから貼り付け";
+"Nagram.SessionBackup.Import.Action" = "セッション文字列からアカウントを追加";
+"Nagram.SessionBackup.Import.Footer" = "Mithka が書き出したものを含む Pyrogram セッション文字列に対応します。追加したアカウントは既存のアカウントと併存します。";
+"Nagram.SessionBackup.Import.Warning" = "読み込むと、この端末がそのアカウントでログインします。自分で作成したセッション文字列のみを使用してください。";
+"Nagram.SessionBackup.Import.Confirm" = "読み込む";
+"Nagram.SessionBackup.Saved" = "保存済みのバックアップ";
+"Nagram.SessionBackup.Saved.Empty" = "保存済みのバックアップはありません。";
+"Nagram.SessionBackup.Saved.Footer" = "バックアップをタップすると、復元、セッション文字列のコピー、削除ができます。";
+"Nagram.SessionBackup.Storage.Synced" = "iCloud キーチェーン";
+"Nagram.SessionBackup.Storage.Local" = "この端末";
+"Nagram.SessionBackup.Restore" = "復元";
+"Nagram.SessionBackup.Delete" = "削除";
+"Nagram.SessionBackup.DeleteAll" = "すべてのバックアップを削除";
+"Nagram.SessionBackup.DeleteAll.Warning" = "キーチェーンに保存されたすべてのセッションバックアップを削除します。ログイン中のアカウントには影響しません。";
+"Nagram.SessionBackup.Import.Short" = "セッションを読み込む";
+"Nagram.SessionBackup.Saved.RestoreFooter" = "保存済みのバックアップをタップするとそれでログインします。";
+"Nagram.QrLogin.Title" = "QRコードでログイン";
+"Nagram.QrLogin.Text" = "1. すでにログイン済みの端末で Telegram を開きます。\n2. 設定 → デバイス → デスクトップデバイスをリンク を開きます。\n3. その端末でこのコードを読み取って確認します。";
+"Nagram.LoginOptions.Title" = "その他のログイン方法";
+"Nagram.QrLogin.Accepted.Title" = "ログインしています";
+"Nagram.QrLogin.Accepted.Text" = "コードが受理されました。ログインを完了しています…";
+"Nagram.SessionBackup.Import.Progress.Adding" = "アカウントを追加しています…";
+"Nagram.SessionBackup.Import.Progress.Checking" = "このアカウントを扱うデータセンターを確認しています…";
+"Nagram.SessionBackup.Import.Progress.Moving" = "アカウントをデータセンター %@ に移行しています…";
+"Nagram.SavedAccounts.Title" = "保存済みのアカウント";
+"Nagram.SavedAccounts.MenuItem" = "保存済みのアカウント（%@）";
+"Nagram.SavedAccounts.Header" = "この端末では未ログイン";
+"Nagram.SavedAccounts.Footer" = "これらのアカウントはこのアプリでバックアップされ、iCloud キーチェーンで各端末に同期されます。選ぶとコードなしでログインできます。";
+"Nagram.SavedAccounts.Confirm" = "この端末でこのアカウントとしてログインしますか？";
+"Nagram.SavedAccounts.Loading" = "保存されたアカウントを検索中…";
+"Nagram.SavedAccounts.Empty" = "このデバイスに復元できる保存済みアカウントはありません。";
+"Nagram.QrLogin.Retrying" = "コードを取得できませんでした。再試行しています…";
+"Nagram.SessionBackup.ICloud" = "iCloud キーチェーンでバックアップを同期";

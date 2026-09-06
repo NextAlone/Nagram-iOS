@@ -359,3 +359,55 @@
 "Nagram.RecentStickerLimit.120" = "120";
 "Nagram.RecentStickerLimit.150" = "150";
 "Nagram.RecentStickerLimit.200" = "200";
+
+// MARK: NAGRAM — Session backup / restore (Pyrogram session strings)
+"Nagram.SessionBackup" = "会话备份";
+"Nagram.Section.SessionBackup" = "会话备份";
+"Nagram.SessionBackup.Footer" = "把当前账号导出为 Pyrogram 会话串，或用会话串添加账号。会话串与 Mithka 及其他基于 Pyrogram 的工具通用。
+
+开启 iCloud 钥匙串同步后，备份会同步到你的其他设备，并出现在那些设备的登录页。关闭后备份仅保存在本机。";
+"Nagram.SessionBackup.Title" = "会话备份";
+"Nagram.SessionBackup.Current" = "当前账号";
+"Nagram.SessionBackup.Current.Footer" = "会话串可以在不需要登录验证码的情况下完全访问该账号。拿到它的人能读取你的消息并以你的身份操作。仅存本机的备份不会离开这台设备；iCloud 钥匙串备份还会同步到你的其他设备。";
+"Nagram.SessionBackup.CopySessionString" = "复制会话串";
+"Nagram.SessionBackup.CopySessionString.Warning" = "会话串可在无需登录验证码的情况下完全访问该账号。仅在准备粘贴到你信任的软件时才复制。";
+"Nagram.SessionBackup.CopySessionString.Confirm" = "复制";
+"Nagram.SessionBackup.Copied" = "已复制到剪贴板。";
+"Nagram.SessionBackup.BackUpSynced" = "备份到 iCloud 钥匙串";
+"Nagram.SessionBackup.BackUpLocal" = "仅备份到本机";
+"Nagram.SessionBackup.SaveSucceeded" = "会话已备份。";
+"Nagram.SessionBackup.Import" = "导入会话";
+"Nagram.SessionBackup.Import.Placeholder" = "粘贴 Pyrogram 会话串";
+"Nagram.SessionBackup.Import.Paste" = "从剪贴板粘贴";
+"Nagram.SessionBackup.Import.Action" = "用会话串添加账号";
+"Nagram.SessionBackup.Import.Footer" = "支持 Pyrogram 会话串，包括 Mithka 导出的会话串。导入的账号会与现有账号并存。";
+"Nagram.SessionBackup.Import.Warning" = "导入会让这台设备以该账号登录。请只导入你自己生成的会话串。";
+"Nagram.SessionBackup.Import.Confirm" = "导入";
+"Nagram.SessionBackup.Saved" = "已保存的备份";
+"Nagram.SessionBackup.Saved.Empty" = "暂无已保存的备份。";
+"Nagram.SessionBackup.Saved.Footer" = "点按备份可恢复、复制其会话串或删除。";
+"Nagram.SessionBackup.Storage.Synced" = "iCloud 钥匙串";
+"Nagram.SessionBackup.Storage.Local" = "本机";
+"Nagram.SessionBackup.Restore" = "恢复";
+"Nagram.SessionBackup.Delete" = "删除";
+"Nagram.SessionBackup.DeleteAll" = "删除所有备份";
+"Nagram.SessionBackup.DeleteAll.Warning" = "将从钥匙串中删除所有已保存的会话备份。已登录的账号不受影响。";
+"Nagram.SessionBackup.Import.Short" = "导入会话";
+"Nagram.SessionBackup.Saved.RestoreFooter" = "点按已保存的备份即可用它登录。";
+"Nagram.QrLogin.Title" = "扫码登录";
+"Nagram.QrLogin.Text" = "1. 在已登录的设备上打开 Telegram。\n2. 进入 设置 → 设备 → 关联桌面设备。\n3. 用该设备扫描此二维码并确认。";
+"Nagram.LoginOptions.Title" = "其他登录方式";
+"Nagram.QrLogin.Accepted.Title" = "正在登录";
+"Nagram.QrLogin.Accepted.Text" = "二维码已被接受，正在完成登录…";
+"Nagram.SessionBackup.Import.Progress.Adding" = "正在添加账号…";
+"Nagram.SessionBackup.Import.Progress.Checking" = "正在确认该账号所属的数据中心…";
+"Nagram.SessionBackup.Import.Progress.Moving" = "正在迁移账号到数据中心 %@…";
+"Nagram.SavedAccounts.Title" = "已保存的账号";
+"Nagram.SavedAccounts.MenuItem" = "已保存的账号（%@）";
+"Nagram.SavedAccounts.Header" = "未在本设备登录";
+"Nagram.SavedAccounts.Footer" = "这些账号由本应用备份，并通过 iCloud 钥匙串同步到你的设备。选择一个即可免验证码登录。";
+"Nagram.SavedAccounts.Confirm" = "在本设备以该账号登录？";
+"Nagram.SavedAccounts.Loading" = "正在查找已保存的账号…";
+"Nagram.SavedAccounts.Empty" = "没有可在本机恢复的已保存账号。";
+"Nagram.QrLogin.Retrying" = "无法获取二维码，正在重试…";
+"Nagram.SessionBackup.ICloud" = "通过 iCloud 钥匙串同步备份";

@@ -2,6 +2,9 @@ import Foundation
 import UIKit
 import AsyncDisplayKit
 import Display
+import NagramLoginUI
+import NagramSessionBackupUI
+import NagramStrings
 import TelegramCore
 import SwiftSignalKit
 import MtProtoKit
@@ -141,6 +144,21 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
             controller = currentController
         } else {
             controller = AuthorizationSequenceSplashController(accountManager: self.sharedContext.accountManager, account: self.account, theme: self.presentationData.theme)
+            // MARK: NAGRAM — 账号入口：点按打开菜单（扫码登录排第一）。
+            // 界面从 splash 呈现，因为本类是 NavigationController，没有 present(_:in:)。
+            controller.setNagramLoginOptions(accessibilityLabel: ngI18n("Nagram.LoginOptions.Title", self.presentationData.strings.baseLanguageCode), action: { [weak self, weak controller] in
+                guard let strongSelf = self, let controller else {
+                    return
+                }
+                strongSelf.nagramPresentLoginOptions(from: controller)
+            })
+            let nagramRefreshBadge: () -> Void = { [weak self, weak controller] in
+                self?.nagramRefreshRestorableBackups { count in
+                    controller?.setNagramLoginBadgeCount(count)
+                }
+            }
+            controller.nagramRefreshLoginBadge = nagramRefreshBadge
+            nagramRefreshBadge()
             controller.nextPressed = { [weak self] strings in
                 if let strongSelf = self {
                     if let strings = strings {
@@ -187,6 +205,20 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
             if let splashController = splashController {
                 controller.animateWithSplashController(splashController)
             }
+            // MARK: NAGRAM — 添加账号路径没有 splash，入口放在手机号页右上角。
+            controller.setNagramLoginOptions(accessibilityLabel: ngI18n("Nagram.LoginOptions.Title", self.presentationData.strings.baseLanguageCode), action: { [weak self, weak controller] in
+                guard let strongSelf = self, let controller else {
+                    return
+                }
+                strongSelf.nagramPresentLoginOptions(from: controller)
+            })
+            let nagramRefreshBadge: () -> Void = { [weak self, weak controller] in
+                self?.nagramRefreshRestorableBackups { count in
+                    controller?.setNagramLoginBadgeCount(count)
+                }
+            }
+            controller.nagramRefreshLoginBadge = nagramRefreshBadge
+            nagramRefreshBadge()
             controller.accountUpdated = { [weak self] updatedAccount in
                 guard let strongSelf = self else {
                     return
@@ -1242,7 +1274,110 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
         return controller
     }
     
+    // MARK: NAGRAM
+    private weak var nagramQrLoginControllerRef: NagramQrLoginController?
+    private var nagramRestorableBackupCount: Int = 0
+
+    // MARK: NAGRAM — 扫码登录界面。
+    private func nagramPresentQrLogin(from sourceController: ViewController) {
+        let qrController = NagramQrLoginController(sharedContext: self.sharedContext, account: self.account, presentationData: self.presentationData, accountUpdated: { [weak self] updatedAccount in
+            guard let strongSelf = self else {
+                return
+            }
+            strongSelf.account = updatedAccount
+            strongSelf.inAppPurchaseManager = InAppPurchaseManager(engine: .unauthorized(strongSelf.engine))
+        })
+        self.nagramQrLoginControllerRef = qrController
+        sourceController.present(qrController, in: .window(.root), with: ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
+    }
+
+    // MARK: NAGRAM — 账号菜单：扫码登录、会话串登录、钥匙串里的已保存账号。
+    private func nagramPresentLoginOptions(from sourceController: ViewController) {
+        let language = self.presentationData.strings.baseLanguageCode
+        let actionSheet = ActionSheetController(presentationData: self.presentationData)
+        let dismissAction: () -> Void = { [weak actionSheet] in
+            actionSheet?.dismissAnimated()
+        }
+        // The sheet and these screens share the modal presentation context, so
+        // presenting while it is still dismissing loses the new controller.
+        // Present from the sheet's completion callback, after animateOut ends.
+        var actionAfterDismissal: (() -> Void)?
+        actionSheet.dismissed = { cancelled in
+            let next = actionAfterDismissal
+            actionAfterDismissal = nil
+            guard !cancelled, let next else {
+                return
+            }
+            // ActionSheetController removes itself immediately after invoking
+            // this callback. Defer one turn so the next modal cannot be removed
+            // by that final dismissal.
+            Queue.mainQueue().async {
+                next()
+            }
+        }
+        let dismissThen: (@escaping () -> Void) -> Void = { next in
+            actionAfterDismissal = next
+            dismissAction()
+        }
+        var items: [ActionSheetItem] = [
+            ActionSheetTextItem(title: ngI18n("Nagram.LoginOptions.Title", language)),
+            ActionSheetButtonItem(title: ngI18n("Nagram.QrLogin.Title", language), color: .accent, action: { [weak self, weak sourceController] in
+                dismissThen {
+                    guard let strongSelf = self, let sourceController else {
+                        return
+                    }
+                    strongSelf.nagramPresentQrLogin(from: sourceController)
+                }
+            }),
+            ActionSheetButtonItem(title: ngI18n("Nagram.SessionBackup.Import.Short", language), color: .accent, action: { [weak self, weak sourceController] in
+                dismissThen {
+                    guard let strongSelf = self, let sourceController else {
+                        return
+                    }
+                    let importController = nagramSessionImportController(sharedContext: strongSelf.sharedContext, presentationData: strongSelf.presentationData)
+                    sourceController.present(importController, in: .window(.root), with: ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
+                }
+            })
+        ]
+        // Only offered when the keychain actually holds an account that is not
+        // signed in here, so the menu does not advertise an empty screen.
+        if self.nagramRestorableBackupCount > 0 {
+            items.append(ActionSheetButtonItem(title: String(format: ngI18n("Nagram.SavedAccounts.MenuItem", language), "\(self.nagramRestorableBackupCount)"), color: .accent, action: { [weak self, weak sourceController] in
+                dismissThen {
+                    guard let strongSelf = self, let sourceController else {
+                        return
+                    }
+                    let pickerController = nagramSavedAccountsController(sharedContext: strongSelf.sharedContext, presentationData: strongSelf.presentationData)
+                    sourceController.present(pickerController, in: .window(.root), with: ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
+                }
+            }))
+        }
+        actionSheet.setItemGroups([
+            ActionSheetItemGroup(items: items),
+            ActionSheetItemGroup(items: [
+                ActionSheetButtonItem(title: self.presentationData.strings.Common_Cancel, action: {
+                    dismissAction()
+                })
+            ])
+        ])
+        sourceController.present(actionSheet, in: .window(.root), with: ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
+    }
+
+    // MARK: NAGRAM — 统计钥匙串里尚未登录的账号，用于红点与菜单计数。
+    private func nagramRefreshRestorableBackups(_ apply: @escaping (Int) -> Void) {
+        let _ = (nagramRestorableBackups(sharedContext: self.sharedContext)
+        |> deliverOnMainQueue).startStandalone(next: { [weak self] records in
+            self?.nagramRestorableBackupCount = records.count
+            apply(records.count)
+        })
+    }
+
     private func updateState(state: InnerState) {
+        // MARK: NAGRAM — 扫码被接受后，界面由这里收起，交还给正常的登录流程。
+        if let qrController = self.nagramQrLoginControllerRef, qrController.hasBeenAccepted {
+            self.nagramQrLoginControllerRef = nil
+            qrController.dismiss()
+        }
         switch state {
         case .authorized:
             self.authorizationCompleted()

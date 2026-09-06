@@ -165,6 +165,11 @@ public final class NagramSettings {
         }
     }
 
+    /// 会话备份是否写入 iCloud 钥匙串。关闭后仅存本机，
+    /// 也不再执行可同步查询（那种查询可能要等 iCloud 钥匙串响应）。
+    @NagramDefault("nagram.sessionBackupICloudSync", true)
+    public var sessionBackupICloudSync: Bool
+
     // MARK: 波次 1 — 解除内容保护（沿用 forceCopy key 以平滑迁移）
     @NagramDefault("nagram.forceCopyEnabled", false)
     public var forceCopyEnabled: Bool
