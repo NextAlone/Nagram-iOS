@@ -360,3 +360,9 @@
 "Nagram.RecentStickerLimit.120" = "120";
 "Nagram.RecentStickerLimit.150" = "150";
 "Nagram.RecentStickerLimit.200" = "200";
+
+// Screenshot sharing failures
+"Nagram.Share.PreparationFailed" = "The shared image or file could not be read or prepared. Nothing was sent. Try again, or save the screenshot to Photos and share it from there.";
+"Nagram.Share.ReadTimeout" = "The screenshot or file source did not respond within 30 seconds. Nothing was sent. Try again, or save the screenshot to Photos and share it from there.";
+"Nagram.Share.FileTooBig" = "This file is too large to share. Choose a smaller file and try again.";
+"Nagram.Share.SendFailed" = "Sharing could not be completed. Check the destination chat before trying again to avoid duplicate messages.";

@@ -127,8 +127,9 @@
     {
         [itemProvider loadItemForTypeIdentifier:(NSString *)kUTTypeData options:nil completionHandler:^(NSData *data, NSError *error)
         {
-            if (error != nil)
-                [subscriber putError:nil];
+            // MARK: NAGRAM — Never create a dictionary with a nil/non-data provider result.
+            if (error != nil || ![data isKindOfClass:[NSData class]] || data.length == 0)
+                [subscriber putError:error ?: [NSError errorWithDomain:@"NagramShareData" code:1 userInfo:nil]];
             else
             {
                 [subscriber putNext:@{@"data": data}];
@@ -168,113 +169,78 @@ __unused static CGSize TGFitSize(CGSize size, CGSize maxSize) {
     return size;
 }
 
+// MARK: NAGRAM — Screenshot providers may return UIImage, NSData, or NSURL.
 + (MTSignal *)signalForImageItemProvider:(NSItemProvider *)itemProvider
 {
     return [[MTSignal alloc] initWithGenerator:^id<MTDisposable>(MTSubscriber *subscriber)
     {
-        bool preferAsFile = false;
-        
-        CGSize maxSize = CGSizeMake(1280.0, 1280.0);
         NSDictionary *imageOptions = @{
-            NSItemProviderPreferredImageSizeKey: [NSValue valueWithCGSize:maxSize]
+            NSItemProviderPreferredImageSizeKey: [NSValue valueWithCGSize:CGSizeMake(1280.0, 1280.0)]
         };
-        if (preferAsFile) {
-            imageOptions = nil;
-        }
-        if ([itemProvider hasItemConformingToTypeIdentifier:(NSString *)kUTTypeImage]) {
-            [itemProvider loadItemForTypeIdentifier:(NSString *)kUTTypeImage options:imageOptions completionHandler:^(id<NSSecureCoding> _Nullable item, NSError * _Null_unspecified error) {
-                if (error != nil && ![(NSObject *)item respondsToSelector:@selector(CGImage)] && ![(NSObject *)item respondsToSelector:@selector(absoluteString)]) {
-                    [itemProvider loadItemForTypeIdentifier:(NSString *)kUTTypeData options:nil completionHandler:^(NSData *data, NSError *error)
-                     {
-                         if (error != nil)
-                             [subscriber putError:nil];
-                         else
-                         {
-                             [subscriber putNext:@{@"data": data}];
-                             [subscriber putCompletion];
-                         }
-                     }];
-                } else {
-                    if ([(NSObject *)item respondsToSelector:@selector(absoluteString)]) {
-                        NSURL *url = (NSURL *)item;
-                        
-                        if (preferAsFile) {
-                            NSData *data = [[NSData alloc] initWithContentsOfURL:url options:NSDataReadingMappedIfSafe error:nil];
-                            if (data == nil) {
-                                [subscriber putError:nil];
-                                return;
-                            }
-                            NSString *fileName = [[url pathComponents] lastObject];
-                            if (fileName.length == 0) {
-                                fileName = @"file.bin";
-                            }
-                            NSString *extension = [fileName pathExtension];
-                            NSString *mimeType = [TGMimeTypeMap mimeTypeForExtension:[extension lowercaseString]];
-                            if (mimeType == nil) {
-                                mimeType = @"application/octet-stream";
-                            }
-                            [subscriber putNext:@{@"data": data, @"fileName": fileName, @"mimeType": mimeType, @"treatAsFile": @true}];
-                            [subscriber putCompletion];
-                        } else {
-                            CGImageSourceRef src = CGImageSourceCreateWithURL((__bridge CFURLRef) url, NULL);
-
-                            CFDictionaryRef options = (__bridge CFDictionaryRef) @{
-                                (id) kCGImageSourceCreateThumbnailWithTransform : @YES,
-                                (id) kCGImageSourceCreateThumbnailFromImageAlways : @YES,
-                                (id) kCGImageSourceThumbnailMaxPixelSize : @(maxSize.width)
-                            };
-                            
-                            CGImageRef image = CGImageSourceCreateThumbnailAtIndex(src, 0, options);
-                            CFRelease(src);
-                            
-                            if (image == nil) {
-                                [subscriber putError:nil];
-                                return;
-                            }
-                            
-                            NSString *tempPath = [NSTemporaryDirectory() stringByAppendingPathComponent:[[NSString alloc] initWithFormat:@"img%d", (int)arc4random()]];
-                            CFURLRef tempUrl = (__bridge CFURLRef)[NSURL fileURLWithPath:tempPath];
-                            CGImageDestinationRef destination = CGImageDestinationCreateWithURL(tempUrl, kUTTypeJPEG, 1, NULL);
-                            NSDictionary *properties = @{ (__bridge NSString *)kCGImageDestinationLossyCompressionQuality: @(0.52)};
-
-                            CGImageDestinationSetProperties(destination, (__bridge CFDictionaryRef)properties);
-                            CGImageDestinationAddImage(destination, image, nil);
-                            
-                            if (!CGImageDestinationFinalize(destination)) {
-                                CFRelease(destination);
-                                
-                                [subscriber putError:nil];
-                                return;
-                            }
-                            
-                            CFRelease(destination);
-                            NSData *resultData = [[NSData alloc] initWithContentsOfFile:tempPath options:NSDataReadingMappedIfSafe error:nil];
-                            if (resultData != nil) {
-                                [subscriber putNext:@{@"scaledImageData": resultData, @"scaledImageDimensions": [NSValue valueWithCGSize:CGSizeMake(CGImageGetWidth(image), CGImageGetHeight(image))]}];
-                                [subscriber putCompletion];
-                            } else {
-                                [subscriber putError:nil];
-                            }
-                        }
-                    } else {
-                        [subscriber putNext:@{@"image": item}];
-                        [subscriber putCompletion];
-                    }
+        void (^consumeImage)(id<NSSecureCoding>, NSError *) = ^(id<NSSecureCoding> item, NSError *error) {
+            MTLog(@"[SharePreparation] image callback class=%@ errorDomain=%@ errorCode=%ld", item == nil ? @"nil" : NSStringFromClass([(NSObject *)item class]), error.domain, (long)error.code);
+            if ([(NSObject *)item isKindOfClass:[UIImage class]]) {
+                UIImage *image = (UIImage *)item;
+                if (!isfinite(image.size.width) || !isfinite(image.size.height) || image.size.width <= 0 || image.size.height <= 0) {
+                    [subscriber putError:[NSError errorWithDomain:@"NagramShareImage" code:1 userInfo:nil]];
+                    return;
                 }
-            }];
-        } else {
-            [itemProvider loadItemForTypeIdentifier:(NSString *)kUTTypeData options:nil completionHandler:^(NSData *data, NSError *error)
-             {
-                 if (error != nil)
-                     [subscriber putError:nil];
-                 else
-                 {
-                     [subscriber putNext:@{@"data": data}];
-                     [subscriber putCompletion];
-                 }
-             }];
-        }
-        
+                [subscriber putNext:@{@"image": image}];
+                [subscriber putCompletion];
+                return;
+            }
+
+            CGImageSourceRef source = NULL;
+            if ([(NSObject *)item isKindOfClass:[NSURL class]]) {
+                source = CGImageSourceCreateWithURL((__bridge CFURLRef)item, NULL);
+            } else if ([(NSObject *)item isKindOfClass:[NSData class]]) {
+                source = CGImageSourceCreateWithData((__bridge CFDataRef)item, NULL);
+            }
+            if (source == NULL) {
+                [subscriber putError:error ?: [NSError errorWithDomain:@"NagramShareImage" code:2 userInfo:nil]];
+                return;
+            }
+            NSDictionary *options = @{
+                (id)kCGImageSourceCreateThumbnailWithTransform: @YES,
+                (id)kCGImageSourceCreateThumbnailFromImageAlways: @YES,
+                (id)kCGImageSourceThumbnailMaxPixelSize: @1280
+            };
+            CGImageRef image = CGImageSourceCreateThumbnailAtIndex(source, 0, (__bridge CFDictionaryRef)options);
+            CFRelease(source);
+            if (image == NULL) {
+                [subscriber putError:[NSError errorWithDomain:@"NagramShareImage" code:3 userInfo:nil]];
+                return;
+            }
+            CGSize dimensions = CGSizeMake(CGImageGetWidth(image), CGImageGetHeight(image));
+            NSMutableData *data = [[NSMutableData alloc] init];
+            CGImageDestinationRef destination = CGImageDestinationCreateWithData((__bridge CFMutableDataRef)data, kUTTypeJPEG, 1, NULL);
+            if (destination == NULL) {
+                CGImageRelease(image);
+                [subscriber putError:[NSError errorWithDomain:@"NagramShareImage" code:4 userInfo:nil]];
+                return;
+            }
+            NSDictionary *properties = @{(id)kCGImageDestinationLossyCompressionQuality: @0.52};
+            CGImageDestinationAddImage(destination, image, (__bridge CFDictionaryRef)properties);
+            BOOL success = CGImageDestinationFinalize(destination);
+            CFRelease(destination);
+            CGImageRelease(image);
+            if (!success || data.length == 0) {
+                [subscriber putError:[NSError errorWithDomain:@"NagramShareImage" code:5 userInfo:nil]];
+                return;
+            }
+            MTLog(@"[SharePreparation] image decoded width=%.0f height=%.0f bytes=%lu", dimensions.width, dimensions.height, (unsigned long)data.length);
+            [subscriber putNext:@{@"scaledImageData": data, @"scaledImageDimensions": [NSValue valueWithCGSize:dimensions]}];
+            [subscriber putCompletion];
+        };
+        [itemProvider loadItemForTypeIdentifier:(NSString *)kUTTypeImage options:imageOptions completionHandler:^(id<NSSecureCoding> item, NSError *error) {
+            BOOL usable = [(NSObject *)item isKindOfClass:[UIImage class]] || [(NSObject *)item isKindOfClass:[NSData class]] || [(NSObject *)item isKindOfClass:[NSURL class]];
+            if (error != nil && !usable && [itemProvider hasItemConformingToTypeIdentifier:(NSString *)kUTTypeData]) {
+                MTLog(@"[SharePreparation] image read failed domain=%@ code=%ld; trying data representation", error.domain, (long)error.code);
+                [itemProvider loadItemForTypeIdentifier:(NSString *)kUTTypeData options:nil completionHandler:consumeImage];
+            } else {
+                consumeImage(item, error);
+            }
+        }];
         return nil;
     }];
 }

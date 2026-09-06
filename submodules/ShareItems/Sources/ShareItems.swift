@@ -37,6 +37,10 @@ public enum PreparedShareItems {
 }
 
 private func scalePhotoImage(_ image: UIImage, dimensions: CGSize) -> UIImage? {
+    // MARK: NAGRAM — Invalid provider images must fail instead of crashing the renderer.
+    guard dimensions.width.isFinite, dimensions.height.isFinite, dimensions.width >= 1.0, dimensions.height >= 1.0 else {
+        return nil
+    }
     let format = UIGraphicsImageRendererFormat()
     format.scale = 1.0
     let renderer = UIGraphicsImageRenderer(size: dimensions, format: format)
@@ -48,6 +52,8 @@ private func scalePhotoImage(_ image: UIImage, dimensions: CGSize) -> UIImage? {
 public enum PreparedShareItemError {
     case generic
     case fileTooBig(Int64)
+    // MARK: NAGRAM — Stable diagnostic codes, without shared content or recipient data.
+    case preparationFailed(String)
 }
 
 private func preparedShareItem(postbox: Postbox, network: Network, to peerId: PeerId, value: [String: Any]) -> Signal<PreparedShareItem, PreparedShareItemError> {
@@ -88,7 +94,8 @@ private func preparedShareItem(postbox: Postbox, network: Network, to peerId: Pe
                 }
             )
         } else {
-            return .never()
+            // MARK: NAGRAM
+            return .fail(.preparationFailed("image-encoding"))
         }
     } else if let asset = value["video"] as? AVURLAsset {
         var flags: TelegramMediaVideoFlags = [.supportsStreaming]
@@ -261,8 +268,10 @@ private func preparedShareItem(postbox: Postbox, network: Network, to peerId: Pe
                     }
                 )
             } else {
-                let scaledImage = scalePhotoImage(image, dimensions: CGSize(width: image.size.width * image.scale, height: image.size.height * image.scale).fitted(CGSize(width: 1280.0, height: 1280.0)))!
-                let imageData = scaledImage.jpegData(compressionQuality: 0.54)!
+                // MARK: NAGRAM
+                guard let scaledImage = scalePhotoImage(image, dimensions: CGSize(width: image.size.width * image.scale, height: image.size.height * image.scale).fitted(CGSize(width: 1280.0, height: 1280.0))), let imageData = scaledImage.jpegData(compressionQuality: 0.54) else {
+                    return .fail(.preparationFailed("image-encoding"))
+                }
                 return .single(.preparing(false))
                 |> then(
                     standaloneUploadedImage(postbox: postbox, network: network, peerId: peerId, text: "", source: .data(imageData), dimensions: PixelDimensions(width: Int32(scaledImage.size.width), height: Int32(scaledImage.size.height)))
@@ -333,7 +342,8 @@ private func preparedShareItem(postbox: Postbox, network: Network, to peerId: Pe
                 }
             )
         } else {
-            return .never()
+            // MARK: NAGRAM
+            return .fail(.preparationFailed("audio-read"))
         }
     } else if let text = value["text"] as? String {
         return .single(.preparing(false))
@@ -370,19 +380,41 @@ private func preparedShareItem(postbox: Postbox, network: Network, to peerId: Pe
     } else if let vcard = value["contact"] as? Data, let contactData = DeviceContactExtendedData(vcard: vcard) {
         return .single(.userInteractionRequired(.contact(contactData)))
     } else {
-        return .never()
+        // MARK: NAGRAM
+        return .fail(.preparationFailed("unsupported-item"))
     }
 }
 
 public func preparedShareItems(postbox: Postbox, network: Network, to peerId: PeerId, dataItems: [MTSignal]) -> Signal<PreparedShareItems, PreparedShareItemError> {
+    // MARK: NAGRAM — Item providers must return a value, fail, or time out before upload.
+    guard !dataItems.isEmpty else {
+        return .fail(.preparationFailed("empty-items"))
+    }
     var dataSignals: Signal<[String: Any], PreparedShareItemError> = .complete()
-    for dataItem in dataItems {
-        let wrappedSignal: Signal<[String: Any], NoError> = Signal { subscriber in
+    for (index, dataItem) in dataItems.enumerated() {
+        let wrappedSignal: Signal<[String: Any], PreparedShareItemError> = Signal { subscriber in
+            Logger.shared.log("SharePreparation", "provider[\(index)] read started")
+            var receivedValue = false
             let disposable = dataItem.start(next: { value in
-                subscriber.putNext(value as! [String : Any])
-            }, error: { _ in
-            }, completed: {
+                receivedValue = true
+                guard let value = value as? [String: Any], !value.isEmpty else {
+                    subscriber.putError(.preparationFailed("invalid-provider-value"))
+                    return
+                }
+                Logger.shared.log("SharePreparation", "provider[\(index)] returned keys=\(value.keys.sorted())")
+                subscriber.putNext(value)
                 subscriber.putCompletion()
+            }, error: { error in
+                if let error = error as? NSError {
+                    Logger.shared.log("SharePreparation", "provider[\(index)] failed domain=\(error.domain) code=\(error.code)")
+                } else {
+                    Logger.shared.log("SharePreparation", "provider[\(index)] failed without NSError")
+                }
+                subscriber.putError(.preparationFailed("provider-read"))
+            }, completed: {
+                if !receivedValue {
+                    subscriber.putError(.preparationFailed("empty-provider-value"))
+                }
             })
             return ActionDisposable {
                 disposable?.dispose()
@@ -391,7 +423,7 @@ public func preparedShareItems(postbox: Postbox, network: Network, to peerId: Pe
         dataSignals = dataSignals
         |> then(
             wrappedSignal
-            |> castError(PreparedShareItemError.self)
+            |> timeout(30.0, queue: Queue.concurrentDefaultQueue(), alternate: .fail(.preparationFailed("provider-timeout")))
             |> take(1)
         )
     }

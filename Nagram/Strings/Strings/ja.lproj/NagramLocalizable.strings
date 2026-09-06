@@ -360,3 +360,9 @@
 "Nagram.RecentStickerLimit.120" = "120";
 "Nagram.RecentStickerLimit.150" = "150";
 "Nagram.RecentStickerLimit.200" = "200";
+
+// Screenshot sharing failures
+"Nagram.Share.PreparationFailed" = "共有する画像またはファイルを読み込み・処理できませんでした。まだ送信されていません。再試行するか、スクリーンショットを写真に保存してから共有してください。";
+"Nagram.Share.ReadTimeout" = "スクリーンショットまたはファイルの共有元が 30 秒以内に応答しませんでした。まだ送信されていません。再試行するか、写真に保存してから共有してください。";
+"Nagram.Share.FileTooBig" = "ファイルが大きすぎるため共有できません。小さいファイルを選択して再試行してください。";
+"Nagram.Share.SendFailed" = "共有を完了できませんでした。重複送信を避けるため、再試行する前に送信先のチャットを確認してください。";

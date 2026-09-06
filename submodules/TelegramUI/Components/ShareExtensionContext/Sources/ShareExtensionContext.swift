@@ -596,23 +596,31 @@ public class ShareRootControllerImpl {
                         }
                         let shareController = ShareController(environment: environment, currentContext: context, subject: .fromExternal(itemCount, { peerIds, threadIds, requireStars, additionalText, account, silently in
                             if let strongSelf = self, let inputItems = strongSelf.getExtensionContext()?.inputItems, !inputItems.isEmpty, !peerIds.isEmpty {
-                                let rawSignals = TGItemProviderSignals.itemSignals(forInputItems: inputItems)!
+                                // MARK: NAGRAM — Diagnose screenshot providers without logging content or recipients.
+                                Logger.shared.log("SharePreparation", "send requested items=\(inputItems.count)")
+                                for item in inputItems.compactMap({ $0 as? NSExtensionItem }) {
+                                    for attachment in item.attachments ?? [] {
+                                        Logger.shared.log("SharePreparation", "provider types=\(attachment.registeredTypeIdentifiers)")
+                                    }
+                                }
+                                guard let rawSignals = TGItemProviderSignals.itemSignals(forInputItems: inputItems), !rawSignals.isEmpty else {
+                                    return .fail(.preparationFailed("empty-items"))
+                                }
                                 return preparedShareItems(postbox: account.stateManager.postbox, network: account.stateManager.network, to: peerIds[0], dataItems: rawSignals)
-                                |> map(Optional.init)
-                                |> `catch` { error -> Signal<PreparedShareItems?, ShareControllerError> in
+                                |> mapError { error -> ShareControllerError in
                                     switch error {
                                         case .generic:
-                                            return .single(nil)
+                                            return .preparationFailed("media-preparation")
                                         case let .fileTooBig(size):
-                                            return .fail(.fileTooBig(size))
+                                            return .fileTooBig(size)
+                                        case let .preparationFailed(code):
+                                            return .preparationFailed(code)
                                     }
                                 }
                                 |> mapToSignal { state -> Signal<ShareControllerExternalStatus, ShareControllerError> in
-                                    guard let state = state else {
-                                        return .single(.done)
-                                    }
                                     switch state {
                                     case let .preparing(long):
+                                        Logger.shared.log("SharePreparation", "media preparation started long=\(long)")
                                         return .single(.preparing(long))
                                     case let .progress(value):
                                         return .single(.progress(value))
@@ -624,12 +632,14 @@ public class ShareRootControllerImpl {
                                             |> castError(ShareControllerError.self)
                                         }
                                     case let .done(contents):
+                                        Logger.shared.log("SharePreparation", "prepared contents=\(contents.count); sending messages")
                                         return sentItems(peerIds, threadIds, requireStars, contents, account, silently, additionalText)
                                         |> castError(ShareControllerError.self)
                                     }
                                 }
                             } else {
-                                return .single(.done)
+                                // MARK: NAGRAM
+                                return .fail(.preparationFailed("missing-input"))
                             }
                         }), fromForeignApp: true, externalShare: false, switchableAccounts: otherAccounts, immediatePeerId: immediatePeerId)
                         shareController.presentationArguments = ViewControllerPresentationArguments(presentationAnimation: .modalSheet)

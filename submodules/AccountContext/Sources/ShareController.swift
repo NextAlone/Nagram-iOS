@@ -83,6 +83,8 @@ public enum ShareControllerExternalStatus {
 public enum ShareControllerError {
     case generic
     case fileTooBig(Int64)
+    // MARK: NAGRAM — Preparation failed before any messages were sent; retry is safe.
+    case preparationFailed(String)
 }
 
 public enum ShareControllerSubject {

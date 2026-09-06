@@ -360,3 +360,9 @@
 "Nagram.RecentStickerLimit.120" = "120";
 "Nagram.RecentStickerLimit.150" = "150";
 "Nagram.RecentStickerLimit.200" = "200";
+
+// Screenshot sharing failures
+"Nagram.Share.PreparationFailed" = "无法读取或处理分享的图片或文件，尚未发送。请重试，或将截图保存到照片后再分享。";
+"Nagram.Share.ReadTimeout" = "截图或文件来源在 30 秒内没有响应，尚未发送。请重试，或将截图保存到照片后再分享。";
+"Nagram.Share.FileTooBig" = "文件过大，无法分享。请选择较小的文件后重试。";
+"Nagram.Share.SendFailed" = "分享未能完成。请先检查目标聊天，再决定是否重试，以免重复发送。";
