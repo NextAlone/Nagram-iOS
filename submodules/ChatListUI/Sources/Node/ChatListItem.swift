@@ -1928,7 +1928,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             lineWidth: 2.33,
             inactiveLineWidth: 1.33
         ), transition: .immediate)
-        self.avatarNode.isUserInteractionEnabled = !item.useCommunityViewLayout && ((storyState != nil && !peerIsCommunity) || peerLinkedCommunityId != nil)
+        self.avatarNode.isUserInteractionEnabled = !item.useCommunityViewLayout && ((storyState != nil && !peerIsCommunity) || (peerLinkedCommunityId != nil && !NagramSettings.shared.disableCommunityChatGrouping)) // MARK: NAGRAM — 拆分显示时恢复普通聊天的头像手势命中
         
         if let stats = storyState?.stats, stats.hasLiveItems {
             if self.avatarLiveBadge == nil {
@@ -4317,7 +4317,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         strongSelf.communityAvatarShadowNode.isHidden = true
                     }
 
-                    if useChatListLayout && displayCommunityAvatarBadge && avatarContentImageSpec == nil && !item.useCommunityViewLayout {
+                    if useChatListLayout && displayCommunityAvatarBadge && avatarContentImageSpec == nil && !item.useCommunityViewLayout && !NagramSettings.shared.disableCommunityChatGrouping { // MARK: NAGRAM — 防止旧异步布局在返回列表时恢复展开徽标
                         let communityAvatarBadgeBackgroundView: GlassBackgroundView
                         let communityAvatarBadgeIconView: GlassBackgroundView.ContentImageView
                         if let currentBackgroundView = strongSelf.communityAvatarBadgeBackgroundView, let currentIconView = strongSelf.communityAvatarBadgeIconView {
