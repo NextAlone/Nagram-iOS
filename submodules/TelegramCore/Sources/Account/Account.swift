@@ -1,4 +1,6 @@
 import Foundation
+// MARK: NAGRAM — screenshot session connection presentation.
+import NagramSettings
 import Postbox
 import SwiftSignalKit
 import MtProtoKit
@@ -1328,6 +1330,10 @@ public class Account {
         
         let networkStateSignal = combineLatest(queue: networkStateQueue, self.stateManager.isUpdating, network.connectionStatus)
         |> map { isUpdating, connectionStatus -> AccountNetworkState in
+            // MARK: NAGRAM — offline fixtures have no server update cycle.
+            if NagramDemoMode.isEnabled {
+                return .online(proxy: nil)
+            }
             switch connectionStatus {
                 case .waitingForNetwork:
                     return .waitingForNetwork

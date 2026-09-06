@@ -129,11 +129,11 @@ final class NagramSettingsCloudSync {
 
     private init() {}
 
-    static func isEnabled(defaults: UserDefaults = .standard) -> Bool {
-        return defaults.bool(forKey: self.enabledKey)
+    static func isEnabled(defaults: UserDefaults = NagramDemoMode.userDefaults) -> Bool {
+        return !NagramDemoMode.isEnabled && defaults.bool(forKey: self.enabledKey)
     }
 
-    func setEnabled(_ enabled: Bool, defaults: UserDefaults = .standard) {
+    func setEnabled(_ enabled: Bool, defaults: UserDefaults = NagramDemoMode.userDefaults) {
         defaults.set(enabled, forKey: Self.enabledKey)
         guard defaults === UserDefaults.standard else {
             return
@@ -182,7 +182,7 @@ final class NagramSettingsCloudSync {
         }
     }
 
-    func set(_ value: Any, forKey key: String, defaults: UserDefaults = .standard) {
+    func set(_ value: Any, forKey key: String, defaults: UserDefaults = NagramDemoMode.userDefaults) {
         defaults.set(value, forKey: key)
         guard defaults === UserDefaults.standard, Self.isEnabled() else {
             return
@@ -191,7 +191,7 @@ final class NagramSettingsCloudSync {
         self.exportValue(value, forKey: key)
     }
 
-    func removeObject(forKey key: String, defaults: UserDefaults = .standard) {
+    func removeObject(forKey key: String, defaults: UserDefaults = NagramDemoMode.userDefaults) {
         defaults.removeObject(forKey: key)
         guard defaults === UserDefaults.standard, Self.isEnabled() else {
             return

@@ -1,4 +1,6 @@
 import Foundation
+// MARK: NAGRAM — demo sessions must not expose device contacts or location.
+import NagramSettings
 import UIKit
 import AsyncDisplayKit
 import Postbox
@@ -345,7 +347,8 @@ public final class SharedAccountContextImpl: SharedAccountContext {
             )
         })
                 
-        if applicationBindings.isMainApp {
+        // MARK: NAGRAM — only simulated account data is available in demo mode.
+        if applicationBindings.isMainApp && !NagramDemoMode.isEnabled {
             self.locationManager = DeviceLocationManager(queue: Queue.mainQueue())
             self.contactDataManager = DeviceContactDataManagerImpl(accountManager: accountManager)
             // MARK: NAGRAM — 复用 Nagram iCloud 开关同步 Telegram 原生本地配置。

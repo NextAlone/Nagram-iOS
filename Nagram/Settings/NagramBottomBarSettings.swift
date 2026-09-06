@@ -357,7 +357,7 @@ public extension NagramBottomBarSettings {
         static let searchMode = "nagram.bottomBarLayout.searchMode"
     }
 
-    static func load(from defaults: UserDefaults = .standard) -> NagramBottomBarSettings {
+    static func load(from defaults: UserDefaults = NagramDemoMode.userDefaults) -> NagramBottomBarSettings {
         if defaults.object(forKey: Keys.marker) == nil {
             let migratedSettings = self.legacySettings(from: defaults)
             migratedSettings.save(to: defaults)
@@ -386,7 +386,7 @@ public extension NagramBottomBarSettings {
         )
     }
 
-    func save(to defaults: UserDefaults = .standard) {
+    func save(to defaults: UserDefaults = NagramDemoMode.userDefaults) {
         var settings = self
         settings.normalize()
 

@@ -24,7 +24,7 @@ public extension NagramSettings {
     }
     
     private func recentChatContainerPeerIds(accountPeerId: Int64) -> [Int64: Int64] {
-        guard let values = UserDefaults.standard.dictionary(forKey: self.recentChatContainerPeerIdsKey(accountPeerId: accountPeerId)) else {
+        guard let values = NagramDemoMode.userDefaults.dictionary(forKey: self.recentChatContainerPeerIdsKey(accountPeerId: accountPeerId)) else {
             return [:]
         }
         var result: [Int64: Int64] = [:]
@@ -44,14 +44,14 @@ public extension NagramSettings {
     private func setRecentChatContainerPeerIds(_ values: [Int64: Int64], accountPeerId: Int64) {
         let key = self.recentChatContainerPeerIdsKey(accountPeerId: accountPeerId)
         if values.isEmpty {
-            UserDefaults.standard.removeObject(forKey: key)
+            NagramDemoMode.userDefaults.removeObject(forKey: key)
         } else {
-            UserDefaults.standard.set(Dictionary(uniqueKeysWithValues: values.map { (String($0.key), String($0.value)) }), forKey: key)
+            NagramDemoMode.userDefaults.set(Dictionary(uniqueKeysWithValues: values.map { (String($0.key), String($0.value)) }), forKey: key)
         }
     }
 
     func recentChatIds(accountPeerId: Int64, limit: Int? = nil) -> [Int64] {
-        let values = UserDefaults.standard.stringArray(forKey: self.recentChatsKey(accountPeerId: accountPeerId))?.compactMap(Int64.init) ?? []
+        let values = NagramDemoMode.userDefaults.stringArray(forKey: self.recentChatsKey(accountPeerId: accountPeerId))?.compactMap(Int64.init) ?? []
         if let limit {
             return Array(values.prefix(limit))
         } else {
@@ -79,11 +79,11 @@ public extension NagramSettings {
         guard filterId > 0 else {
             return false
         }
-        return UserDefaults.standard.stringArray(forKey: self.recentChatFoldersKey(accountPeerId: accountPeerId))?.contains(String(filterId)) ?? false
+        return NagramDemoMode.userDefaults.stringArray(forKey: self.recentChatFoldersKey(accountPeerId: accountPeerId))?.contains(String(filterId)) ?? false
     }
     
     func hasRecentChatFolderEnabled(accountPeerId: Int64) -> Bool {
-        return !(UserDefaults.standard.stringArray(forKey: self.recentChatFoldersKey(accountPeerId: accountPeerId)) ?? []).isEmpty
+        return !(NagramDemoMode.userDefaults.stringArray(forKey: self.recentChatFoldersKey(accountPeerId: accountPeerId)) ?? []).isEmpty
     }
     
     func setRecentChatFolderEnabled(_ enabled: Bool, accountPeerId: Int64, filterId: Int32) {
@@ -92,7 +92,7 @@ public extension NagramSettings {
         }
         
         let key = self.recentChatFoldersKey(accountPeerId: accountPeerId)
-        var values = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
+        var values = Set(NagramDemoMode.userDefaults.stringArray(forKey: key) ?? [])
         let id = String(filterId)
         let hadValue = values.contains(id)
         if enabled {
@@ -151,7 +151,7 @@ public extension NagramSettings {
             return
         }
         if values != previousValues {
-            UserDefaults.standard.set(values.map { String($0) }, forKey: self.recentChatsKey(accountPeerId: accountPeerId))
+            NagramDemoMode.userDefaults.set(values.map { String($0) }, forKey: self.recentChatsKey(accountPeerId: accountPeerId))
         }
         if containerPeerIds != previousContainerPeerIds {
             self.setRecentChatContainerPeerIds(containerPeerIds, accountPeerId: accountPeerId)
@@ -197,9 +197,9 @@ public extension NagramSettings {
         
         let key = self.recentChatsKey(accountPeerId: accountPeerId)
         if values.isEmpty {
-            UserDefaults.standard.removeObject(forKey: key)
+            NagramDemoMode.userDefaults.removeObject(forKey: key)
         } else {
-            UserDefaults.standard.set(values.map { String($0) }, forKey: key)
+            NagramDemoMode.userDefaults.set(values.map { String($0) }, forKey: key)
         }
         self.setRecentChatContainerPeerIds(containerPeerIds, accountPeerId: accountPeerId)
         NotificationCenter.default.post(
@@ -225,9 +225,9 @@ public extension NagramSettings {
         containerPeerIds = containerPeerIds.filter { retainedPeerIds.contains($0.key) }
         let recentChatsKey = self.recentChatsKey(accountPeerId: accountPeerId)
         if values.isEmpty {
-            UserDefaults.standard.removeObject(forKey: recentChatsKey)
+            NagramDemoMode.userDefaults.removeObject(forKey: recentChatsKey)
         } else {
-            UserDefaults.standard.set(values.map { String($0) }, forKey: recentChatsKey)
+            NagramDemoMode.userDefaults.set(values.map { String($0) }, forKey: recentChatsKey)
         }
         self.setRecentChatContainerPeerIds(containerPeerIds, accountPeerId: accountPeerId)
         NotificationCenter.default.post(

@@ -1,4 +1,6 @@
 import Foundation
+// MARK: NAGRAM — launch-only offline screenshot mode.
+import NagramSettings
 import Postbox
 import TelegramApi
 import SwiftSignalKit
@@ -551,7 +553,8 @@ func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializa
             context.keychain = keychain
             var wrappedAdditionalSource: MTSignal?
             #if os(iOS)
-            if #available(iOS 10.0, *), !supplementary, arguments.isICloudEnabled {
+            // MARK: NAGRAM — no iCloud address discovery for simulated accounts.
+            if #available(iOS 10.0, *), !supplementary, arguments.isICloudEnabled, !NagramDemoMode.isEnabled {
                 var cloudDataContextValue: CloudDataContext?
                 if let value = cloudDataContext.with({ $0 }) {
                     cloudDataContextValue = value
@@ -575,7 +578,8 @@ func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializa
             }
             #endif
             
-            if !supplementary {
+            // MARK: NAGRAM — no backup address discovery for simulated accounts.
+            if !supplementary && !NagramDemoMode.isEnabled {
                 context.setDiscoverBackupAddressListSignal(MTBackupAddressSignals.fetchBackupIps(testingEnvironment, currentContext: context, additionalSource: wrappedAdditionalSource, phoneNumber: phoneNumber, mainDatacenterId: datacenterId))
                 let externalRequestVerificationStream = arguments.externalRequestVerificationStream
                 context.setExternalRequestVerification({ nonce in
@@ -627,6 +631,11 @@ func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializa
             let requestService = MTRequestMessageService(context: context)!
             let connectionStatusDelegate = MTProtoConnectionStatusDelegate()
             connectionStatusDelegate.action = { [weak connectionStatus] info in
+                // MARK: NAGRAM — stable title when taking screenshots offline.
+                if NagramDemoMode.isEnabled {
+                    connectionStatus?.set(.single(.online(proxyAddress: nil)))
+                    return
+                }
                 if info.flags.contains(.Connected) {
                     if !info.flags.intersection([.UpdatingConnectionContext, .PerformingServiceTasks]).isEmpty {
                         connectionStatus?.set(.single(.updating(proxyAddress: info.proxyAddress)))
@@ -654,6 +663,10 @@ func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializa
             }
             
             let network = Network(queue: queue, datacenterId: datacenterId, context: context, mtProto: mtProto, requestService: requestService, connectionStatusDelegate: connectionStatusDelegate, _connectionStatus: connectionStatus, basePath: basePath, appDataDisposable: appDataDisposable, encryptionProvider: arguments.encryptionProvider, useRequestTimeoutTimers: useRequestTimeoutTimers, useBetaFeatures: arguments.useBetaFeatures, useExperimentalFeatures: useExperimentalFeatures)
+            // MARK: NAGRAM — presentation state only; transports remain paused.
+            if NagramDemoMode.isEnabled {
+                network.mockConnectionStatus = .online(proxyAddress: nil)
+            }
             
             if let data = appConfiguration.data, let notifyInterval = data["upload_premium_speedup_notify_period"] as? Double {
                 network.updateNetworkSpeedLimitedEventNotifyInterval(value: notifyInterval)
@@ -921,6 +934,10 @@ public final class Network: NSObject, MTRequestMessageServiceDelegate {
                 return .never()
             }
         }, isContextNetworkAccessAllowed: { [weak self] in
+            // MARK: NAGRAM — blocks auxiliary MTProto contexts too.
+            if NagramDemoMode.isEnabled {
+                return .single(false)
+            }
             if let strongSelf = self {
                 return strongSelf.shouldKeepConnection.get() |> distinctUntilChanged
             } else {
@@ -962,7 +979,8 @@ public final class Network: NSObject, MTRequestMessageServiceDelegate {
         |> distinctUntilChanged |> deliverOn(queue)
         self.shouldKeepConnectionDisposable.set(shouldKeepConnectionSignal.start(next: { [weak self] value in
             if let strongSelf = self {
-                if value {
+                // MARK: NAGRAM — MTProto starts paused and must stay paused in demo mode.
+                if value && !NagramDemoMode.isEnabled {
                     Logger.shared.log("Network", "Resume network connection")
                     strongSelf.mtProto.resume()
                 } else {
@@ -1017,6 +1035,10 @@ public final class Network: NSObject, MTRequestMessageServiceDelegate {
         let queue = Queue.mainQueue()
         let shouldKeepWorkerConnection: Signal<Bool, NoError> = combineLatest(queue: queue, self.shouldKeepConnection.get(), self.shouldExplicitelyKeepWorkerConnections.get(), self.shouldKeepBackgroundDownloadConnections.get())
         |> map { shouldKeepConnection, shouldExplicitelyKeepWorkerConnections, shouldKeepBackgroundDownloadConnections -> Bool in
+            // MARK: NAGRAM — uploads/downloads cannot connect in demo mode.
+            if NagramDemoMode.isEnabled {
+                return false
+            }
             return shouldKeepConnection || shouldExplicitelyKeepWorkerConnections || (continueInBackground && shouldKeepBackgroundDownloadConnections)
         }
         |> distinctUntilChanged

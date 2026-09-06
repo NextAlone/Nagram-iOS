@@ -69,6 +69,8 @@ swift_library(
         "//submodules/TelegramUIPreferences:TelegramUIPreferences",
         # MARK: NAGRAM — Nagram 增强开关模块
         "//Nagram/Settings:NagramSettings",
+        # MARK: NAGRAM — offline screenshot fixtures.
+        "//Nagram/Demo:NagramDemo",
         "//Nagram/LinkMetadata:NagramLinkMetadata",
         "//Nagram/SettingsSignal:NagramSettingsSignal",
         "//Nagram/TelegramSettingsCloudSync:NagramTelegramSettingsCloudSync",

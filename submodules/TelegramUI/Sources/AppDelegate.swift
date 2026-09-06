@@ -1,4 +1,7 @@
 import UIKit
+// MARK: NAGRAM — isolated offline screenshot mode.
+import NagramDemo
+import NagramSettings
 import SwiftSignalKit
 import Display
 import TelegramCore
@@ -663,16 +666,29 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }
         
         let isUITest = CommandLine.arguments.contains("--ui-test")
+        // MARK: NAGRAM — demo fixtures never open the production account directory.
+        let isDemo = NagramDemoMode.isEnabled
+        precondition(!(isUITest && isDemo), "Use --demo or --ui-test, not both")
 
         let rootPath: String
-        if isUITest {
+        if isDemo {
+            let demoDataPath = appGroupUrl.path + "/nagram-demo-data"
+            do {
+                if FileManager.default.fileExists(atPath: demoDataPath) {
+                    try FileManager.default.removeItem(atPath: demoDataPath)
+                }
+            } catch {
+                preconditionFailure("Could not reset demo data: \(error.localizedDescription)")
+            }
+            rootPath = rootPathForBasePath(demoDataPath)
+        } else if isUITest {
             let testDataPath = appGroupUrl.path + "/telegram-ui-tests-data"
             let _ = try? FileManager.default.removeItem(atPath: testDataPath)
             rootPath = rootPathForBasePath(testDataPath)
         } else {
             rootPath = rootPathForBasePath(appGroupUrl.path)
         }
-        if !isUITest {
+        if !isUITest && !isDemo {
             performAppGroupUpgrades(appGroupPath: appGroupUrl.path, rootPath: rootPath)
         }
         
@@ -795,7 +811,9 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             |> distinctUntilChanged
         )
         
-        let applicationBindings = TelegramApplicationBindings(isMainApp: true, appBundleId: baseAppBundleId, appBuildType: buildConfig.isAppStoreBuild ? .public : .internal, containerPath: appGroupUrl.path, appSpecificScheme: buildConfig.appSpecificUrlScheme, openUrl: { url in
+        // MARK: NAGRAM — helpers must resolve files inside the demo container too.
+        let applicationContainerPath = isDemo ? appGroupUrl.path + "/nagram-demo-data" : appGroupUrl.path
+        let applicationBindings = TelegramApplicationBindings(isMainApp: true, appBundleId: baseAppBundleId, appBuildType: buildConfig.isAppStoreBuild ? .public : .internal, containerPath: applicationContainerPath, appSpecificScheme: buildConfig.appSpecificUrlScheme, openUrl: { url in
             var parsedUrl = URL(string: url)
             if let parsed = parsedUrl {
                 if parsed.scheme == nil || parsed.scheme!.isEmpty {
@@ -1048,12 +1066,15 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             return true
         }
 
-        let pushRegistry = PKPushRegistry(queue: .main)
-        if #available(iOS 9.0, *) {
-            pushRegistry.desiredPushTypes = Set([.voIP])
+        // MARK: NAGRAM — a demo session does not register for VoIP pushes.
+        if !isDemo {
+            let pushRegistry = PKPushRegistry(queue: .main)
+            if #available(iOS 9.0, *) {
+                pushRegistry.desiredPushTypes = Set([.voIP])
+            }
+            self.pushRegistry = pushRegistry
+            pushRegistry.delegate = self
         }
-        self.pushRegistry = pushRegistry
-        pushRegistry.delegate = self
 
         self.accountManagerState = extractAccountManagerState(records: accountManager._internalAccountRecordsSync())
         let _ = (accountManager.accountRecords()
@@ -1068,7 +1089,14 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             }
         }
         
-        let sharedContextSignal = currentPresentationDataAndSettings(accountManager: accountManager, systemUserInterfaceStyle: systemUserInterfaceStyle)
+        // MARK: NAGRAM — seed before SharedAccountContext observes account records.
+        let prepareDemo: Signal<Void, NoError> = isDemo
+            ? prepareNagramDemo(accountManager: accountManager, rootPath: rootPath, encryptionParameters: encryptionParameters)
+            : .single(())
+        let sharedContextSignal = prepareDemo
+        |> mapToSignal { _ in
+            currentPresentationDataAndSettings(accountManager: accountManager, systemUserInterfaceStyle: systemUserInterfaceStyle)
+        }
         |> map { initialPresentationDataAndSettings -> (AccountManager, InitialPresentationDataAndSettings) in
             return (accountManager, initialPresentationDataAndSettings)
         }
@@ -1076,7 +1104,8 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         |> mapToSignal { accountManager, initialPresentationDataAndSettings -> Signal<(SharedApplicationContext, LoggingSettings), NoError> in
             self.mainWindow?.hostView.containerView.backgroundColor =  initialPresentationDataAndSettings.presentationData.theme.chatList.backgroundColor
             
-            let legacyBasePath = appGroupUrl.path
+            // MARK: NAGRAM — legacy shared account resources are isolated as well.
+            let legacyBasePath = isDemo ? appGroupUrl.path + "/nagram-demo-data" : appGroupUrl.path
             
             let presentationDataPromise = Promise<PresentationData>()
             let appLockContext = AppLockContextImpl(rootPath: rootPath, window: self.mainWindow!, rootController: self.window?.rootViewController, applicationBindings: applicationBindings, accountManager: accountManager, presentationDataSignal: presentationDataPromise.get(), lockIconInitialFrame: {
@@ -1104,7 +1133,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                         self.mainWindow.coveringView = nil
                     }
                 }
-            }, appDelegate: self, testingEnvironment: isUITest)
+            }, appDelegate: self, testingEnvironment: isUITest || isDemo)
             
             presentationDataPromise.set(sharedContext.presentationData)
             
@@ -1535,7 +1564,10 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             }
         }
         
-        self.maybeCheckForUpdates()
+        // MARK: NAGRAM — demo sessions do not fetch app updates.
+        if !isDemo {
+            self.maybeCheckForUpdates()
+        }
 
         #if canImport(AppCenter)
         if !buildConfig.isAppStoreBuild, let appCenterId = buildConfig.appCenterId, !appCenterId.isEmpty {
@@ -1592,11 +1624,15 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             })
         }
         
-        if #available(iOS 12.0, *) {
+        // MARK: NAGRAM — screenshot sessions do not register real push tokens.
+        if #available(iOS 12.0, *), !isDemo {
             UIApplication.shared.registerForRemoteNotifications()
         }
         
-        let _ = self.urlSession(identifier: "\(baseAppBundleId).backroundSession")
+        // MARK: NAGRAM — do not resume production background uploads in a demo session.
+        if !isDemo {
+            let _ = self.urlSession(identifier: "\(baseAppBundleId).backroundSession")
+        }
         
         var previousReportedMemoryConsumption = 0
         let _ = Foundation.Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true, block: { _ in

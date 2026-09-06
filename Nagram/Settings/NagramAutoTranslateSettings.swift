@@ -12,7 +12,7 @@ public extension NagramSettings {
     }
 
     func isAutoTranslateEnabled(accountPeerId: Int64, peerId: Int64, threadId: Int64?) -> Bool {
-        return UserDefaults.standard.bool(forKey: Self.autoTranslateKey(accountPeerId: accountPeerId, peerId: peerId, threadId: threadId))
+        return NagramDemoMode.userDefaults.bool(forKey: Self.autoTranslateKey(accountPeerId: accountPeerId, peerId: peerId, threadId: threadId))
     }
 
     func setAutoTranslateEnabled(_ enabled: Bool, accountPeerId: Int64, peerId: Int64, threadId: Int64?) {

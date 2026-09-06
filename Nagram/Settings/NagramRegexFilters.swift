@@ -270,6 +270,9 @@ private let nagramRegexFiltersFilterOutgoingKey = "nagram.regexFilters.filterOut
 
 // NotificationService 与主 App 不共享 standard defaults，屏蔽规则额外镜像到现有 App Group。
 private let nagramRegexFilterSharedDefaults: UserDefaults? = {
+    guard !NagramDemoMode.isEnabled else {
+        return nil
+    }
     guard let bundleIdentifier = Bundle.main.bundleIdentifier else {
         return nil
     }
@@ -279,7 +282,7 @@ private let nagramRegexFilterSharedDefaults: UserDefaults? = {
 }()
 
 private let nagramRegexFilterDefaults: UserDefaults = {
-    let standardDefaults = UserDefaults.standard
+    let standardDefaults = NagramDemoMode.userDefaults
     guard Bundle.main.bundleIdentifier?.hasSuffix(".NotificationService") != true else {
         return nagramRegexFilterSharedDefaults ?? standardDefaults
     }
@@ -348,10 +351,10 @@ public extension NagramSettings {
                 return
             }
             if newValue {
-                UserDefaults.standard.removeObject(forKey: nagramRegexFiltersEnabledKey)
+                NagramDemoMode.userDefaults.removeObject(forKey: nagramRegexFiltersEnabledKey)
                 nagramMirrorRegexFilterValue(nil, forKey: nagramRegexFiltersEnabledKey)
             } else {
-                UserDefaults.standard.set(false, forKey: nagramRegexFiltersEnabledKey)
+                NagramDemoMode.userDefaults.set(false, forKey: nagramRegexFiltersEnabledKey)
                 nagramMirrorRegexFilterValue(false, forKey: nagramRegexFiltersEnabledKey)
             }
             self.notifyRegexFiltersChanged()
@@ -370,10 +373,10 @@ public extension NagramSettings {
                 return
             }
             if newValue {
-                UserDefaults.standard.removeObject(forKey: nagramRegexFiltersFilterOutgoingKey)
+                NagramDemoMode.userDefaults.removeObject(forKey: nagramRegexFiltersFilterOutgoingKey)
                 nagramMirrorRegexFilterValue(nil, forKey: nagramRegexFiltersFilterOutgoingKey)
             } else {
-                UserDefaults.standard.set(false, forKey: nagramRegexFiltersFilterOutgoingKey)
+                NagramDemoMode.userDefaults.set(false, forKey: nagramRegexFiltersFilterOutgoingKey)
                 nagramMirrorRegexFilterValue(false, forKey: nagramRegexFiltersFilterOutgoingKey)
             }
             self.notifyRegexFiltersChanged()

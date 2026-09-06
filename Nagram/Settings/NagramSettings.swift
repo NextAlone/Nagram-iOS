@@ -18,7 +18,7 @@ public struct NagramDefault<T> {
 
     public var wrappedValue: T {
         get {
-            let defaults = UserDefaults.standard
+            let defaults = NagramDemoMode.userDefaults
             guard defaults.object(forKey: key) != nil else { return defaultValue }
             switch T.self {
             case is Bool.Type:
@@ -147,7 +147,7 @@ public final class NagramSettings {
     public static let recentStickerLimitOptions: [Int32] = [20, 30, 40, 50, 60, 80, 100, 120, 150, 200]
     public static let messageDoubleTapSameAsUnified = "sameAsUnified"
 
-    public static func isICloudSyncEnabled(defaults: UserDefaults = .standard) -> Bool {
+    public static func isICloudSyncEnabled(defaults: UserDefaults = NagramDemoMode.userDefaults) -> Bool {
         return NagramSettingsCloudSync.isEnabled(defaults: defaults)
     }
 
@@ -562,7 +562,7 @@ public extension NagramSettings {
             }
             return .two
         }
-        if UserDefaults.standard.object(forKey: "nagram.chatListMessagePreviewStyle") == nil, let legacyValue = UserDefaults.standard.string(forKey: "nagram.chatListLines"), let legacyMode = NagramChatListMessagePreviewStyle(rawValue: legacyValue) {
+        if NagramDemoMode.userDefaults.object(forKey: "nagram.chatListMessagePreviewStyle") == nil, let legacyValue = NagramDemoMode.userDefaults.string(forKey: "nagram.chatListLines"), let legacyMode = NagramChatListMessagePreviewStyle(rawValue: legacyValue) {
             return legacyMode
         }
         return NagramChatListMessagePreviewStyle(rawValue: self.chatListMessagePreviewStyle) ?? .three
@@ -724,10 +724,10 @@ private extension NagramSettings {
     }
 
     func chatListStartupFolderId(forKey key: String) -> Int32? {
-        guard UserDefaults.standard.object(forKey: key) != nil else {
+        guard NagramDemoMode.userDefaults.object(forKey: key) != nil else {
             return nil
         }
-        return Int32(UserDefaults.standard.integer(forKey: key))
+        return Int32(NagramDemoMode.userDefaults.integer(forKey: key))
     }
 
     func setChatListStartupFolderId(_ folderId: Int32?, forKey key: String) {
