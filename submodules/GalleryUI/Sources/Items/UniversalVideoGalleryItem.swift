@@ -820,6 +820,13 @@ private final class NativePictureInPictureContentImpl: NSObject, AVPictureInPict
     }
 
     deinit {
+        // MARK: NAGRAM — Detach AVKit observers while the playback delegate and layer are alive.
+        self.pictureInPicturePossibleObservation?.invalidate()
+        self.pictureInPictureController?.canStartPictureInPictureAutomaticallyFromInline = false
+        self.pictureInPictureController?.delegate = nil
+        self.pictureInPictureController?.contentSource = nil
+        self.contentDelegate?.pictureInPictureController = nil
+        self.pictureInPictureController = nil
         self.messageRemovedDisposable?.dispose()
         self.isNativePictureInPictureActiveDisposable?.dispose()
         self.pictureInPictureTimer?.invalidate()
@@ -1548,6 +1555,11 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
             videoNode.ownsContentNodeUpdated = { [weak self] value in
                 if let strongSelf = self {
                     strongSelf.updateDisplayPlaceholder(!value)
+
+                    // MARK: NAGRAM — A transferred video layer must not keep its previous PiP controller.
+                    if !value {
+                        strongSelf.nativePictureInPictureContent = nil
+                    }
                     
                     // MARK: NAGRAM — Wait for MediaPlayerNode to attach its asynchronously-created video layer.
                     if value && strongSelf.nativePictureInPictureContent == nil {
@@ -3130,7 +3142,8 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
     }
     
     private func setupNativePictureInPicture() {
-        guard let item = self.item, let videoNode = self.videoNode else {
+        // MARK: NAGRAM — Only the current video owner may attach a PiP content source.
+        guard self.nativePictureInPictureContent == nil, let item = self.item, let videoNode = self.videoNode, videoNode.ownsContentNode else {
             return
         }
         
