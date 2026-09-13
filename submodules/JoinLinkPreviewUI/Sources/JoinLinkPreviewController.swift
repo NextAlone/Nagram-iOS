@@ -1,4 +1,5 @@
 import Foundation
+import NagramSettingsUI // MARK: NAGRAM
 import UIKit
 import Display
 import AsyncDisplayKit
@@ -150,7 +151,17 @@ public final class LegacyJoinLinkPreviewController: ViewController {
                             strongSelf.navigateToPeer(peer, nil)
                         }
                     }
-                    strongSelf.dismiss()
+                    // MARK: NAGRAM - Wait for the invite sheet to close before presenting folders.
+                    let context = strongSelf.context
+                    let navigationController = strongSelf.parentNavigationController
+                    let joinedPeer = strongSelf.isRequest ? nil : peer
+                    strongSelf.dismiss(completion: {
+                        if let joinedPeer {
+                            nagramPresentFolderPickerAfterJoining(context: context, peerId: joinedPeer.id, present: { [weak navigationController] controller in
+                                (navigationController?.viewControllers.last as? ViewController)?.present(controller, in: .window(.root))
+                            })
+                        }
+                    })
                 case let .webView(webView):
                     let chatTitle: String
                     if case let .invite(invite)? = strongSelf.resolvedState {

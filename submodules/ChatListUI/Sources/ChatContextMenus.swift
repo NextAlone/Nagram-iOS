@@ -16,6 +16,7 @@ import TelegramStringFormatting
 import ChatTimerScreen
 import NotificationPeerExceptionController
 import NagramSettings // MARK: NAGRAM
+import NagramSettingsUI // MARK: NAGRAM
 
 func archiveContextMenuItems(context: AccountContext, group: EngineChatList.Group, chatListController: ChatListControllerImpl?) -> Signal<[ContextMenuItem], NoError> {
     let presentationData = context.sharedContext.currentPresentationData.with({ $0 })
@@ -529,6 +530,10 @@ func chatContextMenuItems(context: AccountContext, peerId: EnginePeer.Id, promoI
                                             switch result {
                                             case .joined:
                                                 didJoin = true
+                                                // MARK: NAGRAM
+                                                nagramPresentFolderPickerAfterJoining(context: context, peerId: peerId, present: { [weak chatListController] controller in
+                                                    chatListController?.present(controller, in: .window(.root))
+                                                })
                                             case let .webView(webView):
                                                 if let chatListController = chatListController {
                                                     context.sharedContext.openJoinChatWebView(context: context, parentController: chatListController, updatedPresentationData: nil, webView: webView, chatTitle: EnginePeer(peer).compactDisplayTitle)

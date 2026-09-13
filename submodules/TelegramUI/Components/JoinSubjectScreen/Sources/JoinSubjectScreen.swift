@@ -1,4 +1,5 @@
 import Foundation
+import NagramSettingsUI // MARK: NAGRAM
 import UIKit
 import SwiftSignalKit
 import Display
@@ -90,7 +91,7 @@ private final class JoinSubjectSheetContentComponent: Component {
             self.joinDisposable?.dispose()
         }
 
-        private func navigateToPeer(peer: EnginePeer) {
+        private func navigateToPeer(peer: EnginePeer, chooseFolderAfterJoining: Bool = false) { // MARK: NAGRAM
             guard let component = self.component else {
                 return
             }
@@ -125,6 +126,12 @@ private final class JoinSubjectSheetContentComponent: Component {
             }
             navigationController.setViewControllers(viewControllers, animated: true)
             component.dismiss()
+            // MARK: NAGRAM - Present from the destination, not the disappearing invitation sheet.
+            if chooseFolderAfterJoining, let destination = viewControllers[index] as? ViewController {
+                nagramPresentFolderPickerAfterJoining(context: context, peerId: peer.id, present: { [weak destination] controller in
+                    destination?.present(controller, in: .window(.root))
+                })
+            }
         }
 
         private func performJoinAction() {
@@ -157,7 +164,7 @@ private final class JoinSubjectSheetContentComponent: Component {
                             component.dismiss()
                         } else {
                             if let peer {
-                                self.navigateToPeer(peer: peer)
+                                self.navigateToPeer(peer: peer, chooseFolderAfterJoining: true) // MARK: NAGRAM
                             } else {
                                 component.dismiss()
                             }

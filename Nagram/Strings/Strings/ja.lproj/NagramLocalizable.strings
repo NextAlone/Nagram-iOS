@@ -19,6 +19,8 @@
 "Nagram.RoundVideoCamera" = "丸いビデオの既定カメラ";
 "Nagram.RoundVideoCamera.front" = "フロント";
 "Nagram.RoundVideoCamera.back" = "リア";
+"Nagram.ChooseFolderAfterJoining" = "参加後にフォルダを選択";
+"Nagram.JoinedChatFolderUnavailable" = "追加できませんでした。フォルダが削除されたか、チャット数の上限に達しています。フォルダを整理して再試行してください。";
 "Nagram.Section.MessageDisplay" = "メッセージ表示";
 "Nagram.Section.MessageList" = "メッセージ一覧";
 "Nagram.StayAtLatestMessageAfterRefresh" = "更新後も最新メッセージを表示";

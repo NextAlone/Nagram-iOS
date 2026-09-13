@@ -19,6 +19,8 @@
 "Nagram.RoundVideoCamera" = "圓形影片預設相機";
 "Nagram.RoundVideoCamera.front" = "前置";
 "Nagram.RoundVideoCamera.back" = "後置";
+"Nagram.ChooseFolderAfterJoining" = "加入群組或頻道後選擇資料夾";
+"Nagram.JoinedChatFolderUnavailable" = "無法加入此聊天，資料夾可能已被刪除或達到聊天數量上限。請整理資料夾後重試。";
 "Nagram.Section.MessageDisplay" = "訊息顯示";
 "Nagram.Section.MessageList" = "訊息列表";
 "Nagram.StayAtLatestMessageAfterRefresh" = "重新整理後保持最新訊息";

@@ -20,6 +20,7 @@ import ComponentDisplayAdapters
 import GlassControls
 import BundleIconComponent
 import MultilineTextComponent
+import NagramSettingsUI // MARK: NAGRAM
 
 private enum SubscriberAction: Equatable, Hashable {
     case join
@@ -231,6 +232,11 @@ public final class ChatChannelSubscriberInputPanelNode: ChatInputPanelNode {
                 switch result {
                 case .joined:
                     didJoin = true
+                    // MARK: NAGRAM - Offer folders only after membership is confirmed.
+                    let interaction = strongSelf.interfaceInteraction
+                    nagramPresentFolderPickerAfterJoining(context: context, peerId: peer.id, present: { controller in
+                        interaction?.presentController(controller, nil)
+                    })
                 case let .webView(webView):
                     if let controller = strongSelf.interfaceInteraction?.getNavigationController()?.viewControllers.last as? ViewController {
                         context.sharedContext.openJoinChatWebView(context: context, parentController: controller, updatedPresentationData: nil, webView: webView, chatTitle: EnginePeer(peer).compactDisplayTitle)

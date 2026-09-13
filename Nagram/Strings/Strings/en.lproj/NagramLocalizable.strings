@@ -19,6 +19,8 @@
 "Nagram.RoundVideoCamera" = "Default Camera for Round Videos";
 "Nagram.RoundVideoCamera.front" = "Front";
 "Nagram.RoundVideoCamera.back" = "Rear";
+"Nagram.ChooseFolderAfterJoining" = "Choose Folder After Joining";
+"Nagram.JoinedChatFolderUnavailable" = "Could not add this chat. The folder may have been deleted or reached its chat limit. Free up space in the folder and try again.";
 "Nagram.Section.MessageDisplay" = "Message Display";
 "Nagram.Section.MessageList" = "Message List";
 "Nagram.StayAtLatestMessageAfterRefresh" = "Stay at Latest After Refresh";

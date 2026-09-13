@@ -19,6 +19,8 @@
 "Nagram.RoundVideoCamera" = "圆形视频默认摄像头";
 "Nagram.RoundVideoCamera.front" = "前置";
 "Nagram.RoundVideoCamera.back" = "后置";
+"Nagram.ChooseFolderAfterJoining" = "加入群组或频道后选择分组";
+"Nagram.JoinedChatFolderUnavailable" = "无法添加此聊天，分组可能已被删除或达到聊天数量上限。请整理分组后重试。";
 "Nagram.Section.MessageDisplay" = "消息显示";
 "Nagram.Section.MessageList" = "消息列表";
 "Nagram.StayAtLatestMessageAfterRefresh" = "刷新后保持最新消息";

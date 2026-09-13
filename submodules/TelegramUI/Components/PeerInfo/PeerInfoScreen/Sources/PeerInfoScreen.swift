@@ -8,6 +8,7 @@ import SwiftSignalKit
 import AccountContext
 // MARK: NAGRAM
 import NagramSettings
+import NagramSettingsUI // MARK: NAGRAM
 import NagramSettingsSignal
 import TelegramPresentationData
 import TelegramUIPreferences
@@ -6395,6 +6396,10 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             switch result {
             case .joined:
                 self.controller?.present(UndoOverlayController(presentationData: presentationData, content: .succeed(text: presentationData.strings.Chat_SimilarChannels_JoinedChannel(peer.compactDisplayTitle).string, timeout: nil, customUndoText: nil), elevatedLayout: false, animateInAsReplacement: false, action: { _ in return false }), in: .window(.root))
+                // MARK: NAGRAM
+                nagramPresentFolderPickerAfterJoining(context: self.context, peerId: peer.id, present: { [weak self] controller in
+                    self?.controller?.present(controller, in: .window(.root))
+                })
             case let .webView(webView):
                 if let controller = self.controller {
                     self.context.sharedContext.openJoinChatWebView(context: self.context, parentController: controller, updatedPresentationData: self.controller?.updatedPresentationData, webView: webView, chatTitle: peer.compactDisplayTitle)

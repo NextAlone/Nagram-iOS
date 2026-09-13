@@ -12,6 +12,7 @@ import OverlayStatusController
 import AccountContext
 import NagramSettingsSignal
 import NagramSettings
+import NagramSettingsUI // MARK: NAGRAM
 import AlertUI
 import PresentationDataUtils
 import UndoUI
@@ -5375,6 +5376,10 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                     switch result {
                     case .joined:
                         didJoin = true
+                        // MARK: NAGRAM
+                        nagramPresentFolderPickerAfterJoining(context: self.context, peerId: peerId, present: { [weak self] controller in
+                            self?.present(controller, in: .window(.root))
+                        })
                     case let .webView(webView):
                         let _ = (self.context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: peerId))
                         |> deliverOnMainQueue).startStandalone(next: { [weak self] peer in
