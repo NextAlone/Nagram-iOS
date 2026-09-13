@@ -426,3 +426,5 @@
 "Nagram.MediaMetadata.Bitrate" = "码率";
 "Nagram.MediaMetadata.Codec" = "编码";
 "Nagram.MediaMetadata.Unknown" = "未知";
+
+"Nagram.SaveSelectionUnavailable" = "部分所选消息已不可用，请重新选择后再收藏。";

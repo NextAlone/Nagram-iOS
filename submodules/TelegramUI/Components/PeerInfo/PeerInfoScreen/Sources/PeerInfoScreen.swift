@@ -5848,6 +5848,9 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
                     strongSelf.context.sharedContext.makeContentReportScreen(context: strongSelf.context, subject: .messages(Array(messageIds).sorted()), forceDark: false, present: { [weak self] controller in
                         self?.controller?.push(controller)
                     }, completion: {}, requestSelectMessages: nil)
+                }, saveMessages: { [weak self] messages in
+                    // MARK: NAGRAM
+                    self?.saveMessagesToSavedMessages(messageIds: Set(messages.map { $0.id }))
                 }, displayCopyProtectionTip: { [weak self] sourceView, save in
                     if let strongSelf = self, let peer = strongSelf.data?.peer, let messageIds = strongSelf.state.selectedMessageIds, !messageIds.isEmpty {
                         let _ = (strongSelf.context.engine.data.get(EngineDataMap(

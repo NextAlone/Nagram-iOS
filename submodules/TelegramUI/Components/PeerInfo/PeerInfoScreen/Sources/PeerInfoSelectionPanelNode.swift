@@ -26,7 +26,8 @@ final class PeerInfoSelectionPanelNode: ASDisplayNode {
         return self.selectionPanel.viewForOverlayContent
     }
     
-    init(context: AccountContext, presentationData: PresentationData, peerId: EnginePeer.Id, deleteMessages: @escaping () -> Void, shareMessages: @escaping () -> Void, forwardMessages: @escaping () -> Void, reportMessages: @escaping () -> Void, displayCopyProtectionTip: @escaping (UIView, Bool) -> Void) {
+    // MARK: NAGRAM - Expose the direct Saved Messages action.
+    init(context: AccountContext, presentationData: PresentationData, peerId: EnginePeer.Id, deleteMessages: @escaping () -> Void, shareMessages: @escaping () -> Void, forwardMessages: @escaping () -> Void, reportMessages: @escaping () -> Void, saveMessages: @escaping ([EngineRawMessage]) -> Void, displayCopyProtectionTip: @escaping (UIView, Bool) -> Void) {
         self.context = context
         self.peerId = peerId
         self.deleteMessages = deleteMessages
@@ -59,7 +60,8 @@ final class PeerInfoSelectionPanelNode: ASDisplayNode {
             forwardMessages()
         }, forwardCurrentForwardMessages: {
         }, forwardMessages: { _ in
-        }, updateForwardOptionsState: { _ in
+        }, saveMessagesToSavedMessages: saveMessages, // MARK: NAGRAM
+        updateForwardOptionsState: { _ in
         }, presentForwardOptions: { _ in
         }, presentReplyOptions: { _ in
         }, presentLinkOptions: { _ in

@@ -15,6 +15,7 @@ import TopMessageReactions
 import GlassBackgroundComponent
 import ComponentFlow
 import ComponentDisplayAdapters
+import NagramStrings // MARK: NAGRAM
 
 private final class ChatMessageSelectionInputPanelNodeViewForOverlayContent: UIView, ChatInputPanelViewForOverlayContent {
     var reactionContextNode: ReactionContextNode?
@@ -181,6 +182,9 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
     private let deleteButton: GlassButtonView
     private let reportButton: GlassButtonView
     private let forwardButton: GlassButtonView
+    private let saveButton: GlassButtonView // MARK: NAGRAM
+    private var isSavingSelection = false // MARK: NAGRAM
+    private var areSelectionActionsCurrent = false // MARK: NAGRAM
     private let shareButton: GlassButtonView
     private let tagButton: GlassButtonView
     private let tagEditButton: GlassButtonView
@@ -225,6 +229,13 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
         self.forwardButton.isAccessibilityElement = true
         self.forwardButton.accessibilityLabel = strings.VoiceOver_MessageContextForward
         
+        // MARK: NAGRAM
+        self.saveButton = GlassButtonView()
+        self.saveButton.icon = "Instant View/Bookmark"
+        self.saveButton.isAccessibilityElement = true
+        self.saveButton.accessibilityLabel = strings.DialogList_SavedMessages
+        self.saveButton.isEnabled = false
+
         self.shareButton = GlassButtonView()
         self.shareButton.icon = "Chat/Input/Accessory Panels/MessageSelectionAction"
         self.shareButton.isAccessibilityElement = true
@@ -247,6 +258,7 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
         self.view.addSubview(self.deleteButton)
         self.view.addSubview(self.reportButton)
         self.view.addSubview(self.forwardButton)
+        self.view.addSubview(self.saveButton) // MARK: NAGRAM
         self.view.addSubview(self.shareButton)
         self.view.addSubview(self.tagButton)
         self.view.addSubview(self.tagEditButton)
@@ -259,6 +271,7 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
         self.deleteButton.button.addTarget(self, action: #selector(self.deleteButtonPressed), for: .touchUpInside)
         self.reportButton.button.addTarget(self, action: #selector(self.reportButtonPressed), for: .touchUpInside)
         self.forwardButton.button.addTarget(self, action: #selector(self.forwardButtonPressed), for: .touchUpInside)
+        self.saveButton.button.addTarget(self, action: #selector(self.saveButtonPressed), for: .touchUpInside) // MARK: NAGRAM
         self.shareButton.button.addTarget(self, action: #selector(self.shareButtonPressed), for: .touchUpInside)
         self.tagButton.button.addTarget(self, action: #selector(self.tagButtonPressed), for: .touchUpInside)
         self.tagEditButton.button.addTarget(self, action: #selector(self.tagButtonPressed), for: .touchUpInside)
@@ -270,6 +283,9 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
     
     private func updateActions() {
         self.forwardButton.isEnabled = self.selectedMessages.count != 0
+        // MARK: NAGRAM - Preserve the button layout while refreshing selection permissions.
+        self.areSelectionActionsCurrent = false
+        self.saveButton.isUserInteractionEnabled = false
         
         if self.selectedMessages.isEmpty {
             self.actions = nil
@@ -278,9 +294,15 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
             }
             self.canDeleteMessagesDisposable.set(nil)
         } else if let context = self.context {
-            self.canDeleteMessagesDisposable.set((context.sharedContext.chatAvailableMessageActions(engine: context.engine, accountPeerId: context.account.peerId, messageIds: self.selectedMessages, keepUpdated: true)
+            let selectedMessages = self.selectedMessages // MARK: NAGRAM
+            self.canDeleteMessagesDisposable.set((context.sharedContext.chatAvailableMessageActions(engine: context.engine, accountPeerId: context.account.peerId, messageIds: selectedMessages, keepUpdated: true)
             |> deliverOnMainQueue).startStrict(next: { [weak self] actions in
                 if let strongSelf = self {
+                    // MARK: NAGRAM
+                    guard strongSelf.selectedMessages == selectedMessages else {
+                        return
+                    }
+                    strongSelf.areSelectionActionsCurrent = true
                     strongSelf.actions = actions
                     if let (width, leftInset, rightInset, bottomInset, additionalSideInsets, maxHeight, maxOverlayHeight: maxOverlayHeight, metrics, isSecondary, isMediaInputExpanded, deviceMetrics) = strongSelf.validLayout, let interfaceState = strongSelf.presentationInterfaceState {
                         let _ = strongSelf.updateLayout(width: width, leftInset: leftInset, rightInset: rightInset, bottomInset: bottomInset, additionalSideInsets: additionalSideInsets, maxHeight: maxHeight, maxOverlayHeight: maxOverlayHeight, isSecondary: isSecondary, transition: .immediate, interfaceState: interfaceState, metrics: metrics, deviceMetrics: deviceMetrics, isMediaInputExpanded: isMediaInputExpanded)
@@ -315,6 +337,50 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
         }
     }
     
+    // MARK: NAGRAM
+    @objc private func saveButtonPressed() {
+        guard self.areSelectionActionsCurrent, !self.isSavingSelection, let context = self.context, let actions = self.actions,
+              actions.options.contains(.forward), !self.selectedMessages.isEmpty,
+              self.selectedMessages.allSatisfy({ $0.peerId.namespace != Namespaces.Peer.SecretChat }) else {
+            return
+        }
+        if actions.isCopyProtected {
+            self.interfaceInteraction?.displayCopyProtectionTip(self.saveButton, false)
+            return
+        }
+        let selectedIds = self.selectedMessages
+        self.isSavingSelection = true
+        self.saveButton.isEnabled = false
+        let _ = (context.engine.data.get(EngineDataMap(selectedIds.map(TelegramEngine.EngineData.Item.Messages.Message.init)))
+        |> deliverOnMainQueue).startStandalone(next: { [weak self] messageMap in
+            guard let self else {
+                return
+            }
+            self.isSavingSelection = false
+            guard self.areSelectionActionsCurrent, self.selectedMessages == selectedIds, let currentActions = self.actions,
+                  currentActions.options.contains(.forward), !currentActions.isCopyProtected else {
+                self.updateActions()
+                return
+            }
+            self.saveButton.isEnabled = true
+            let messages = messageMap.values.compactMap { $0 }.sorted { $0.index < $1.index }
+            guard messages.count == selectedIds.count else {
+                self.updateActions()
+                let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+                let alert = ActionSheetController(presentationData: presentationData)
+                alert.setItemGroups([ActionSheetItemGroup(items: [
+                    ActionSheetTextItem(title: ngI18n("Nagram.SaveSelectionUnavailable", presentationData.strings.baseLanguageCode)),
+                    ActionSheetButtonItem(title: presentationData.strings.Common_OK, color: .accent, action: { [weak alert] in
+                        alert?.dismissAnimated()
+                    })
+                ])])
+                context.sharedContext.presentGlobalController(alert, nil)
+                return
+            }
+            self.interfaceInteraction?.saveMessagesToSavedMessages(messages.map { $0._asMessage() })
+        })
+    }
+
     @objc private func shareButtonPressed() {
         if let _ = self.presentationInterfaceState?.renderedPeer?.peer as? TelegramSecretChat {
             return
@@ -526,7 +592,7 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
             tagButton = self.tagEditButton
         }
         
-        let buttons: [GlassButtonView]
+        var buttons: [GlassButtonView] // MARK: NAGRAM
         if self.reportButton.isHidden {
             if let tagButton {
                 buttons = [
@@ -578,6 +644,14 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
             }
         }
         
+        // MARK: NAGRAM
+        self.saveButton.isHidden = interfaceState.renderedPeer?.peer is TelegramSecretChat
+        self.saveButton.isUserInteractionEnabled = self.areSelectionActionsCurrent
+        self.saveButton.isEnabled = !self.isSavingSelection && !self.selectedMessages.isEmpty && self.actions?.options.contains(.forward) == true
+        if !self.saveButton.isHidden {
+            buttons.insert(self.saveButton, at: buttons.count - 1)
+        }
+
         let buttonSize = CGSize(width: 40.0, height: 40.0)
         
         let availableWidth = width - leftInset - rightInset

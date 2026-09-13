@@ -70,6 +70,59 @@ extension PeerInfoScreenNode {
         }
     }
     
+    // MARK: NAGRAM - Shared by peer selection and the direct save button.
+    func saveMessagesToSavedMessages(messageIds: Set<EngineMessage.Id>) {
+        guard !messageIds.isEmpty, messageIds.allSatisfy({ $0.peerId.namespace != Namespaces.Peer.SecretChat }) else {
+            return
+        }
+        Queue.mainQueue().after(0.88) {
+            self.hapticFeedback.success()
+        }
+        
+        let presentationData = self.context.sharedContext.currentPresentationData.with { $0 }
+        self.controller?.present(UndoOverlayController(presentationData: presentationData, content: .forward(savedMessages: true, text: messageIds.count == 1 ? presentationData.strings.Conversation_ForwardTooltip_SavedMessages_One : presentationData.strings.Conversation_ForwardTooltip_SavedMessages_Many), elevatedLayout: false, animateInAsReplacement: true, action: { [weak self] action in
+            if let self, action == .info {
+                let _ = (self.context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: self.context.account.peerId))
+                |> deliverOnMainQueue).start(next: { [weak self] peer in
+                    guard let self, let peer else {
+                        return
+                    }
+                    guard let navigationController = self.controller?.navigationController as? NavigationController else {
+                        return
+                    }
+                    self.context.sharedContext.navigateToChatController(NavigateToChatControllerParams(navigationController: navigationController, context: self.context, chatLocation: .peer(peer)))
+                })
+            }
+            return false
+        }), in: .current)
+        
+        self.headerNode.navigationButtonContainer.performAction?(.selectionDone, nil, nil)
+        
+        let _ = (enqueueMessages(account: self.context.account, peerId: self.context.account.peerId, messages: messageIds.sorted().map { id -> EnqueueMessage in
+            return .forward(source: id, threadId: nil, grouping: .auto, attributes: [], correlationId: nil)
+        })
+        |> deliverOnMainQueue).startStandalone(next: { [weak self] messageIds in
+            if let self {
+                let signals: [Signal<Bool, NoError>] = messageIds.compactMap({ id -> Signal<Bool, NoError>? in
+                    guard let id = id else {
+                        return nil
+                    }
+                    return self.context.account.pendingMessageManager.pendingMessageStatus(id)
+                        |> mapToSignal { status, _ -> Signal<Bool, NoError> in
+                            if status != nil {
+                                return .never()
+                            } else {
+                                return .single(true)
+                            }
+                        }
+                        |> take(1)
+                })
+                self.activeActionDisposable.set((combineLatest(signals)
+                |> deliverOnMainQueue).startStrict())
+            }
+        })
+    }
+
     func forwardMessages(messageIds: Set<EngineMessage.Id>?) {
         if let messageIds = messageIds ?? self.state.selectedMessageIds, !messageIds.isEmpty {
             let peerSelectionController = self.context.sharedContext.makePeerSelectionController(PeerSelectionControllerParams(context: self.context, updatedPresentationData: self.controller?.updatedPresentationData, filter: [.onlyWriteable, .excludeDisabled], hasFilters: true, multipleSelection: true, selectForumThreads: true))
@@ -184,52 +237,8 @@ extension PeerInfoScreenNode {
                 
                 if let strongSelf = self, let _ = peerSelectionController {
                     if peerId == strongSelf.context.account.peerId {
-                        Queue.mainQueue().after(0.88) {
-                            strongSelf.hapticFeedback.success()
-                        }
-                        
-                        let presentationData = strongSelf.context.sharedContext.currentPresentationData.with { $0 }
-                        strongSelf.controller?.present(UndoOverlayController(presentationData: presentationData, content: .forward(savedMessages: true, text: messageIds.count == 1 ? presentationData.strings.Conversation_ForwardTooltip_SavedMessages_One : presentationData.strings.Conversation_ForwardTooltip_SavedMessages_Many), elevatedLayout: false, animateInAsReplacement: true, action: { action in
-                            if let self, action == .info {
-                                let _ = (self.context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: self.context.account.peerId))
-                                |> deliverOnMainQueue).start(next: { [weak self] peer in
-                                    guard let self, let peer else {
-                                        return
-                                    }
-                                    guard let navigationController = self.controller?.navigationController as? NavigationController else {
-                                        return
-                                    }
-                                    self.context.sharedContext.navigateToChatController(NavigateToChatControllerParams(navigationController: navigationController, context: self.context, chatLocation: .peer(peer)))
-                                })
-                            }
-                            return false
-                        }), in: .current)
-                        
-                        strongSelf.headerNode.navigationButtonContainer.performAction?(.selectionDone, nil, nil)
-                        
-                        let _ = (enqueueMessages(account: strongSelf.context.account, peerId: peerId, messages: messageIds.map { id -> EnqueueMessage in
-                            return .forward(source: id, threadId: nil, grouping: .auto, attributes: [], correlationId: nil)
-                        })
-                        |> deliverOnMainQueue).startStandalone(next: { [weak self] messageIds in
-                            if let strongSelf = self {
-                                let signals: [Signal<Bool, NoError>] = messageIds.compactMap({ id -> Signal<Bool, NoError>? in
-                                    guard let id = id else {
-                                        return nil
-                                    }
-                                    return strongSelf.context.account.pendingMessageManager.pendingMessageStatus(id)
-                                        |> mapToSignal { status, _ -> Signal<Bool, NoError> in
-                                            if status != nil {
-                                                return .never()
-                                            } else {
-                                                return .single(true)
-                                            }
-                                        }
-                                        |> take(1)
-                                })
-                                strongSelf.activeActionDisposable.set((combineLatest(signals)
-                                |> deliverOnMainQueue).startStrict())
-                            }
-                        })
+                        // MARK: NAGRAM
+                        strongSelf.saveMessagesToSavedMessages(messageIds: messageIds)
                         if let peerSelectionController = peerSelectionController {
                             peerSelectionController.dismiss()
                         }

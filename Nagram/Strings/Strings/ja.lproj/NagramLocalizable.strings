@@ -426,3 +426,5 @@
 "Nagram.MediaMetadata.Bitrate" = "ビットレート";
 "Nagram.MediaMetadata.Codec" = "コーデック";
 "Nagram.MediaMetadata.Unknown" = "不明";
+
+"Nagram.SaveSelectionUnavailable" = "選択したメッセージの一部が利用できません。選択し直して再試行してください。";

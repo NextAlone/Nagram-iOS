@@ -426,3 +426,5 @@
 "Nagram.MediaMetadata.Bitrate" = "Bitrate";
 "Nagram.MediaMetadata.Codec" = "Codec";
 "Nagram.MediaMetadata.Unknown" = "Unknown";
+
+"Nagram.SaveSelectionUnavailable" = "Some selected messages are no longer available. Select the messages again and retry.";
