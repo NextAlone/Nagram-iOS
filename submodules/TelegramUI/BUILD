@@ -49,6 +49,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//Nagram/ChatTools:NagramChatTools", # MARK: NAGRAM
         "//third-party/recaptcha:RecaptchaEnterprise",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/SSignalKit/SSignalKit:SSignalKit",

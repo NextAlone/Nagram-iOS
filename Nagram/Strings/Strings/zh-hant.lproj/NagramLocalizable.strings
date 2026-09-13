@@ -434,3 +434,12 @@
 "Nagram.CopyImageFailed" = "無法複製此圖片，請重新下載圖片後重試。";
 
 "Nagram.HideFolderUnreadCount" = "隱藏資料夾標籤未讀數";
+
+"Nagram.ChatToolsEnabled" = "聊天頂部工具列";
+"Nagram.ChatTools.search" = "搜尋";
+"Nagram.ChatTools.media" = "媒體";
+"Nagram.ChatTools.pinned" = "置頂";
+"Nagram.ChatTools.beginning" = "開頭";
+"Nagram.ChatTools.notifications" = "靜音";
+"Nagram.ChatTools.unmute" = "取消靜音";
+"Nagram.ChatTools.cache" = "清除快取";

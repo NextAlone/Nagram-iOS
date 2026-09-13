@@ -70,7 +70,9 @@ import Pasteboard
 import UndoUI
 import BrowserUI
 // MARK: NAGRAM
+import NagramChatTools // MARK: NAGRAM
 import NagramSettings
+import NagramSettingsSignal // MARK: NAGRAM
 
 // MARK: NAGRAM — 私有占位输入视图，等价于 TextFieldComponent / ChatEntityKeyboardInputNode 两模块各自的
 // public EmptyInputView（定义完全相同）。用于 .media 输入模式占位，避免两同名 public 类型的 ambiguous 报错。
@@ -192,6 +194,7 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
     private var chatLocationContextHolder: Atomic<ChatLocationContextHolder?>
     let controllerInteraction: ChatControllerInteraction
     private weak var controller: ChatControllerImpl?
+    private let nagramChatToolsDisposable = MetaDisposable() // MARK: NAGRAM
     
     let navigationBar: NavigationBar?
     let statusBar: StatusBar?
@@ -878,6 +881,11 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         assert(Queue.mainQueue().isCurrent())
         
         self.setupHistoryNode()
+        // MARK: NAGRAM - Apply toolbar settings immediately to an open chat.
+        self.nagramChatToolsDisposable.set((nagramBoolSignal("nagram.chatToolsEnabled", defaultValue: false)
+        |> deliverOnMainQueue).startStrict(next: { [weak self] _ in
+            self?.requestLayout(.animated(duration: 0.25, curve: .easeInOut))
+        }))
         
         self.interactiveEmojisDisposable = (self.context.engine.data.subscribe(TelegramEngine.EngineData.Item.Configuration.ApplicationSpecificPreference(key: PreferencesKeys.appConfiguration))
         |> map { preferencesView -> InteractiveEmojiConfiguration in
@@ -1051,6 +1059,7 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
     }
     
     deinit {
+        self.nagramChatToolsDisposable.dispose() // MARK: NAGRAM
         self.interactiveEmojisDisposable?.dispose()
         self.openStickersDisposable?.dispose()
         self.displayVideoUnmuteTipDisposable?.dispose()
@@ -1177,6 +1186,44 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         self.wrappingNode.update(size: layout.size, cornerRadius: layout.deviceMetrics.screenCornerRadius, transition: .immediate)
     }
     
+    // MARK: NAGRAM - Reuse the same actions as the native chat controls.
+    private func performNagramChatTool(_ action: NagramChatToolsComponent.Action) {
+        switch action {
+        case .search:
+            self.interfaceInteraction?.beginMessageSearch(.everything, "")
+        case .pinned:
+            if let id = self.chatPresentationInterfaceState.pinnedMessage?.message.id ?? self.chatPresentationInterfaceState.pinnedMessageId {
+                self.interfaceInteraction?.openPinnedList(id)
+            }
+        case .beginning:
+            self.interfaceInteraction?.scrollToTop()
+        case .notifications:
+            self.interfaceInteraction?.togglePeerNotifications()
+        case .cache:
+            self.controller?.navigationButtonAction(.clearCache)
+        case .media:
+            guard let controller = self.controller, let peer = self.chatPresentationInterfaceState.renderedPeer?.peer else {
+                return
+            }
+            let _ = controller.presentVoiceMessageDiscardAlert(action: { [weak controller] in
+                guard let controller else {
+                    return
+                }
+                if let mediaController = controller.context.sharedContext.makePeerInfoController(
+                    context: controller.context,
+                    updatedPresentationData: controller.updatedPresentationData,
+                    peer: EnginePeer(peer),
+                    mode: .media(kind: .photoVideo, messageIndex: .upperBound(peerId: peer.id)),
+                    avatarInitiallyExpanded: false,
+                    fromChat: true,
+                    requestsContext: nil
+                ) {
+                    controller.push(mediaController)
+                }
+            })
+        }
+    }
+
     func containerLayoutUpdated(_ layout: ContainerViewLayout, navigationBarHeight: CGFloat, transition protoTransition: ContainedViewLayoutTransition, listViewTransaction: (ListViewUpdateSizeAndInsets, CGFloat, Bool, @escaping () -> Void) -> Void, updateExtraNavigationBarBackgroundHeight: (CGFloat, CGFloat, CGSize?, ContainedViewLayoutTransition) -> Void) {
         let transition: ContainedViewLayoutTransition
         if let _ = self.scheduledAnimateInAsOverlayFromNode {
@@ -1439,6 +1486,37 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         var headerPanels: [HeaderPanelContainerComponent.Panel] = []
         var footerPanels: [HeaderPanelContainerComponent.Panel] = []
         let hideTopPanels = self.controller?.hideTopPanels ?? false
+
+        // MARK: NAGRAM - Keep the optional tools alongside existing header panels.
+        let allowsChatTools: Bool
+        switch self.chatPresentationInterfaceState.subject {
+        case nil, .message:
+            allowsChatTools = true
+        default:
+            allowsChatTools = false
+        }
+        if !hideTopPanels, allowsChatTools, NagramSettings.shared.chatToolsEnabled,
+           case .standard(.default) = self.chatPresentationInterfaceState.mode,
+           case let .peer(peerId) = self.chatLocation,
+           self.chatPresentationInterfaceState.renderedPeer?.peer != nil,
+           !self.chatPresentationInterfaceState.isNotAccessible,
+           self.chatPresentationInterfaceState.search == nil,
+           self.chatPresentationInterfaceState.interfaceState.selectionState == nil {
+            headerPanels.append(HeaderPanelContainerComponent.Panel(
+                key: "nagramTools",
+                orderIndex: -1,
+                component: AnyComponent(NagramChatToolsComponent(
+                    theme: self.chatPresentationInterfaceState.theme,
+                    languageCode: self.chatPresentationInterfaceState.strings.baseLanguageCode,
+                    isMuted: self.chatPresentationInterfaceState.peerIsMuted,
+                    hasPinnedMessages: self.chatPresentationInterfaceState.pinnedMessageId != nil || self.chatPresentationInterfaceState.pinnedMessage != nil,
+                    showNotifications: peerId != self.context.account.peerId,
+                    action: { [weak self] action in
+                        self?.performNagramChatTool(action)
+                    }
+                ))
+            ))
+        }
         
         if !hideTopPanels, self.chatPresentationInterfaceState.search == nil, let headerTopicsPanel = headerTopicsPanelForChatPresentationInterfaceState(self.chatPresentationInterfaceState, context: self.context, controllerInteraction: self.controllerInteraction, interfaceInteraction: self.interfaceInteraction, force: false) {
             let panel = HeaderPanelContainerComponent.Panel(

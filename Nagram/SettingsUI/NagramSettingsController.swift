@@ -438,6 +438,7 @@ private func nagramGroups(
         ]),
         // 消息
         NagramGroup(tab: .chat, headerKey: "Nagram.Section.MessageDisplay", footerKey: nil, rows: [
+            .toggle(titleKey: "Nagram.ChatToolsEnabled", get: { NagramSettings.shared.chatToolsEnabled }, set: { NagramSettings.shared.chatToolsEnabled = $0 }),
             .toggle(titleKey: "Nagram.SecondsInMessages", get: { NagramSettings.shared.secondsInMessages }, set: { NagramSettings.shared.secondsInMessages = $0 }),
             .toggle(titleKey: "Nagram.ShowForwardedMessageDate", get: { NagramSettings.shared.showForwardedMessageDate }, set: { NagramSettings.shared.showForwardedMessageDate = $0 }),
             .toggle(titleKey: "Nagram.HideReactions", get: { NagramSettings.shared.hideReactions }, set: { NagramSettings.shared.hideReactions = $0 }),

@@ -434,3 +434,12 @@
 "Nagram.CopyImageFailed" = "画像をコピーできませんでした。再ダウンロードしてお試しください。";
 
 "Nagram.HideFolderUnreadCount" = "フォルダの未読数を非表示";
+
+"Nagram.ChatToolsEnabled" = "チャット上部ツールバー";
+"Nagram.ChatTools.search" = "検索";
+"Nagram.ChatTools.media" = "メディア";
+"Nagram.ChatTools.pinned" = "ピン留め";
+"Nagram.ChatTools.beginning" = "最初へ";
+"Nagram.ChatTools.notifications" = "ミュート";
+"Nagram.ChatTools.unmute" = "通知オン";
+"Nagram.ChatTools.cache" = "キャッシュ削除";

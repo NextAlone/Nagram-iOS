@@ -369,6 +369,8 @@ public final class NagramSettings {
     /// 分享面板显示聊天文件夹标签
     @NagramDefault("nagram.showFoldersInShareSheet", true)
     public var showFoldersInShareSheet: Bool
+    @NagramDefault("nagram.chatToolsEnabled", false)
+    public var chatToolsEnabled: Bool
     @NagramDefault("nagram.chooseFolderAfterJoining", false)
     public var chooseFolderAfterJoining: Bool
     /// 首页分组标签显示方式（"text" / "icon" / "both"）

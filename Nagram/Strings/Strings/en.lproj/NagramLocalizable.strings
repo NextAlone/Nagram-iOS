@@ -434,3 +434,12 @@
 "Nagram.CopyImageFailed" = "Could not copy this image. Download it again and retry.";
 
 "Nagram.HideFolderUnreadCount" = "Hide Folder Unread Counts";
+
+"Nagram.ChatToolsEnabled" = "Chat Top Toolbar";
+"Nagram.ChatTools.search" = "Search";
+"Nagram.ChatTools.media" = "Media";
+"Nagram.ChatTools.pinned" = "Pinned";
+"Nagram.ChatTools.beginning" = "Beginning";
+"Nagram.ChatTools.notifications" = "Mute";
+"Nagram.ChatTools.unmute" = "Unmute";
+"Nagram.ChatTools.cache" = "Clear Cache";
