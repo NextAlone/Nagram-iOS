@@ -10,6 +10,10 @@ public func nagramPresentFolderPickerAfterJoining(context: AccountContext, peerI
     guard NagramSettings.shared.chooseFolderAfterJoining else {
         return
     }
+    nagramPresentChatFolderPicker(context: context, peerId: peerId, hideWhenEmpty: true, present: present)
+}
+
+public func nagramPresentChatFolderPicker(context: AccountContext, peerId: EnginePeer.Id, hideWhenEmpty: Bool = false, present: @escaping (ViewController) -> Void) {
     let _ = (combineLatest(
         context.engine.peers.updatedChatListFilters() |> take(1),
         context.engine.data.get(
@@ -61,8 +65,11 @@ public func nagramPresentFolderPickerAfterJoining(context: AccountContext, peerI
                 })
             }))
         }
-        guard items.count > 1 else {
-            return
+        if items.count == 1 {
+            if hideWhenEmpty {
+                return
+            }
+            items.append(ActionSheetTextItem(title: ngI18n("Nagram.ChatFolderNoneAvailable", lang)))
         }
         controller.setItemGroups([
             ActionSheetItemGroup(items: items),

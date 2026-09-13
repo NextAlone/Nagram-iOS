@@ -443,3 +443,4 @@
 "Nagram.ChatTools.notifications" = "静音";
 "Nagram.ChatTools.unmute" = "取消静音";
 "Nagram.ChatTools.cache" = "清理缓存";
+"Nagram.ChatFolderNoneAvailable" = "没有可添加的分组。请先创建分组，或检查此聊天是否已加入所有分组。";

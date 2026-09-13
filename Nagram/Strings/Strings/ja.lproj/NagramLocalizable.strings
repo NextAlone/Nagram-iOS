@@ -443,3 +443,4 @@
 "Nagram.ChatTools.notifications" = "ミュート";
 "Nagram.ChatTools.unmute" = "通知オン";
 "Nagram.ChatTools.cache" = "キャッシュ削除";
+"Nagram.ChatFolderNoneAvailable" = "追加できるフォルダがありません。フォルダを作成するか、このチャットがすべてのフォルダに追加済みか確認してください。";

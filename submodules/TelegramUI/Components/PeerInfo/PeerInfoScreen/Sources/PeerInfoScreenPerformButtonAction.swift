@@ -12,6 +12,7 @@ import NotificationExceptionsScreen
 import TranslateUI
 import TelegramNotices
 import AlertComponent
+import NagramSettingsUI // MARK: NAGRAM
 
 extension PeerInfoScreenNode {
     func performButtonAction(key: PeerInfoHeaderButtonKey, buttonNode: PeerInfoHeaderButtonNode?, gesture: ContextGesture?) {
@@ -423,6 +424,30 @@ extension PeerInfoScreenNode {
                 }
                 
                 var canSetupAutoremoveTimeout = false
+
+                // MARK: NAGRAM — Manual folder selection is independent of the post-join prompt setting.
+                let canChooseFolder: Bool
+                switch chatPeer {
+                case let .channel(channel):
+                    canChooseFolder = channel.participationStatus == .member
+                case let .legacyGroup(group):
+                    canChooseFolder = group.membership == .Member
+                default:
+                    canChooseFolder = false
+                }
+                if canChooseFolder {
+                    items.append(.action(ContextMenuActionItem(text: presentationData.strings.ChatList_Context_AddToFolder, icon: { theme in
+                        generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Folder"), color: theme.contextMenu.primaryColor)
+                    }, action: { [weak self] _, f in
+                        f(.dismissWithoutContent)
+                        guard let self else {
+                            return
+                        }
+                        nagramPresentChatFolderPicker(context: self.context, peerId: chatPeer.id, present: { [weak self] controller in
+                            self?.controller?.present(controller, in: .window(.root))
+                        })
+                    })))
+                }
                 
                 if case let .secretChat(secretChat) = chatPeer {
                     currentAutoremoveTimeout = secretChat.messageAutoremoveTimeout

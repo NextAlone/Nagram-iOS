@@ -443,3 +443,4 @@
 "Nagram.ChatTools.notifications" = "Mute";
 "Nagram.ChatTools.unmute" = "Unmute";
 "Nagram.ChatTools.cache" = "Clear Cache";
+"Nagram.ChatFolderNoneAvailable" = "No folders are available. Create a folder first, or check whether this chat is already in every folder.";

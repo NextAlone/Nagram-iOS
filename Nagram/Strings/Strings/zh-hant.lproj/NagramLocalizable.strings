@@ -443,3 +443,4 @@
 "Nagram.ChatTools.notifications" = "靜音";
 "Nagram.ChatTools.unmute" = "取消靜音";
 "Nagram.ChatTools.cache" = "清除快取";
+"Nagram.ChatFolderNoneAvailable" = "沒有可加入的資料夾。請先建立資料夾，或檢查此聊天是否已加入所有資料夾。";
