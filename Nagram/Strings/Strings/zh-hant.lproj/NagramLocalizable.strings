@@ -432,3 +432,5 @@
 "Nagram.CopyImage" = "複製圖片";
 "Nagram.ImageCopied" = "圖片已複製";
 "Nagram.CopyImageFailed" = "無法複製此圖片，請重新下載圖片後重試。";
+
+"Nagram.HideFolderUnreadCount" = "隱藏資料夾標籤未讀數";

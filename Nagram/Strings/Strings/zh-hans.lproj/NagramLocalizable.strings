@@ -432,3 +432,5 @@
 "Nagram.CopyImage" = "复制图片";
 "Nagram.ImageCopied" = "图片已复制";
 "Nagram.CopyImageFailed" = "无法复制此图片，请重新下载图片后重试。";
+
+"Nagram.HideFolderUnreadCount" = "隐藏分组标签未读数";

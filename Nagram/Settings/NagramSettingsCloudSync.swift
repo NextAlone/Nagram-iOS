@@ -35,6 +35,7 @@ enum NagramSettingsSyncKeys {
         "nagram.chatListStartupFolderMode",
         "nagram.chatListFolderTabsCompact",
         "nagram.hideAllChatsFolder",
+        "nagram.hideFolderUnreadCount",
         "nagram.showFoldersInShareSheet",
         "nagram.chooseFolderAfterJoining",
         "nagram.chatListFolderTabDisplayMode",

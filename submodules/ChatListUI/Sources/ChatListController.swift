@@ -806,7 +806,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             nagramBottomBarSettingsSignal(),
             nagramBoolSignal("nagram.chatListFolderTabsCompact", defaultValue: false),
             nagramStringSignal("nagram.chatListFolderTabDisplayMode", defaultValue: NagramChatListFolderTabDisplayMode.text.rawValue),
-            nagramBoolSignal("nagram.hideAllChatsFolder", defaultValue: false)
+            nagramBoolSignal("nagram.hideAllChatsFolder", defaultValue: false),
+            nagramBoolSignal("nagram.hideFolderUnreadCount", defaultValue: false) // MARK: NAGRAM
         )
         |> deliverOnMainQueue).startStrict(next: { [weak self] _ in
             guard let self else {

@@ -1,4 +1,5 @@
 import Foundation
+import NagramSettings // MARK: NAGRAM
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -796,7 +797,7 @@ public final class ChatListFilterTabContainerNode: ASDisplayNode {
                 })
                 self.itemNodes[filter.id] = itemNode
             }
-            let unreadCount: Int
+            var unreadCount: Int // MARK: NAGRAM
             let unreadHasUnmuted: Bool
             var isNoFilter = false
             var isDisabled = false
@@ -813,6 +814,10 @@ public final class ChatListFilterTabContainerNode: ASDisplayNode {
                     isDisabled = !canReorderAllChats && folderIndex >= filtersLimit
                 }
                 folderIndex += 1
+            }
+            // MARK: NAGRAM - Hide the badge and its spacing without changing actual unread counts.
+            if NagramSettings.shared.hideFolderUnreadCount {
+                unreadCount = 0
             }
             if !wasAdded && (itemNode.unreadCount != 0) != (unreadCount != 0) {
                 badgeAnimations[filter.id] = (unreadCount != 0) ? .in : .out

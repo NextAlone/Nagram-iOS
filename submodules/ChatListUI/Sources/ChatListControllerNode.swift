@@ -1663,7 +1663,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                                 icon: nagramFolderTabIcons[entry.id] ?? "📁",
                                 displayMode: nagramFolderTabDisplayMode
                             )
-                            if unread.value != 0 {
+                            if unread.value != 0 && !NagramSettings.shared.hideFolderUnreadCount { // MARK: NAGRAM
                                 badge = HorizontalTabsComponent.Tab.Badge(
                                     title: "\(unread.value)",
                                     isAccent: unread.hasUnmuted

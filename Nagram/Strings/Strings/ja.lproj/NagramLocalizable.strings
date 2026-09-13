@@ -432,3 +432,5 @@
 "Nagram.CopyImage" = "画像をコピー";
 "Nagram.ImageCopied" = "画像をコピーしました";
 "Nagram.CopyImageFailed" = "画像をコピーできませんでした。再ダウンロードしてお試しください。";
+
+"Nagram.HideFolderUnreadCount" = "フォルダの未読数を非表示";
