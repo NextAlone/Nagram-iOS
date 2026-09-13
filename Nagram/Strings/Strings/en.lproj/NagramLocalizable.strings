@@ -428,3 +428,7 @@
 "Nagram.MediaMetadata.Unknown" = "Unknown";
 
 "Nagram.SaveSelectionUnavailable" = "Some selected messages are no longer available. Select the messages again and retry.";
+
+"Nagram.CopyImage" = "Copy Image";
+"Nagram.ImageCopied" = "Image copied";
+"Nagram.CopyImageFailed" = "Could not copy this image. Download it again and retry.";

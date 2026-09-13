@@ -428,3 +428,7 @@
 "Nagram.MediaMetadata.Unknown" = "不明";
 
 "Nagram.SaveSelectionUnavailable" = "選択したメッセージの一部が利用できません。選択し直して再試行してください。";
+
+"Nagram.CopyImage" = "画像をコピー";
+"Nagram.ImageCopied" = "画像をコピーしました";
+"Nagram.CopyImageFailed" = "画像をコピーできませんでした。再ダウンロードしてお試しください。";

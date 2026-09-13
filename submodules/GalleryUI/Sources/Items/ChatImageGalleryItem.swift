@@ -1,4 +1,5 @@
 import Foundation
+import NagramMediaActions // MARK: NAGRAM
 import UIKit
 import Display
 import AsyncDisplayKit
@@ -254,6 +255,7 @@ final class ChatImageGalleryItemNode: ZoomableContentGalleryItemNode {
     private let statusDisposable = MetaDisposable()
     private let dataDisposable = MetaDisposable()
     private let recognitionDisposable = MetaDisposable()
+    private let copyImageDisposable = MetaDisposable() // MARK: NAGRAM
     private var status: EngineMediaResource.FetchStatus?
     private var fetchedDimensions: PixelDimensions?
     
@@ -343,6 +345,7 @@ final class ChatImageGalleryItemNode: ZoomableContentGalleryItemNode {
         self.statusDisposable.dispose()
         self.dataDisposable.dispose()
         self.recognitionDisposable.dispose()
+        self.copyImageDisposable.dispose() // MARK: NAGRAM
     }
     
     override func ready() -> Signal<Void, NoError> {
@@ -739,6 +742,20 @@ final class ChatImageGalleryItemNode: ZoomableContentGalleryItemNode {
                 })))
                 // MARK: NAGRAM — Allow protected media actions when forceCopyEnabled is enabled.
                 if (NagramSettings.shared.forceCopyEnabled || (!message.isCopyProtected() && !self.peerIsCopyProtected)) && message.paidContent == nil, let media = self.contextAndMedia?.1 {
+                    // MARK: NAGRAM - Copy the full image independently of its caption.
+                    if !self.isSecret && message.id.peerId.namespace != Namespaces.Peer.SecretChat {
+                        items.append(.action(ContextMenuActionItem(text: ngI18n("Nagram.CopyImage", self.presentationData.strings.baseLanguageCode), icon: { theme in
+                            generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Copy"), color: theme.contextMenu.primaryColor)
+                        }, action: { [weak self] _, f in
+                            f(.default)
+                            guard let self else {
+                                return
+                            }
+                            self.copyImageDisposable.set(nagramCopyImage(context: context, media: media, userLocation: .peer(message.id.peerId), presentationData: self.presentationData, present: { [weak self] controller in
+                                self?.galleryController()?.present(controller, in: .window(.root))
+                            }))
+                        })))
+                    }
                     items.append(.action(ContextMenuActionItem(text: self.presentationData.strings.Gallery_CreateSticker, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Sticker"), color: theme.actionSheet.primaryTextColor) }, action: { [weak self] _, f in
                         f(.default)
                         guard let self else {

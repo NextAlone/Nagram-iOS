@@ -428,3 +428,7 @@
 "Nagram.MediaMetadata.Unknown" = "未知";
 
 "Nagram.SaveSelectionUnavailable" = "部分所選訊息已無法使用，請重新選取後再收藏。";
+
+"Nagram.CopyImage" = "複製圖片";
+"Nagram.ImageCopied" = "圖片已複製";
+"Nagram.CopyImageFailed" = "無法複製此圖片，請重新下載圖片後重試。";
