@@ -73,6 +73,7 @@ swift_library(
         # MARK: NAGRAM — offline screenshot fixtures.
         "//Nagram/Demo:NagramDemo",
         "//Nagram/LinkMetadata:NagramLinkMetadata",
+        "//Nagram/MediaActions:NagramMediaActions", # MARK: NAGRAM
         "//Nagram/SettingsSignal:NagramSettingsSignal",
         "//Nagram/TelegramSettingsCloudSync:NagramTelegramSettingsCloudSync",
         "//Nagram/Strings:NagramStrings",

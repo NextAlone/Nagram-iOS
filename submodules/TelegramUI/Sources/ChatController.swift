@@ -1,4 +1,5 @@
 import Foundation
+import NagramMediaActions // MARK: NAGRAM
 import UIKit
 import Postbox
 import SwiftSignalKit
@@ -11289,24 +11290,13 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             return false
         }
 
-        let forwardAttributes: [EngineMessage.Attribute]
-        if hideNames {
-            forwardAttributes = [
-                ForwardOptionsMessageAttribute(hideNames: true, hideCaptions: false)
-            ]
-        } else {
-            forwardAttributes = []
-        }
-        
-        let repeatedMessages = messages.map { message -> EnqueueMessage in
-            return .forward(source: message.id, threadId: self.chatLocation.threadId, grouping: .auto, attributes: forwardAttributes, correlationId: nil)
-        }
+        let repeatedMessages = nagramRepeatedMessages(messages, threadId: self.chatLocation.threadId, hideNames: hideNames, copyProtectionEnabled: self.presentationInterfaceState.copyProtectionEnabled)
         self.chatDisplayNode.setupSendActionOnViewUpdate({}, nil)
         self.chatDisplayNode.sendMessages(repeatedMessages, nil, nil, nil, repeatedMessages.count > 1, false)
         return true
     }
 
-    // Keep double-tap repeat aligned with messages that can safely use the native forward pipeline.
+    // Keep double-tap repeat aligned with messages supported by the repeat send pipeline.
     private func nagramCanRepeatMessage(_ message: EngineRawMessage) -> Bool {
         if Namespaces.Message.allScheduled.contains(message.id.namespace) {
             return false
