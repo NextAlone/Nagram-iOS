@@ -1,7 +1,7 @@
 name: TestFlight (Nagram)
 
-# Signed release_arm64 build -> upload to TestFlight via altool.
-# Runs on GitHub-hosted macos-26 (Apple Silicon, Xcode 26.x, iOS 26 SDK).
+# Signed release_arm64 build; manual runs publish only when requested.
+# Runs on GitHub-hosted xcode-27 (Apple Silicon, macOS 27, iOS 27 SDK).
 #
 # Required repository secrets:
 #   TELEGRAM_API_ID, TELEGRAM_API_HASH  - Telegram API credentials (my.telegram.org)
@@ -16,6 +16,11 @@ name: TestFlight (Nagram)
 
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Upload to TestFlight and distribute to the configured group
+        type: boolean
+        default: false
   push:
     branches: [ "release" ]
 
@@ -25,7 +30,7 @@ concurrency:
 
 jobs:
   build-upload:
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 180
     env:
       LANG: en_US.UTF-8
@@ -46,21 +51,30 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Select Xcode 26.x
+      - name: Select pinned Xcode
+        id: xcode
         run: |
-          XC="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)"
-          if [ -n "$XC" ]; then sudo xcode-select -s "$XC/Contents/Developer"; fi
+          set -euo pipefail
+          XCODE_VERSION="$(python3 -c 'import json; print(json.load(open("versions.json"))["xcode"])')"
+          XCODE_PATH="/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+          test -d "$XCODE_PATH"
+          sudo xcode-select -s "$XCODE_PATH"
+          test "$(xcodebuild -version | awk '/^Xcode / {print $2}')" = "$XCODE_VERSION"
           xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          echo "build=$(xcodebuild -version | awk '/^Build version / {print $3}')" >> "$GITHUB_OUTPUT"
 
       - name: Install Metal toolchain
-        run: xcodebuild -downloadComponent MetalToolchain || true
+        run: |
+          xcodebuild -downloadComponent MetalToolchain
+          xcrun --find metal
 
       - name: Cache Bazel disk cache
         uses: actions/cache@v4
         with:
           path: ~/telegram-bazel-cache
-          key: bazel-disk-${{ hashFiles('versions.json', 'MODULE.bazel.lock') }}
-          restore-keys: bazel-disk-
+          key: bazel-disk-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('versions.json', 'MODULE.bazel.lock') }}
+          restore-keys: bazel-disk-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-
 
       - name: Import distribution certificate
         env:
@@ -214,9 +228,11 @@ jobs:
           }
           JSON
 
-      - name: Write local.bazelrc (app + extensions + Xcode 26.x deprecation demotion)
+      - name: Write local.bazelrc (app + extensions + Xcode 27 compatibility)
         run: |
           cat > local.bazelrc <<'RC'
+          build --features=no_include_scanning
+          build --host_features=no_include_scanning
           build --copt=-Wno-error
           build --cxxopt=-Wno-error
           build --objccopt=-Wno-error
@@ -263,7 +279,7 @@ jobs:
           set -euo pipefail
           : "${BUILD_NUMBER:?missing}"
           echo "Build number: $BUILD_NUMBER"
-          python3 build-system/Make/Make.py --overrideXcodeVersion \
+          python3 build-system/Make/Make.py \
             --cacheDir "$HOME/telegram-bazel-cache" \
             build \
             --configurationPath build-input/local-configuration.json \
@@ -271,7 +287,16 @@ jobs:
             --buildNumber="$BUILD_NUMBER" \
             --configuration=release_arm64
 
+      - name: Save signed IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nagram-${{ env.BUILD_NUMBER }}-Xcode-27
+          path: bazel-bin/Telegram/Telegram.ipa
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Upload to TestFlight
+        if: github.event_name == 'push' || inputs.publish
         env:
           USES_NON_EXEMPT_ENCRYPTION: ${{ vars.USES_NON_EXEMPT_ENCRYPTION || 'false' }}
         run: |
@@ -297,6 +322,7 @@ jobs:
           rm -f /tmp/asc_key.json
 
       - name: Distribute to external TestFlight group
+        if: github.event_name == 'push' || inputs.publish
         env:
           # Repository VARIABLES (Settings -> Secrets and variables -> Actions -> Variables):
           #   TESTFLIGHT_GROUPS  - optional name of the EXTERNAL group in App Store Connect

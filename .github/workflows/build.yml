@@ -8,10 +8,10 @@ on:
 
 jobs:
   build:
-    runs-on: macos-13
+    runs-on: xcode-27
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           fetch-depth: '0'
@@ -39,6 +39,16 @@ jobs:
           BAZEL_USER_ROOT="/private/var/tmp/_bazel_containerhost"
 
           cd $SOURCE_DIR
+
+          # Xcode 27 / clang 21 compatibility, matching the signed build.
+          cat > local.bazelrc <<'RC'
+          build --features=no_include_scanning
+          build --host_features=no_include_scanning
+          build --copt=-Wno-error
+          build --cxxopt=-Wno-error
+          build --objccopt=-Wno-error
+          build --@build_bazel_rules_swift//swift:copt=-no-warnings-as-errors
+          RC
 
           BUILD_NUMBER_OFFSET="$(cat build_number_offset)"
 
