@@ -518,7 +518,7 @@ public final class TabBarComponent: Component {
             self.addSubview(self.backgroundContainer)
             self.backgroundContainer.contentView.addSubview(self.contextGestureContainerView)
             
-            self.contextGestureContainerView.addSubview(self.liquidLensView)
+            // MARK: NAGRAM — attach the glass lens only while bottom items exist.
             let tabSelectionRecognizer = TabSelectionRecognizer(target: self, action: #selector(self.onTabSelectionGesture(_:)))
             self.tabSelectionRecognizer = tabSelectionRecognizer
             self.contextGestureContainerView.addGestureRecognizer(tabSelectionRecognizer)
@@ -646,7 +646,8 @@ public final class TabBarComponent: Component {
                         if !handledDoubleTap {
                             if item.doubleTapAction != nil {
                                 let timer = Foundation.Timer.scheduledTimer(withTimeInterval: 0.18, repeats: false, block: { [weak self] timer in
-                                    guard let self else {
+                                    // MARK: NAGRAM — resolve delayed taps against the current button configuration.
+                                    guard let self, let component = self.component else {
                                         return
                                     }
                                     if let pendingDoubleTapItemValue = self.pendingDoubleTapItem, pendingDoubleTapItemValue.timer === timer {
@@ -736,6 +737,19 @@ public final class TabBarComponent: Component {
             let previousComponent = self.component
             self.component = component
             self.state = state
+
+            // MARK: NAGRAM — keep optimistic selection only until the controller or button configuration changes.
+            if let previousComponent {
+                let itemsChanged = previousComponent.items.map { $0.id } != component.items.map { $0.id } || previousComponent.externalItem?.id != component.externalItem?.id
+                let selectionChanged = previousComponent.selectedId != component.selectedId
+                if let overrideSelectedItemId = self.overrideSelectedItemId, component.selectedId == overrideSelectedItemId || selectionChanged || itemsChanged {
+                    self.overrideSelectedItemId = nil
+                }
+                if let pendingDoubleTapItem = self.pendingDoubleTapItem, itemsChanged || (selectionChanged && component.selectedId != pendingDoubleTapItem.id) {
+                    self.pendingDoubleTapItem = nil
+                    pendingDoubleTapItem.timer.invalidate()
+                }
+            }
             
             self.overrideUserInterfaceStyle = component.theme.overallDarkAppearance ? .dark : .light
 
@@ -831,6 +845,20 @@ public final class TabBarComponent: Component {
             let hasItems = !component.items.isEmpty
             // MARK: NAGRAM — an external item remains tappable even when all bottom items are hidden.
             let hasInteractiveItems = hasItems || hasExternalItem
+
+            // MARK: NAGRAM — do not collapse native glass to an empty 8-point capsule.
+            let lensTransition: ComponentTransition
+            if hasItems {
+                if self.liquidLensView.superview == nil {
+                    lensTransition = .immediate
+                    self.contextGestureContainerView.addSubview(self.liquidLensView)
+                } else {
+                    lensTransition = transition
+                }
+            } else {
+                lensTransition = .immediate
+                self.liquidLensView.removeFromSuperview()
+            }
 
             var selectionFrame: CGRect?
             var nextItemX: CGFloat = innerInset
@@ -1075,8 +1103,8 @@ public final class TabBarComponent: Component {
                 lensFrame = CGRect(origin: CGPoint(), size: tabsSize)
             }
             transition.setFrame(view: self.contextGestureContainerView, frame: contextFrame)
-            transition.setFrame(view: self.liquidLensView, frame: lensFrame)
-            transition.setAlpha(view: self.contextGestureContainerView, alpha: hasInteractiveItems ? 1.0 : 0.0)
+            // MARK: NAGRAM — structural visibility must not fade ancestors of native glass.
+            self.contextGestureContainerView.isHidden = !hasInteractiveItems
             self.contextGestureContainerView.isUserInteractionEnabled = hasInteractiveItems
             
             var lensSelection: (x: CGFloat, width: CGFloat)
@@ -1098,7 +1126,11 @@ public final class TabBarComponent: Component {
             
             lensSelection.x = max(0.0, min(lensSelection.x, lensSize.width - lensSelection.width))
             
-            self.liquidLensView.update(size: lensSize, selectionOrigin: CGPoint(x: lensSelection.x, y: 0.0), selectionSize: CGSize(width: lensSelection.width, height: lensSize.height), inset: 4.0, isDark: component.theme.overallDarkAppearance, isLifted: self.selectionGestureState != nil && component.isLiftedStateEnabled, isCollapsed: isLensCollapsed, transition: transition.withUserData(LiquidLensView.TransitionInfo(disableAnimationWorkarounds: !component.isLiftedStateEnabled)))
+            // MARK: NAGRAM — an empty bar has no lens or selection to lay out.
+            if hasItems {
+                lensTransition.setFrame(view: self.liquidLensView, frame: lensFrame)
+                self.liquidLensView.update(size: lensSize, selectionOrigin: CGPoint(x: lensSelection.x, y: 0.0), selectionSize: CGSize(width: lensSelection.width, height: lensSize.height), inset: 4.0, isDark: component.theme.overallDarkAppearance, isLifted: self.selectionGestureState != nil && component.isLiftedStateEnabled, isCollapsed: isLensCollapsed, transition: lensTransition.withUserData(LiquidLensView.TransitionInfo(disableAnimationWorkarounds: !component.isLiftedStateEnabled)))
+            }
 
             var size = tabsSize
             // MARK: NAGRAM — external item layout uses the full component width.
