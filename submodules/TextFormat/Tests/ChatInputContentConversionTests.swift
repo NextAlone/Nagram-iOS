@@ -1,9 +1,28 @@
 import XCTest
+import NagramSettings // MARK: NAGRAM
 import TelegramCore
 import Postbox
 @testable import TextFormat
 
 final class ChatInputContentConversionTests: XCTestCase {
+
+    // MARK: NAGRAM
+    func test_normalizeChatInputTextLineBreaks_preservesAttributes() {
+        let input = NSMutableAttributedString(string: "a\rb\u{0085}c\u{2028}d\u{2029}e\r\nf")
+        input.addAttribute(ChatTextInputAttributes.bold, value: true as NSNumber, range: NSRange(location: 1, length: 7))
+
+        let output = nagramNormalizeTextInputLineBreaks(input)
+
+        XCTAssertEqual(output.string, "a\nb\nc\nd\ne\r\nf")
+        XCTAssertNotNil(output.attribute(ChatTextInputAttributes.bold, at: 1, effectiveRange: nil))
+        XCTAssertNotNil(output.attribute(ChatTextInputAttributes.bold, at: 7, effectiveRange: nil))
+    }
+
+    func test_normalizeChatInputTextLineBreaks_keepsStandardLineFeeds() {
+        let input = NSAttributedString(string: "a\n\nb")
+
+        XCTAssertTrue(nagramNormalizeTextInputLineBreaks(input) === input)
+    }
 
     // MARK: - Task 4: attributedString(from:)
 

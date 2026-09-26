@@ -12,6 +12,14 @@ import TopMessageReactions
 import ReactionSelectionNode
 import ChatControllerInteraction
 import ChatSendAudioMessageContextPreview
+import TextFormat
+import OverlayStatusController
+import PresentationDataUtils
+import UndoUI
+// MARK: NAGRAM
+import NagramSettings
+import NagramStrings
+import NagramTranslate
 
 extension ChatSendMessageEffect {
     convenience init(_ effect: ChatSendMessageActionSheetController.SendParameters.Effect) {
@@ -225,6 +233,52 @@ func chatMessageDisplaySendMessageOptions(selfController: ChatControllerImpl, no
                 }
             }
 
+            // MARK: NAGRAM — 发送前翻译输入内容(NAG-75):开关开启、输入非空且 entity-expressible 时提供翻译回填闭包
+            var nagramTranslateInput: (() -> Void)?
+            if NagramSettings.shared.translateBeforeSend {
+                let composeInputState = selfController.presentationInterfaceState.interfaceState.composeInputState
+                if !composeInputState.inputText.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, composeInputState.content.isEntityExpressible(options: [.quotesRequireRichContent]) {
+                    nagramTranslateInput = { [weak selfController] in
+                        guard let selfController else {
+                            return
+                        }
+                        let inputText = selfController.presentationInterfaceState.interfaceState.composeInputState.inputText
+                        let entities = generateChatInputTextEntities(inputText)
+                        let statusController = OverlayStatusController(theme: selfController.presentationData.theme, type: .loading(cancelled: nil))
+                        selfController.present(statusController, in: .window(.root))
+                        let presentTranslationFailed: (ChatControllerImpl) -> Void = { selfController in
+                            selfController.controllerInteraction?.displayUndo(.info(title: nil, text: ngI18n("Nagram.TranslateBeforeSend.Failed", selfController.presentationData.strings.baseLanguageCode), timeout: nil, customUndoText: nil))
+                        }
+                        let _ = (NagramTranslateService(context: selfController.context).translate(
+                            text: inputText.string,
+                            toLang: NagramSettings.shared.translateBeforeSendTargetLang,
+                            entities: entities
+                        )
+                        |> deliverOnMainQueue).startStandalone(next: { [weak selfController, weak statusController] result in
+                            statusController?.dismiss()
+                            guard let selfController else {
+                                return
+                            }
+                            guard let (translatedText, translatedEntities) = result, !translatedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                                presentTranslationFailed(selfController)
+                                return
+                            }
+                            selfController.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
+                                return state.updatedInterfaceState { interfaceState in
+                                    return interfaceState.withUpdatedEffectiveInputState(ChatTextInputState(inputText: chatInputStateStringWithAppliedEntities(translatedText, entities: translatedEntities)))
+                                }
+                            })
+                        }, error: { [weak selfController, weak statusController] _ in
+                            statusController?.dismiss()
+                            guard let selfController else {
+                                return
+                            }
+                            presentTranslationFailed(selfController)
+                        })
+                    }
+                }
+            }
+
             let controller = makeChatSendMessageActionSheetController(
                 initialData: initialData,
                 context: selfController.context,
@@ -251,7 +305,8 @@ func chatMessageDisplaySendMessageOptions(selfController: ChatControllerImpl, no
                     currentPrice: nil,
                     hasTimers: false,
                     sendPaidMessageStars: selfController.presentationInterfaceState.sendPaidMessageStars,
-                    isMonoforum: selfController.presentationInterfaceState.renderedPeer?.peer?.isMonoForum ?? false
+                    isMonoforum: selfController.presentationInterfaceState.renderedPeer?.peer?.isMonoForum ?? false,
+                    nagramTranslateInput: nagramTranslateInput // MARK: NAGRAM
                 )),
                 hasEntityKeyboard: hasEntityKeyboard,
                 gesture: gesture,

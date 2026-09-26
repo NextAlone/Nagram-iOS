@@ -5322,13 +5322,29 @@ func replayFinalState(
                     var found = false
                     loop: for j in 0 ..< attributes.count {
                         if let attribute = attributes[j] as? AudioTranscriptionMessageAttribute {
-                            attributes[j] = AudioTranscriptionMessageAttribute(id: id, text: text, isPending: isPending, didRate: attribute.didRate, error: nil)
+                            // MARK: NAGRAM — Telegram pushes cannot overwrite local/provider results.
+                            if attribute.source == .external || attribute.source == .local {
+                                return .skip
+                            }
+                            if attribute.source == .telegram && attribute.id != 0 && attribute.id != id {
+                                return .skip
+                            }
+                            if attribute.id == id && !attribute.isPending && isPending {
+                                return .skip
+                            }
+                            attributes[j] = AudioTranscriptionMessageAttribute(id: id, text: text, isPending: isPending, didRate: attribute.id == id && attribute.didRate, error: nil, source: .telegram, requestId: attribute.requestId)
                             found = true
                             break loop
                         }
                     }
                     if !found {
-                        attributes.append(AudioTranscriptionMessageAttribute(id: id, text: text, isPending: isPending, didRate: false, error: nil))
+                        // MARK: NAGRAM
+                        attributes.append(AudioTranscriptionMessageAttribute(id: id, text: text, isPending: isPending, didRate: false, error: nil, source: .telegram))
+                    }
+                    // MARK: NAGRAM — A changed transcript invalidates its cached translation.
+                    let previousText = (currentMessage.attributes.first(where: { $0 is AudioTranscriptionMessageAttribute }) as? AudioTranscriptionMessageAttribute)?.text
+                    if previousText != text {
+                        attributes.removeAll(where: { $0 is TranslationMessageAttribute })
                     }
                     
                     return .update(StoreMessage(

@@ -35,6 +35,7 @@ import ComponentFlow
 import ComponentDisplayAdapters
 // MARK: NAGRAM
 import NagramMediaMetadata
+import NagramStrings // MARK: NAGRAM
 import NagramSettings
 import ToastComponent
 import MultilineTextComponent
@@ -42,8 +43,6 @@ import BundleIconComponent
 import VideoPlaybackControlsComponent
 import PhotoResources
 import GlassBackgroundComponent
-// MARK: NAGRAM
-import NagramSettings
 
 public enum UniversalVideoGalleryItemContentInfo {
     case message(Message, GalleryMediaSubject?)
@@ -822,6 +821,13 @@ private final class NativePictureInPictureContentImpl: NSObject, AVPictureInPict
     }
 
     deinit {
+        // MARK: NAGRAM — Detach AVKit observers while the playback delegate and layer are alive.
+        self.pictureInPicturePossibleObservation?.invalidate()
+        self.pictureInPictureController?.canStartPictureInPictureAutomaticallyFromInline = false
+        self.pictureInPictureController?.delegate = nil
+        self.pictureInPictureController?.contentSource = nil
+        self.contentDelegate?.pictureInPictureController = nil
+        self.pictureInPictureController = nil
         self.messageRemovedDisposable?.dispose()
         self.isNativePictureInPictureActiveDisposable?.dispose()
         self.pictureInPictureTimer?.invalidate()
@@ -1550,6 +1556,11 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
             videoNode.ownsContentNodeUpdated = { [weak self] value in
                 if let strongSelf = self {
                     strongSelf.updateDisplayPlaceholder(!value)
+
+                    // MARK: NAGRAM — A transferred video layer must not keep its previous PiP controller.
+                    if !value {
+                        strongSelf.nativePictureInPictureContent = nil
+                    }
                     
                     // MARK: NAGRAM — Wait for MediaPlayerNode to attach its asynchronously-created video layer.
                     if value && strongSelf.nativePictureInPictureContent == nil {
@@ -3132,7 +3143,8 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
     }
     
     private func setupNativePictureInPicture() {
-        guard let item = self.item, let videoNode = self.videoNode else {
+        // MARK: NAGRAM — Only the current video owner may attach a PiP content source.
+        guard self.nativePictureInPictureContent == nil, let item = self.item, let videoNode = self.videoNode, videoNode.ownsContentNode else {
             return
         }
         
@@ -3721,7 +3733,8 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                     }
                 }
             } else {
-                if let (message, maybeFile, _) = strongSelf.contentInfo(), let file = maybeFile, !message.isCopyProtected() && !item.peerIsCopyProtected && message.paidContent == nil {
+                // MARK: NAGRAM — Allow protected video saves when forceCopyEnabled is enabled.
+                if let (message, maybeFile, _) = strongSelf.contentInfo(), let file = maybeFile, (NagramSettings.shared.forceCopyEnabled || (!message.isCopyProtected() && !item.peerIsCopyProtected)) && message.paidContent == nil {
                     items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_MenuSaveToGallery, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Download"), color: theme.actionSheet.primaryTextColor) }, action: { c, _ in
                         guard let self else {
                             c?.dismiss(result: .default, completion: nil)
@@ -3894,8 +3907,8 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                         f(.default)
                     })))
                 }
-                
-                if let (message, _, _) = strongSelf.contentInfo(), let image = message.effectiveMedia.first(where: { $0 is TelegramMediaImage }) as? TelegramMediaImage, !message.isCopyProtected() && !item.peerIsCopyProtected && message.paidContent == nil {
+                // MARK: NAGRAM — Allow protected image saves when forceCopyEnabled is enabled.
+                if let (message, _, _) = strongSelf.contentInfo(), let image = message.effectiveMedia.first(where: { $0 is TelegramMediaImage }) as? TelegramMediaImage, (NagramSettings.shared.forceCopyEnabled || (!message.isCopyProtected() && !item.peerIsCopyProtected)) && message.paidContent == nil {
                     let context = strongSelf.context
                     var videoReference: AnyMediaReference?
                     if let video = image.video {
@@ -3969,7 +3982,7 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                 if NagramSettings.shared.mediaMetadataEnabled, let nativeContent = item.content as? NativeVideoContent {
                     let mediaReference = nativeContent.fileReference.abstract
                     let context = strongSelf.context
-                    items.append(.action(ContextMenuActionItem(text: "查看信息", icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Info"), color: theme.actionSheet.primaryTextColor) }, action: { [weak self] _, f in
+                    items.append(.action(ContextMenuActionItem(text: ngI18n("Nagram.MediaMetadata.ViewInfo", strongSelf.presentationData.strings.baseLanguageCode), icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Info"), color: theme.actionSheet.primaryTextColor) }, action: { [weak self] _, f in
                         f(.default)
                         guard let self, let controller = self.galleryController() else {
                             return

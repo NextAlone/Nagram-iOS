@@ -2238,6 +2238,10 @@ extension ChatControllerImpl {
                 }
                 
                 var text = trimChatInputText(convertMarkdownToAttributes(expandedInputStateAttributedString(editMessage.inputState.inputText)))
+                // MARK: NAGRAM — 与发送路径一致，编辑提交前将第三方键盘的可视换行规范为 LF。
+                if NagramSettings.shared.sendWithReturnKey {
+                    text = nagramNormalizeTextInputLineBreaks(text)
+                }
                 // MARK: NAGRAM — 编辑时盘古之白
                 if NagramSettings.shared.enablePanguOnEditing {
                     text = NagramPangu.transform(text)

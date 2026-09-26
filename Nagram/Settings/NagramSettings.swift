@@ -18,7 +18,7 @@ public struct NagramDefault<T> {
 
     public var wrappedValue: T {
         get {
-            let defaults = UserDefaults.standard
+            let defaults = NagramDemoMode.userDefaults
             guard defaults.object(forKey: key) != nil else { return defaultValue }
             switch T.self {
             case is Bool.Type:
@@ -62,6 +62,12 @@ public enum NagramChatListSwipeAction: String {
     }
 }
 
+public enum NagramCommunityAvatarTapAction: String, CaseIterable {
+    case chat
+    case community
+    case arrow
+}
+
 public enum NagramChatListStartupFolderMode: String {
     case telegramDefault = "telegram"
     case last
@@ -82,6 +88,11 @@ public enum NagramChatListMessagePreviewStyle: String {
 public enum NagramGlassTransparencyMode: String {
     case system
     case custom
+}
+
+public enum NagramRoundVideoCamera: String {
+    case front
+    case back
 }
 
 public enum NagramGroupProfileSettingItem: String, CaseIterable, Hashable {
@@ -147,7 +158,7 @@ public final class NagramSettings {
     public static let recentStickerLimitOptions: [Int32] = [20, 30, 40, 50, 60, 80, 100, 120, 150, 200]
     public static let messageDoubleTapSameAsUnified = "sameAsUnified"
 
-    public static func isICloudSyncEnabled(defaults: UserDefaults = .standard) -> Bool {
+    public static func isICloudSyncEnabled(defaults: UserDefaults = NagramDemoMode.userDefaults) -> Bool {
         return NagramSettingsCloudSync.isEnabled(defaults: defaults)
     }
 
@@ -165,9 +176,19 @@ public final class NagramSettings {
         }
     }
 
-    // MARK: 波次 1 — force-copy（已落地，key 保持不变以平滑迁移）
+    /// 会话备份是否写入 iCloud 钥匙串。关闭后仅存本机，
+    /// 也不再执行可同步查询（那种查询可能要等 iCloud 钥匙串响应）。
+    @NagramDefault("nagram.sessionBackupICloudSync", true)
+    public var sessionBackupICloudSync: Bool
+
+    // MARK: 波次 1 — 解除内容保护（沿用 forceCopy key 以平滑迁移）
     @NagramDefault("nagram.forceCopyEnabled", false)
     public var forceCopyEnabled: Bool
+
+    // MARK: 敏感内容
+    /// 自动显示受限媒体；仅跳过确认弹窗，不绕过年龄验证
+    @NagramDefault("nagram.skipSensitiveContentWarning", false)
+    public var skipSensitiveContentWarning: Bool
 
     // MARK: 波次 3 批 A — 纯 UI 单点开关
     /// 隐藏消息反应
@@ -185,6 +206,9 @@ public final class NagramSettings {
     /// 禁用图库内相机实时预览
     @NagramDefault("nagram.disableGalleryCameraPreview", false)
     public var disableGalleryCameraPreview: Bool
+    /// 圆形视频拍摄默认使用的摄像头
+    @NagramDefault("nagram.roundVideoCamera", NagramRoundVideoCamera.front.rawValue)
+    public var roundVideoCamera: String
     /// 隐藏「以频道身份发送」按钮
     @NagramDefault("nagram.disableSendAsButton", false)
     public var disableSendAsButton: Bool
@@ -206,6 +230,9 @@ public final class NagramSettings {
     /// 隐藏一对一私聊中对方的输入、上传和选贴纸状态
     @NagramDefault("nagram.hidePrivateChatActivities", false)
     public var hidePrivateChatActivities: Bool
+    /// 刷新消息窗口时，若刷新前位于最新消息边界，则继续保持在最新消息
+    @NagramDefault("nagram.stayAtLatestMessageAfterRefresh", false)
+    public var stayAtLatestMessageAfterRefresh: Bool
     /// 通话前确认（默认关 = 保持原生无确认）
     @NagramDefault("nagram.confirmCalls", false)
     public var confirmCalls: Bool
@@ -333,6 +360,19 @@ public final class NagramSettings {
     /// 在非“全部会话”分组顶部展示归档入口（默认关 = 保持 Telegram 原生行为）
     @NagramDefault("nagram.showArchiveInFolders", false)
     public var showArchiveInFolders: Bool
+    /// 在列表中隐藏收藏夹和归档会话的具体预览（默认关 = 保持 Telegram 原生行为）
+    @NagramDefault("nagram.hideSavedAndArchivedMessagesInList", false)
+    public var hideSavedAndArchivedMessagesInList: Bool
+    /// 禁用 Community 将多个聊天合并为一个列表项（默认关 = 保持 Telegram 原生行为）
+    @NagramDefault("nagram.disableCommunityChatGrouping", false)
+    public var disableCommunityChatGrouping: Bool
+    @NagramDefault("nagram.communityAvatarTapAction", NagramCommunityAvatarTapAction.community.rawValue)
+    public var communityAvatarTapAction: String
+
+    public var communityAvatarTapActionValue: NagramCommunityAvatarTapAction {
+        return NagramCommunityAvatarTapAction(rawValue: self.communityAvatarTapAction) ?? .community
+    }
+
     /// 对话列表启动分组（"telegram" / "last" / "specific"）
     @NagramDefault("nagram.chatListStartupFolderMode", NagramChatListStartupFolderMode.telegramDefault.rawValue)
     public var chatListStartupFolderMode: String
@@ -342,6 +382,9 @@ public final class NagramSettings {
     /// 隐藏首页的“全部会话”分组（至少存在一个自定义分组时生效）
     @NagramDefault("nagram.hideAllChatsFolder", false)
     public var hideAllChatsFolder: Bool
+    /// 分享面板显示聊天文件夹标签
+    @NagramDefault("nagram.showFoldersInShareSheet", true)
+    public var showFoldersInShareSheet: Bool
     /// 首页分组标签显示方式（"text" / "icon" / "both"）
     @NagramDefault("nagram.chatListFolderTabDisplayMode", NagramChatListFolderTabDisplayMode.text.rawValue)
     public var chatListFolderTabDisplayMode: String
@@ -409,6 +452,37 @@ public final class NagramSettings {
     /// OpenAI-compatible LLM temperature in tenths (0...20).
     @NagramDefault("nagram.translationLLMTemperatureTenths", 7)
     public var translationLLMTemperatureTenths: Int32
+    /// 发送前翻译:长按发送按钮菜单显示「翻译」项,译文回填输入框(NAG-75)。
+    @NagramDefault("nagram.translateBeforeSend", false)
+    public var translateBeforeSend: Bool
+    /// 发送前翻译的目标语言代码(popularTranslationLanguages 短列表)。
+    @NagramDefault("nagram.translateBeforeSendTargetLang", "en")
+    public var translateBeforeSendTargetLang: String
+
+    // MARK: NAGRAM — Custom speech-to-text provider.
+    @NagramDefault("nagram.sttProvider", "default")
+    public var sttProvider: String
+    @NagramDefault("nagram.sttBaseURL", "")
+    public var sttBaseURL: String
+    @NagramDefault("nagram.sttEndpoint", "")
+    public var sttEndpoint: String
+    @NagramDefault("nagram.sttModel", "")
+    public var sttModel: String
+    @NagramDefault("nagram.sttLanguage", "")
+    public var sttLanguage: String
+    @NagramDefault("nagram.sttPrompt", "")
+    public var sttPrompt: String
+
+    public static let sttSettingsDidChangeNotification = Notification.Name("NagramSTTSettingsDidChange")
+
+    public var sttAPIKey: String {
+        return (try? NagramSTTKeychain.read()) ?? ""
+    }
+
+    public func setSTTAPIKey(_ value: String) throws {
+        try NagramSTTKeychain.write(value.trimmingCharacters(in: .whitespacesAndNewlines))
+        NotificationCenter.default.post(name: Self.sttSettingsDidChangeNotification, object: nil)
+    }
 
     // MARK: 波次 3 批 D — 需新逻辑
     /// 回车键发送消息
@@ -432,6 +506,24 @@ public final class NagramSettings {
     /// 隐藏动态（Stories）
     @NagramDefault("nagram.hideStories", false)
     public var hideStories: Bool
+
+    @NagramDefault("nagram.hideTopStories", false)
+    public var hideTopStories: Bool
+    @NagramDefault("nagram.disableStoryCameraSwipe", false)
+    public var disableStoryCameraSwipe: Bool
+    @NagramDefault("nagram.disableChatAvatarStories", false)
+    public var disableChatAvatarStories: Bool
+
+    public var disableStoryCameraSwipeEffective: Bool {
+        return self.hideStories || self.disableStoryCameraSwipe
+    }
+
+    public var disableChatAvatarStoriesEffective: Bool {
+        return self.hideStories || self.disableChatAvatarStories
+    }
+    /// 隐藏标签栏上的权限警告
+    @NagramDefault("nagram.hideTabBarPermissionWarnings", false)
+    public var hideTabBarPermissionWarnings: Bool
     /// 资料页显示注册日期（默认关 = 保持原生）
     @NagramDefault("nagram.showRegDate", false)
     public var showRegDate: Bool
@@ -536,7 +628,7 @@ public extension NagramSettings {
             }
             return .two
         }
-        if UserDefaults.standard.object(forKey: "nagram.chatListMessagePreviewStyle") == nil, let legacyValue = UserDefaults.standard.string(forKey: "nagram.chatListLines"), let legacyMode = NagramChatListMessagePreviewStyle(rawValue: legacyValue) {
+        if NagramDemoMode.userDefaults.object(forKey: "nagram.chatListMessagePreviewStyle") == nil, let legacyValue = NagramDemoMode.userDefaults.string(forKey: "nagram.chatListLines"), let legacyMode = NagramChatListMessagePreviewStyle(rawValue: legacyValue) {
             return legacyMode
         }
         return NagramChatListMessagePreviewStyle(rawValue: self.chatListMessagePreviewStyle) ?? .three
@@ -544,6 +636,10 @@ public extension NagramSettings {
 
     var glassTransparencyModeValue: NagramGlassTransparencyMode {
         return NagramGlassTransparencyMode(rawValue: self.glassTransparencyMode) ?? .system
+    }
+
+    var roundVideoCameraValue: NagramRoundVideoCamera {
+        return NagramRoundVideoCamera(rawValue: self.roundVideoCamera) ?? .front
     }
 
     var glassTransparencyPercentValue: Int32 {
@@ -698,10 +794,10 @@ private extension NagramSettings {
     }
 
     func chatListStartupFolderId(forKey key: String) -> Int32? {
-        guard UserDefaults.standard.object(forKey: key) != nil else {
+        guard NagramDemoMode.userDefaults.object(forKey: key) != nil else {
             return nil
         }
-        return Int32(UserDefaults.standard.integer(forKey: key))
+        return Int32(NagramDemoMode.userDefaults.integer(forKey: key))
     }
 
     func setChatListStartupFolderId(_ folderId: Int32?, forKey key: String) {

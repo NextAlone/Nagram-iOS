@@ -59,7 +59,7 @@ private let nagramDefaultDisabledMessageMenuItemIds: Set<NagramMessageMenuItemId
 public extension NagramSettings {
     var messageMenuItemOrder: [NagramMessageMenuItemId] {
         get {
-            let stored = self.messageMenuIds(from: UserDefaults.standard.string(forKey: nagramMessageMenuOrderKey))
+            let stored = self.messageMenuIds(from: NagramDemoMode.userDefaults.string(forKey: nagramMessageMenuOrderKey))
             return self.normalizedMessageMenuOrder(stored)
         }
         set {
@@ -100,11 +100,11 @@ public extension NagramSettings {
 
 private extension NagramSettings {
     var disabledMessageMenuItemIds: Set<NagramMessageMenuItemId> {
-        return Set(self.messageMenuIds(from: UserDefaults.standard.string(forKey: nagramMessageMenuDisabledKey)))
+        return Set(self.messageMenuIds(from: NagramDemoMode.userDefaults.string(forKey: nagramMessageMenuDisabledKey)))
     }
 
     var enabledDefaultDisabledMessageMenuItemIds: Set<NagramMessageMenuItemId> {
-        return Set(self.messageMenuIds(from: UserDefaults.standard.string(forKey: nagramMessageMenuEnabledDefaultDisabledKey)))
+        return Set(self.messageMenuIds(from: NagramDemoMode.userDefaults.string(forKey: nagramMessageMenuEnabledDefaultDisabledKey)))
     }
 
     func messageMenuIds(from string: String?) -> [NagramMessageMenuItemId] {

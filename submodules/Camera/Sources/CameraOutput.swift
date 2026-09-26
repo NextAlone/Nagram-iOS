@@ -367,6 +367,9 @@ final class CameraOutput: NSObject {
         let dimensions: CGSize
         let videoSettings: [String: Any]
         if case .roundVideo = mode {
+            // MARK: NAGRAM - Select the correct source before recording without a camera-flip transition.
+            self.currentPosition = position ?? .front
+            self.lastSwitchTimestamp = 0.0
             dimensions = videoMessageDimensions.cgSize
             orientation = .landscapeRight
             

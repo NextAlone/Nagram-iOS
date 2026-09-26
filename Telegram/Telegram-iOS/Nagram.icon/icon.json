@@ -24,7 +24,7 @@
     {
       "blur-material-specializations" : [
         {
-          "value" : 0.8
+          "value" : 0.4
         },
         {
           "appearance" : "dark",
@@ -72,16 +72,16 @@
       "refractivity-specializations" : [
         {
           "value" : {
-            "depth" : 0.9875,
-            "enabled" : false,
+            "depth" : 1,
+            "enabled" : true,
             "strength" : 0
           }
         },
         {
           "appearance" : "dark",
           "value" : {
-            "depth" : 0.9875,
-            "enabled" : false,
+            "depth" : 1,
+            "enabled" : true,
             "strength" : 0
           }
         },
@@ -122,14 +122,14 @@
         },
         {
           "appearance" : "tinted",
-          "value" : "inside"
+          "value" : "outside"
         }
       ],
       "translucency-specializations" : [
         {
           "value" : {
             "enabled" : true,
-            "value" : 0.4
+            "value" : 0.5
           }
         },
         {
@@ -143,7 +143,7 @@
           "appearance" : "tinted",
           "value" : {
             "enabled" : true,
-            "value" : 0.6
+            "value" : 0.8
           }
         }
       ]
@@ -308,15 +308,15 @@
       ],
       "specular-specializations" : [
         {
-          "value" : "inside"
+          "value" : "outside"
         },
         {
           "appearance" : "dark",
-          "value" : "inside"
+          "value" : "outside"
         },
         {
           "appearance" : "tinted",
-          "value" : "inside"
+          "value" : "outside"
         }
       ],
       "translucency-specializations" : [
@@ -337,7 +337,7 @@
           "appearance" : "tinted",
           "value" : {
             "enabled" : true,
-            "value" : 0.6
+            "value" : 0.8
           }
         }
       ]

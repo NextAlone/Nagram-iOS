@@ -143,6 +143,12 @@ public let telegramPostboxSeedConfiguration: SeedConfiguration = {
                 var found = false
                 for i in 0 ..< updated.count {
                     if let attribute = updated[i] as? AudioTranscriptionMessageAttribute {
+                        // MARK: NAGRAM — Consume a matching trial-reset marker without persisting it.
+                        if attribute.source == .telegram, attribute.id == 0, !attribute.isPending, attribute.text.isEmpty, attribute.error == nil, let requestId = attribute.requestId, audioTranscription.source == .telegram, audioTranscription.requestId == requestId {
+                            updated.remove(at: i)
+                            found = true
+                            break
+                        }
                         updated[i] = attribute.merge(withPrevious: audioTranscription)
                         found = true
                         break

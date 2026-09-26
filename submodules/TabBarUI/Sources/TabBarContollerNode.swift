@@ -65,7 +65,10 @@ final class TabBarControllerNode: ASDisplayNode {
     private let itemDoubleTapped: (Int) -> Void
     private let contextAction: (Int, ContextExtractedContentContainingView, ContextGesture) -> Void
     
-    private let tabBarView = ComponentView<Empty>()
+    // MARK: NAGRAM — recreate native glass after restoring empty bottom-bar content.
+    private var tabBarView = ComponentView<Empty>()
+    private var tabBarContentState: (hasItems: Bool, hasContent: Bool)?
+    private var needsTabBarRecreation = false
     
     private let disabledOverlayNode: ASDisplayNode
     private var toolbar: ComponentView<Empty>?
@@ -311,6 +314,25 @@ final class TabBarControllerNode: ASDisplayNode {
                 selectedId = ObjectIdentifier(selectedItem)
             }
         }
+        // MARK: NAGRAM — empty glass containers must not be reused when content returns.
+        let tabBarSearchState = self.currentController?.tabBarSearchState
+        let searchIsVisible = bottomBarSettings.isVisible(.search)
+        let hasVisibleSearch = searchIsVisible && tabBarSearchState != nil
+        let hasTabBarItems = !visibleComponentItems.isEmpty
+        let hasVisibleTabBarContent = hasTabBarItems || externalComponentItem != nil || hasVisibleSearch
+        if let previousState = self.tabBarContentState {
+            if (!previousState.hasItems && hasTabBarItems) || (!previousState.hasContent && hasVisibleTabBarContent) {
+                self.needsTabBarRecreation = true
+            }
+        }
+        self.tabBarContentState = (hasTabBarItems, hasVisibleTabBarContent)
+        if self.needsTabBarRecreation && tabBarSearchState?.isActive != true {
+            self.needsTabBarRecreation = false
+            let previousTabBarView = self.tabBarView
+            self.tabBarView = ComponentView<Empty>()
+            previousTabBarView.view?.removeFromSuperview()
+        }
+
         var tabBarTransition = ComponentTransition(transition)
         if self.isChangingSelectedIndex {
             self.isChangingSelectedIndex = false
@@ -320,10 +342,6 @@ final class TabBarControllerNode: ASDisplayNode {
             tabBarTransition = .immediate
         }
         let nagramLayoutItemCount = max(visibleComponentItems.count, NagramBottomBarSettings.defaultBottomItems.count)
-        let tabBarSearchState = self.currentController?.tabBarSearchState
-        let searchIsVisible = bottomBarSettings.isVisible(.search)
-        let hasVisibleSearch = searchIsVisible && tabBarSearchState != nil
-        let hasVisibleTabBarContent = !visibleComponentItems.isEmpty || externalComponentItem != nil || hasVisibleSearch
         let tabBarSize = self.tabBarView.update(
             transition: tabBarTransition,
             component: AnyComponent(TabBarComponent(
@@ -380,12 +398,18 @@ final class TabBarControllerNode: ASDisplayNode {
         let tabBarFrame = CGRect(origin: CGPoint(x: tabBarOriginX, y: params.layout.size.height - (params.isTabBarHidden ? 0.0 : (tabBarSize.height + tabBarBottomInset))), size: tabBarSize)
         
         if let tabBarComponentView = self.tabBarView.view {
+            // MARK: NAGRAM — attach restored glass at its final size and opacity.
+            let viewTransition: ContainedViewLayoutTransition
             if tabBarComponentView.superview == nil {
+                viewTransition = .immediate
+                tabBarComponentView.frame = tabBarFrame
                 self.view.addSubview(tabBarComponentView)
+            } else {
+                viewTransition = transition
             }
-            transition.updateFrame(view: tabBarComponentView, frame: tabBarFrame)
+            viewTransition.updateFrame(view: tabBarComponentView, frame: tabBarFrame)
             let tabBarContentAlpha: CGFloat = !params.isTabBarHidden && params.toolbar == nil && hasVisibleTabBarContent ? 1.0 : 0.0
-            transition.updateAlpha(layer: tabBarComponentView.layer, alpha: tabBarContentAlpha)
+            viewTransition.updateAlpha(layer: tabBarComponentView.layer, alpha: tabBarContentAlpha)
             tabBarComponentView.isUserInteractionEnabled = tabBarContentAlpha > 0.0
         }
         

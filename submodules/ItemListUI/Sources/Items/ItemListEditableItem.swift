@@ -258,6 +258,8 @@ open class ItemListRevealOptionsItemNode: ListViewItemNode, ASGestureRecognizerD
         self.recognizer = recognizer
         recognizer.delegate = self.wrappedGestureRecognizerDelegate
         recognizer.allowAnyDirection = self.allowAnyDirection
+        // MARK: NAGRAM — Empty reveal options must not capture folder swipes on initial load.
+        recognizer.isEnabled = !self.revealOptions.left.isEmpty || !self.revealOptions.right.isEmpty
         self.view.addGestureRecognizer(recognizer)
         
         let tapRecognizer = UITapGestureRecognizer(target: self, action: #selector(self.revealTapGesture(_:)))

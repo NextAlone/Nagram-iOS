@@ -913,11 +913,10 @@ public final class SharedWakeupManager {
                     }
                     strongSelf.activeExplicitExtensionTimer?.invalidate()
                     strongSelf.activeExplicitExtensionTimer = nil
-                    if let activeExplicitExtensionTask = strongSelf.activeExplicitExtensionTask {
-                        strongSelf.activeExplicitExtensionTask = nil
-                        strongSelf.endBackgroundTask(activeExplicitExtensionTask)
-                    }
-                    strongSelf.checkTasks()
+                    // MARK: NAGRAM — Drain account transactions before ending the explicit extension.
+                    let activeExplicitExtensionTask = strongSelf.activeExplicitExtensionTask
+                    strongSelf.activeExplicitExtensionTask = nil
+                    strongSelf.checkTasks(endingBackgroundTask: activeExplicitExtensionTask)
                 }, queue: .mainQueue())
                 self.activeExplicitExtensionTimer = activeExplicitExtensionTimer
                 activeExplicitExtensionTimer.start()
@@ -929,11 +928,13 @@ public final class SharedWakeupManager {
                     if self.activeExplicitExtensionTimer === activeExplicitExtensionTimer {
                         self.activeExplicitExtensionTimer?.invalidate()
                         self.activeExplicitExtensionTimer = nil
-                        if let activeExplicitExtensionTask = self.activeExplicitExtensionTask {
-                            self.activeExplicitExtensionTask = nil
-                            self.endBackgroundTask(activeExplicitExtensionTask)
-                        }
-                        self.checkTasks()
+                        // MARK: NAGRAM — An expired assertion cannot authorize another extension.
+                        let activeExplicitExtensionTask = self.activeExplicitExtensionTask
+                        self.activeExplicitExtensionTask = nil
+                        self.allowBackgroundTimeExtensionDeadline = nil
+                        self.allowBackgroundTimeExtensionDeadlineTimer?.invalidate()
+                        self.allowBackgroundTimeExtensionDeadlineTimer = nil
+                        self.checkTasks(endingBackgroundTask: activeExplicitExtensionTask)
                     }
                 }
             }
@@ -979,7 +980,8 @@ public final class SharedWakeupManager {
         self.checkTasks()
     }
     
-    func checkTasks() {
+    // MARK: NAGRAM — Keep expiring background assertions until account transactions drain.
+    func checkTasks(endingBackgroundTask: UIBackgroundTaskIdentifier? = nil) {
         var hasTasksForBackgroundExtension = false
         
         var hasActiveCalls = false
@@ -991,7 +993,7 @@ public final class SharedWakeupManager {
             pendingMessageCount += tasks.importantTasks.pendingMessageCount
         }
         
-        var endTaskAfterTransactionsComplete: UIBackgroundTaskIdentifier?
+        var tasksToEndAfterTransactionsComplete = endingBackgroundTask.map { [$0] } ?? []
         
         if self.inForeground || self.hasActiveAudioSession || hasActiveCalls {
             if let (completion, timer) = self.currentExternalCompletion {
@@ -1047,17 +1049,18 @@ public final class SharedWakeupManager {
                                 return
                             }
                             
-                            if let actualTaskId {
-                                strongSelf.endBackgroundTask(actualTaskId)
-                                
-                                if let (taskId, _, timer) = strongSelf.currentTask, taskId == actualTaskId {
-                                    timer.invalidate()
-                                    strongSelf.currentTask = nil
-                                }
+                            // MARK: NAGRAM — Ending the assertion first can suspend SQLite with a lock held.
+                            guard let expiredTaskId = actualTaskId, let (taskId, _, timer) = strongSelf.currentTask, taskId == expiredTaskId else {
+                                return
                             }
-                            
+                            actualTaskId = nil
+                            timer.invalidate()
+                            strongSelf.currentTask = nil
+                            strongSelf.allowBackgroundTimeExtensionDeadline = nil
+                            strongSelf.allowBackgroundTimeExtensionDeadlineTimer?.invalidate()
+                            strongSelf.allowBackgroundTimeExtensionDeadlineTimer = nil
                             strongSelf.isInBackgroundExtension = false
-                            strongSelf.checkTasks()
+                            strongSelf.checkTasks(endingBackgroundTask: expiredTaskId)
                         }
                         if let taskId = self.beginBackgroundTask("background-wakeup", {
                             handleExpiration()
@@ -1080,7 +1083,7 @@ public final class SharedWakeupManager {
                 
                 timer.invalidate()
                 
-                endTaskAfterTransactionsComplete = taskId
+                tasksToEndAfterTransactionsComplete.append(taskId)
                 
                 self.isInBackgroundExtension = false
             }
@@ -1097,7 +1100,7 @@ public final class SharedWakeupManager {
             }
         }
         
-        self.updateAccounts(hasTasks: hasTasksForBackgroundExtension, endTaskAfterTransactionsComplete: endTaskAfterTransactionsComplete)
+        self.updateAccounts(hasTasks: hasTasksForBackgroundExtension, tasksToEndAfterTransactionsComplete: tasksToEndAfterTransactionsComplete)
         
         /*if !self.inForeground && pendingMessageCount != 0 && !self.hasActiveAudioSession {
             if self.silenceAudioRenderer == nil {
@@ -1132,7 +1135,7 @@ public final class SharedWakeupManager {
         }*/
     }
     
-    private func updateAccounts(hasTasks: Bool, endTaskAfterTransactionsComplete: UIBackgroundTaskIdentifier?) {
+    private func updateAccounts(hasTasks: Bool, tasksToEndAfterTransactionsComplete: [UIBackgroundTaskIdentifier]) {
         let hasBackgroundLocationTask = self.accountsAndTasks.contains(where: { $0.2.backgroundLocation })
         
         if self.inForeground || self.hasActiveAudioSession || self.isInBackgroundExtension || self.backgroundProcessingTaskId != nil || self.backgroundStoryProcessingTaskId != nil || hasBackgroundLocationTask || (hasTasks && self.currentExternalCompletion != nil) || self.activeExplicitExtensionTimer != nil || self.silenceAudioRenderer != nil {
@@ -1151,15 +1154,13 @@ public final class SharedWakeupManager {
                 account.shouldKeepBackgroundDownloadConnections.set(.single(tasks.backgroundDownloads))
             }
             
-            if let endTaskAfterTransactionsComplete {
-                self.endBackgroundTask(endTaskAfterTransactionsComplete)
+            for taskId in tasksToEndAfterTransactionsComplete {
+                self.endBackgroundTask(taskId)
             }
         } else {
-            var enableBeginTransactions = false
-            if self.allowBackgroundTimeExtensionDeadlineTimer != nil {
-                enableBeginTransactions = true
-            }
-            Logger.shared.log("Wakeup", "enableBeginTransactions: \(enableBeginTransactions)")
+            // MARK: NAGRAM — A deadline timer grants no background execution time.
+            // Without an active assertion, stop new transactions before releasing the last task.
+            Logger.shared.log("Wakeup", "enableBeginTransactions: false")
             
             final class CompletionObservationState {
                 var isCompleted: Bool = false
@@ -1182,15 +1183,17 @@ public final class SharedWakeupManager {
                             shouldComplete = true
                         }
                     }
-                    if shouldComplete, let endTaskAfterTransactionsComplete {
-                        self.endBackgroundTask(endTaskAfterTransactionsComplete)
+                    if shouldComplete {
+                        for taskId in tasksToEndAfterTransactionsComplete {
+                            self.endBackgroundTask(taskId)
+                        }
                     }
                 }
             }
             
             for (account, _, _) in self.accountsAndTasks {
                 let accountId = account.id
-                account.postbox.setCanBeginTransactions(enableBeginTransactions, afterTransactionIfRunning: {
+                account.postbox.setCanBeginTransactions(false, afterTransactionIfRunning: {
                     checkCompletionState(accountId)
                 })
                 account.shouldBeServiceTaskMaster.set(.single(.never))

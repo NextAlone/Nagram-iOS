@@ -553,6 +553,22 @@ final class ChatSendMessageContextScreenComponent: Component {
             }
             switch component.params {
             case let.sendMessage(sendMessage):
+                // MARK: NAGRAM — 发送前翻译输入内容(NAG-75)
+                if let nagramTranslateInput = sendMessage.nagramTranslateInput {
+                    items.append(.action(ContextMenuActionItem(
+                        id: AnyHashable("nagramTranslateInput"),
+                        text: environment.strings.Conversation_ContextMenuTranslate,
+                        icon: { theme in
+                            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Translate"), color: theme.contextMenu.primaryColor)
+                        }, action: { [weak self] _, _ in
+                            guard let self else {
+                                return
+                            }
+                            self.environment?.controller()?.dismiss()
+                            nagramTranslateInput()
+                        }
+                    )))
+                }
                 if !reminders {
                     items.append(.action(ContextMenuActionItem(
                         id: AnyHashable("silent"),

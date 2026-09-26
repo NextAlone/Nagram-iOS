@@ -6,7 +6,9 @@ import Postbox
 import TelegramCore
 import SwiftSignalKit
 import AccountContext
+// MARK: NAGRAM
 import NagramSettings
+import NagramSettingsSignal
 import TelegramPresentationData
 import TelegramUIPreferences
 import AvatarNode
@@ -377,6 +379,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
     let selectAddMemberDisposable = MetaDisposable()
     let addMemberDisposable = MetaDisposable()
     let preloadHistoryDisposable = MetaDisposable()
+    let nagramProfileSettingsDisposable = MetaDisposable()
     var shareStatusDisposable: MetaDisposable?
     let joinChannelDisposable = MetaDisposable()
     
@@ -2666,6 +2669,16 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             strongSelf.cachedDataPromise.set(.single(data.cachedData))
         })
         
+        // MARK: NAGRAM — 资料页增强开关变化后重建 infoItems。
+        self.nagramProfileSettingsDisposable.set(combineLatest(
+            queue: Queue.mainQueue(),
+            nagramBoolSignal("nagram.showProfileId", defaultValue: false),
+            nagramBoolSignal("nagram.showDC", defaultValue: false),
+            nagramBoolSignal("nagram.showRegDate", defaultValue: false)
+        ).startStrict(next: { [weak self] _, _, _ in
+            self?.requestLayout(animated: false)
+        }))
+        
         self.customStatusDisposable = (self.customStatusPromise.get()
         |> deliverOnMainQueue).startStrict(next: { [weak self] value in
             guard let strongSelf = self else {
@@ -2797,6 +2810,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
         self.selectAddMemberDisposable.dispose()
         self.addMemberDisposable.dispose()
         self.preloadHistoryDisposable.dispose()
+        self.nagramProfileSettingsDisposable.dispose()
         self.resolvePeerByNameDisposable?.dispose()
         self.navigationActionDisposable.dispose()
         self.enqueueMediaMessageDisposable.dispose()
@@ -6874,6 +6888,12 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
                 )
             }
             
+            // MARK: NAGRAM
+            let effectiveNotificationsWarningSuppressed = combineLatest(notificationsWarningSuppressed.get(), nagramBoolSignal("nagram.hideTabBarPermissionWarnings", defaultValue: false))
+            |> map { notificationsWarningSuppressed, hidePermissionWarnings in
+                return notificationsWarningSuppressed || hidePermissionWarnings
+            }
+
             let icon: UIImage?
             if useSpecialTabBarIcons() {
                 icon = UIImage(bundleImageName: "Chat List/Tabs/Holiday/IconSettings")
@@ -6881,7 +6901,7 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
                 icon = UIImage(bundleImageName: "Chat List/Tabs/IconSettings")
             }
             
-            let tabBarItem: Signal<(String, UIImage?, UIImage?, String?, Bool, Bool), NoError> = combineLatest(queue: .mainQueue(), self.context.sharedContext.presentationData, notificationsAuthorizationStatus.get(), notificationsWarningSuppressed.get(), context.engine.notices.getServerProvidedSuggestions(), accountTabBarAvatar, accountTabBarAvatarBadge)
+            let tabBarItem: Signal<(String, UIImage?, UIImage?, String?, Bool, Bool), NoError> = combineLatest(queue: .mainQueue(), self.context.sharedContext.presentationData, notificationsAuthorizationStatus.get(), effectiveNotificationsWarningSuppressed, context.engine.notices.getServerProvidedSuggestions(), accountTabBarAvatar, accountTabBarAvatarBadge)
             |> map { presentationData, notificationsAuthorizationStatus, notificationsWarningSuppressed, suggestions, accountTabBarAvatar, accountTabBarAvatarBadge -> (String, UIImage?, UIImage?, String?, Bool, Bool) in
                 let notificationsWarning = shouldDisplayNotificationsPermissionWarning(status: notificationsAuthorizationStatus, suppressed:  notificationsWarningSuppressed)
                 let phoneNumberWarning = suggestions.contains(.validatePhoneNumber)

@@ -40,6 +40,7 @@ import PhoneNumberFormat
 import Postbox
 import NagramSettings // MARK: NAGRAM
 import NagramSettingsSignal // MARK: NAGRAM
+import NagramTranscription // MARK: NAGRAM
 
 struct ChatTopVisibleMessageRange: Equatable {
     var lowerBound: MessageIndex
@@ -1914,8 +1915,13 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 return historyViewUpdateValue
             }
         }
-        historyViewUpdate = combineLatest(queue: .mainQueue(), historyViewUpdate, nagramRegexFiltersSignal()) // MARK: NAGRAM — 规则变化时重算聊天条目。
-        |> map { update, _ in
+        // MARK: NAGRAM — Only provider availability changes affect message layouts; defer Defaults reads.
+        let customTranscriptionEnabled = nagramSTTSettingsSignal()
+        |> deliverOnMainQueue
+        |> map { _ in NagramTranscriptionService.isEnabled }
+        |> distinctUntilChanged
+        historyViewUpdate = combineLatest(queue: .mainQueue(), historyViewUpdate, nagramRegexFiltersSignal(), customTranscriptionEnabled)
+        |> map { update, _, _ in
             return update
         }
                 
@@ -2485,6 +2491,16 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                                 break
                             }
                         }
+                    }
+                }
+
+                // MARK: NAGRAM — Telegram reloads keep the previous visible item stationary. Optionally keep following index 0 when the reload began at the newest-message edge.
+                if let strongSelf = self, NagramSettings.shared.stayAtLatestMessageAfterRefresh, updatedScrollPosition == nil, mode == .bubbles, case let .known(offset) = strongSelf.visibleContentOffset(), offset <= 0.9 {
+                    switch reason {
+                    case .Reload, .HoleReload:
+                        updatedScrollPosition = .index(subject: MessageHistoryScrollToSubject(index: .upperBound, quote: nil), position: .top(0.0), directionHint: .Up, animated: false, highlight: false, displayLink: false, setupReply: false)
+                    default:
+                        break
                     }
                 }
                 

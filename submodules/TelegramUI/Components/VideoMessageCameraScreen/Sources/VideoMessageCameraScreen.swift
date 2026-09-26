@@ -950,7 +950,8 @@ public class VideoMessageCameraScreen: ViewController {
             self.previewContainerView.addSubview(self.previewContainerContentView)
                         
             let isDualCameraEnabled = Camera.isDualCameraSupported(forRoundVideo: true)
-            let isFrontPosition = "".isEmpty
+            // MARK: NAGRAM - Keep the initial preview and capture camera in sync.
+            let isFrontPosition = controller.initialCameraPosition == .front
             
             self.mainPreviewView = CameraSimplePreviewView(frame: .zero, main: true, roundVideo: true)
             self.additionalPreviewView = CameraSimplePreviewView(frame: .zero, main: false, roundVideo: true)
@@ -1638,6 +1639,8 @@ public class VideoMessageCameraScreen: ViewController {
     private let context: AccountContext
     private let updatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)?
     private let inputPanelFrame: (CGRect, Bool)
+    // MARK: NAGRAM
+    private let initialCameraPosition: Camera.Position
     fileprivate var allowLiveUpload: Bool
     fileprivate var viewOnceAvailable: Bool
     
@@ -1794,6 +1797,8 @@ public class VideoMessageCameraScreen: ViewController {
         viewOnceAvailable: Bool,
         inputPanelFrame: (CGRect, Bool),
         chatNode: ASDisplayNode?,
+        // MARK: NAGRAM
+        initialCameraPosition: Camera.Position = .front,
         completion: @escaping (EnqueueMessage?, Bool?, Int32?, Int32?) -> Void
     ) {
         self.context = context
@@ -1802,6 +1807,7 @@ public class VideoMessageCameraScreen: ViewController {
         self.viewOnceAvailable = viewOnceAvailable
         self.inputPanelFrame = inputPanelFrame
         self.chatNode = chatNode
+        self.initialCameraPosition = initialCameraPosition // MARK: NAGRAM
         self.completion = completion
         
         self.recordingStatus = RecordingStatus(micLevel: self.micLevelValue.get(), duration: self.durationValue.get())

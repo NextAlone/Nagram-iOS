@@ -48,6 +48,10 @@ swift_library(
         "//submodules/Utils/DeviceModel",
         "//submodules/PresentationDataUtils",
         "//submodules/TelegramUI/Components/GlassBarButtonComponent",
+        # MARK: NAGRAM — 首次启动导入会话入口
+        "//Nagram/SessionBackupUI:NagramSessionBackupUI",
+        "//Nagram/LoginUI:NagramLoginUI",
+        "//Nagram/Strings:NagramStrings",
     ],
     visibility = [
         "//visibility:public",

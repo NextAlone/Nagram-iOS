@@ -154,7 +154,8 @@ typedef enum
 
 @implementation TGVideoMessageCaptureController
 
-- (instancetype)initWithContext:(id<LegacyComponentsContext>)context forStory:(bool)forStory assets:(TGVideoMessageCaptureControllerAssets *)assets transitionInView:(UIView *(^)(void))transitionInView parentController:(TGViewController *)parentController controlsFrame:(CGRect)controlsFrame isAlreadyLocked:(bool (^)(void))isAlreadyLocked liveUploadInterface:(id<TGLiveUploadInterface>)liveUploadInterface pallete:(TGModernConversationInputMicPallete *)pallete slowmodeTimestamp:(int32_t)slowmodeTimestamp slowmodeView:(UIView *(^)(void))slowmodeView canSendSilently:(bool)canSendSilently canSchedule:(bool)canSchedule reminder:(bool)reminder
+// MARK: NAGRAM - Configure the initial camera before capture starts.
+- (instancetype)initWithContext:(id<LegacyComponentsContext>)context forStory:(bool)forStory initialFrontCamera:(bool)initialFrontCamera assets:(TGVideoMessageCaptureControllerAssets *)assets transitionInView:(UIView *(^)(void))transitionInView parentController:(TGViewController *)parentController controlsFrame:(CGRect)controlsFrame isAlreadyLocked:(bool (^)(void))isAlreadyLocked liveUploadInterface:(id<TGLiveUploadInterface>)liveUploadInterface pallete:(TGModernConversationInputMicPallete *)pallete slowmodeTimestamp:(int32_t)slowmodeTimestamp slowmodeView:(UIView *(^)(void))slowmodeView canSendSilently:(bool)canSendSilently canSchedule:(bool)canSchedule reminder:(bool)reminder
 {
     self = [super initWithContext:context];
     if (self != nil)
@@ -176,7 +177,8 @@ typedef enum
         _queue = [[SQueue alloc] init];
         
         _previousDuration = 0.0;
-        _preferredPosition = AVCaptureDevicePositionFront;
+        // MARK: NAGRAM - Keep in-recording camera changes local to this capture.
+        _preferredPosition = initialFrontCamera ? AVCaptureDevicePositionFront : AVCaptureDevicePositionBack;
         
         self.isImportant = true;
         _controlsFrame = controlsFrame;

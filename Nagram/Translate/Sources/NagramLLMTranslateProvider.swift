@@ -34,6 +34,204 @@ func nagramLLMTranslate(text: String, fromLang: String?, toLang: String, context
     }
 }
 
+public struct NagramLLMTestModelError: Error {
+    public let message: String
+
+    init(message: String) {
+        self.message = message
+    }
+}
+
+public func nagramLLMTestModel() -> Signal<Void, NagramLLMTestModelError> {
+    let settings = NagramSettings.shared
+    let format = settings.translationLLMAPIFormatValue
+    let model = settings.translationLLMModelValue
+    let apiKey = settings.translationLLMAPIKeyValue
+    guard let url = settings.translationLLMTranslationURL() else {
+        return .fail(NagramLLMTestModelError(message: "Invalid Base URL or Endpoint."))
+    }
+    guard !model.isEmpty else {
+        return .fail(NagramLLMTestModelError(message: "Model is empty."))
+    }
+
+    let body: [String: Any]
+    switch format {
+    case .openai:
+        body = [
+            "model": model,
+            "messages": [
+                ["role": "user", "content": "REPLY `PONG` ONLY"]
+            ],
+            "temperature": 0.0
+        ]
+    case .anthropic:
+        body = [
+            "model": model,
+            "max_tokens": 4096,
+            "messages": [
+                ["role": "user", "content": "REPLY `PONG` ONLY"]
+            ]
+        ]
+    }
+    guard let bodyData = try? JSONSerialization.data(withJSONObject: body) else {
+        return .fail(NagramLLMTestModelError(message: "Failed to encode the request body."))
+    }
+
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.httpBody = bodyData
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.setValue("application/json", forHTTPHeaderField: "Accept")
+    switch format {
+    case .openai:
+        if !apiKey.isEmpty {
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
+    case .anthropic:
+        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        if !apiKey.isEmpty {
+            request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        }
+    }
+
+    return nagramLLMTestRequest(request, format: format, apiKey: apiKey)
+}
+
+private func nagramLLMTestRequest(_ request: URLRequest, format: NagramTranslationLLMAPIFormat, apiKey: String) -> Signal<Void, NagramLLMTestModelError> {
+    return Signal { subscriber in
+        var request = request
+        request.timeoutInterval = 45.0
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error {
+                let nsError = error as NSError
+                let message = nagramLLMTestDisplayDetail("Network error: \(error.localizedDescription) (\(nsError.domain) \(nsError.code))", apiKey: apiKey)
+                subscriber.putError(NagramLLMTestModelError(message: message))
+                return
+            }
+            guard let httpResponse = response as? HTTPURLResponse else {
+                subscriber.putError(NagramLLMTestModelError(message: "The server returned a non-HTTP response."))
+                return
+            }
+            guard (200 ..< 300).contains(httpResponse.statusCode) else {
+                let reason = HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode).capitalized
+                var message = "HTTP \(httpResponse.statusCode) \(reason)"
+                if let data, let serverMessage = nagramLLMServerErrorMessage(from: data, apiKey: apiKey) {
+                    message += "\n\(serverMessage)"
+                }
+                subscriber.putError(NagramLLMTestModelError(message: nagramLLMTestDisplayDetail(message, apiKey: apiKey)))
+                return
+            }
+            guard let data else {
+                subscriber.putError(NagramLLMTestModelError(message: "The server returned no response body."))
+                return
+            }
+            guard let responseText = nagramLLMTestResponseText(from: data, format: format) else {
+                var message = "Unable to parse the model response."
+                if let responseSnippet = nagramLLMResponseSnippet(from: data, apiKey: apiKey) {
+                    message += "\nResponse: \(responseSnippet)"
+                }
+                subscriber.putError(NagramLLMTestModelError(message: nagramLLMTestDisplayDetail(message, apiKey: apiKey)))
+                return
+            }
+            guard !responseText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                subscriber.putError(NagramLLMTestModelError(message: "The model returned an empty response."))
+                return
+            }
+            subscriber.putNext(())
+            subscriber.putCompletion()
+        }
+        task.resume()
+        return ActionDisposable {
+            task.cancel()
+        }
+    }
+}
+
+private func nagramLLMTestResponseText(from data: Data, format: NagramTranslationLLMAPIFormat) -> String? {
+    guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        return nil
+    }
+    switch format {
+    case .openai:
+        guard let choices = object["choices"] as? [[String: Any]],
+              let message = choices.first?["message"] as? [String: Any]
+        else {
+            return nil
+        }
+        return nagramLLMText(fromOpenAIContent: message["content"])
+    case .anthropic:
+        guard let parts = object["content"] as? [[String: Any]] else {
+            return nil
+        }
+        return parts.compactMap { part -> String? in
+            guard (part["type"] as? String) == "text" else {
+                return nil
+            }
+            return part["text"] as? String
+        }.joined()
+    }
+}
+
+private func nagramLLMServerErrorMessage(from data: Data, apiKey: String) -> String? {
+    if let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+        if let error = object["error"] as? [String: Any] {
+            var lines: [String] = []
+            if let message = nagramLLMScalarString(error["message"]) {
+                lines.append(message)
+            }
+            if let type = nagramLLMScalarString(error["type"]) {
+                lines.append("Type: \(type)")
+            }
+            if let code = nagramLLMScalarString(error["code"]) {
+                lines.append("Code: \(code)")
+            }
+            if !lines.isEmpty {
+                return lines.joined(separator: "\n")
+            }
+        }
+        for key in ["error", "message", "detail"] {
+            if let message = nagramLLMScalarString(object[key]) {
+                return message
+            }
+        }
+    }
+    return nagramLLMResponseSnippet(from: data, apiKey: apiKey)
+}
+
+private func nagramLLMScalarString(_ value: Any?) -> String? {
+    if let value = value as? String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+    if let value = value as? NSNumber {
+        return value.stringValue
+    }
+    return nil
+}
+
+private func nagramLLMTestDisplayDetail(_ value: String, apiKey: String) -> String {
+    var result = value
+    if !apiKey.isEmpty {
+        result = result.replacingOccurrences(of: apiKey, with: "<redacted>")
+    }
+    let limit = 1024
+    if result.count > limit {
+        return String(result.prefix(limit)) + "…"
+    }
+    return result
+}
+
+private func nagramLLMResponseSnippet(from data: Data, apiKey: String) -> String? {
+    guard let value = String(data: data, encoding: .utf8) else {
+        return nil
+    }
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else {
+        return nil
+    }
+    return nagramLLMTestDisplayDetail(trimmed, apiKey: apiKey)
+}
+
 private func nagramLLMSystemPrompt(fromLang: String?, toLang: String, context: [String]) -> String {
     let sourceLanguage = fromLang.flatMap { $0.isEmpty || $0 == "auto" ? nil : $0 } ?? "auto"
     var prompt = """

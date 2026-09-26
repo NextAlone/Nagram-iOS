@@ -100,6 +100,7 @@ swift_library(
         # MARK: NAGRAM — 增强设置页 UI 模块
         "//Nagram/SettingsUI:NagramSettingsUI",
         "//Nagram/Settings:NagramSettings",
+        "//Nagram/SettingsSignal:NagramSettingsSignal",
         "//Nagram/Strings:NagramStrings",
         "//submodules/ShareController",
         "//submodules/TelegramUI/Components/ShareWithPeersScreen",

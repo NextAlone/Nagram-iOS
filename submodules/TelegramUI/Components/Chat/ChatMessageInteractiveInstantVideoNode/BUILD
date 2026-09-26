@@ -30,6 +30,7 @@ swift_library(
         "//submodules/UndoUI",
         "//submodules/TelegramNotices",
         "//submodules/Markdown",
+        "//Nagram/Transcription:NagramTranscription",  # MARK: NAGRAM
         "//submodules/TextFormat",
         "//submodules/InvisibleInkDustNode",
         "//submodules/TelegramUI/Components/Chat/ChatMessageForwardInfoNode",

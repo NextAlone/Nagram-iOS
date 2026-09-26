@@ -324,6 +324,97 @@ public enum ChatListFilter: Codable, Equatable {
     }
 }
 
+// MARK: NAGRAM — 让不依赖 ChatListUI 的分享面板复用文件夹筛选语义。
+public func makeChatListFilterPredicate(filter: ChatListFilterData, accountPeerId: EnginePeer.Id) -> ChatListFilterPredicate {
+    var includePeers = Set(filter.includePeers.peers)
+    var excludePeers = Set(filter.excludePeers)
+    
+    if !filter.includePeers.pinnedPeers.isEmpty {
+        includePeers.subtract(filter.includePeers.pinnedPeers)
+        excludePeers.subtract(filter.includePeers.pinnedPeers)
+    }
+    
+    var includeAdditionalPeerGroupIds: [PeerGroupId] = []
+    if !filter.excludeArchived {
+        includeAdditionalPeerGroupIds.append(Namespaces.PeerGroup.archive)
+    }
+    
+    var messageTagSummary: ChatListMessageTagSummaryResultCalculation?
+    if filter.excludeRead || filter.excludeMuted {
+        messageTagSummary = ChatListMessageTagSummaryResultCalculation(
+            addCount: ChatListMessageTagSummaryResultComponent(
+                tag: .unseenPersonalMessage,
+                namespace: Namespaces.Message.Cloud
+            ),
+            subtractCount: ChatListMessageTagActionsSummaryResultComponent(
+                type: PendingMessageActionType.consumeUnseenPersonalMessage,
+                namespace: Namespaces.Message.Cloud
+            )
+        )
+    }
+    
+    return ChatListFilterPredicate(
+        includePeerIds: includePeers,
+        excludePeerIds: excludePeers,
+        pinnedPeerIds: filter.includePeers.pinnedPeers,
+        messageTagSummary: messageTagSummary,
+        includeAdditionalPeerGroupIds: includeAdditionalPeerGroupIds,
+        include: { peer, isMuted, isUnread, isContact, messageTagSummaryResult in
+            if filter.excludeRead {
+                var effectiveUnread = isUnread
+                if messageTagSummaryResult == true {
+                    effectiveUnread = true
+                }
+                if !effectiveUnread {
+                    return false
+                }
+            }
+            if filter.excludeMuted && isMuted && messageTagSummaryResult != true {
+                return false
+            }
+            if !filter.categories.contains(.contacts) && isContact {
+                if let user = peer as? TelegramUser {
+                    if user.botInfo == nil && !user.flags.contains(.isSupport) {
+                        return false
+                    }
+                } else if peer is TelegramSecretChat {
+                    return false
+                }
+            }
+            if !filter.categories.contains(.nonContacts) && !isContact && peer.id != accountPeerId {
+                if let user = peer as? TelegramUser {
+                    if user.botInfo == nil {
+                        return false
+                    }
+                } else if peer is TelegramSecretChat {
+                    return false
+                }
+            }
+            if filter.categories.contains(.nonContacts) && peer.id == accountPeerId {
+                return false
+            }
+            if !filter.categories.contains(.bots), let user = peer as? TelegramUser {
+                if user.botInfo != nil || user.flags.contains(.isSupport) {
+                    return false
+                }
+            }
+            if !filter.categories.contains(.groups) {
+                if peer is TelegramGroup {
+                    return false
+                } else if let channel = peer as? TelegramChannel, case .group = channel.info {
+                    return false
+                } else if peer is TelegramCommunity {
+                    return false
+                }
+            }
+            if !filter.categories.contains(.channels), let channel = peer as? TelegramChannel, case .broadcast = channel.info {
+                return false
+            }
+            return true
+        }
+    )
+}
+
 extension ChatListFilter {
     init(apiFilter: Api.DialogFilter) {
         switch apiFilter {
@@ -821,7 +912,8 @@ private func requestChatListFilters(accountPeerId: PeerId, postbox: Postbox, net
     }
 }
 
-private func loadAndStorePeerChatInfos(accountPeerId: PeerId, postbox: Postbox, network: Network, peers: [Api.InputPeer]) -> Signal<Never, NoError> {
+// MARK: NAGRAM — Community 展开复用此逻辑，按服务端 folderId 恢复隐藏会话。
+func loadAndStorePeerChatInfos(accountPeerId: PeerId, postbox: Postbox, network: Network, peers: [Api.InputPeer]) -> Signal<Never, NoError> {
     return postbox.transaction { transaction -> [Api.InputDialogPeer] in
         return peers.map { peer -> Api.InputDialogPeer in
             if case let .inputPeerChannel(inputPeerChannelData) = peer {

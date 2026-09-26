@@ -35,6 +35,8 @@ swift_library(
     ]),
     deps = [
         ":TextFormat",
+        # MARK: NAGRAM
+        "//Nagram/Settings:NagramSettings",
         "//submodules/TelegramCore:TelegramCore",
         "//submodules/Postbox:Postbox",
     ],

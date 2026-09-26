@@ -27,6 +27,7 @@ import TelegramUIPreferences
 // MARK: NAGRAM — force-copy 增强开关模块
 import NagramSettings
 import NagramStrings
+import NagramTranscription // MARK: NAGRAM
 import TranslateUI
 import DebugSettingsUI
 import ChatPresentationInterfaceState
@@ -1159,7 +1160,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         }
         
         var hasRateTranscription = false
-        if hasExpandedAudioTranscription, let audioTranscription = audioTranscription, !didRateAudioTranscription {
+        // MARK: NAGRAM — External and local transcriptions must not be rated through Telegram.
+        if hasExpandedAudioTranscription, let audioTranscription = audioTranscription, audioTranscription.canRate, !didRateAudioTranscription {
             hasRateTranscription = true
             actions.insert(.custom(ChatRateTranscriptionContextItem(context: context, message: message, action: { [weak context] value in
                 guard let context = context else {
@@ -1173,6 +1175,40 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 controllerInteraction.displayUndo(content)
             }), false), at: 0)
             actions.insert(.separator, at: 1)
+        }
+
+        // MARK: NAGRAM — Explicitly replace an existing result using the currently selected provider.
+        let isTranscribing = NagramTranscriptionService.shared.isTranscribing(context: context, messageId: message.id)
+        if messages.count == 1, audioTranscription != nil || isTranscribing,
+           message.id.namespace == Namespaces.Message.Cloud,
+           message.id.peerId.namespace != Namespaces.Peer.SecretChat,
+           message.minAutoremoveOrClearTimeout != viewOnceTimeout,
+           chatPresentationInterfaceState.mode != .standard(.previewing),
+           messageNode?.item?.presentationData.isPreview != true,
+           message.media.contains(where: { media in
+               guard let file = media as? TelegramMediaFile else {
+                   return false
+               }
+               return file.isVoice || file.isInstantVideo
+           }) {
+            actions.append(.action(ContextMenuActionItem(text: ngI18n(isTranscribing ? "Nagram.STTCancelTranscription" : "Nagram.STTRetranscribe", chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: isTranscribing ? "Chat/Context Menu/StopPoll" : "Chat/Context Menu/Translate"), color: theme.actionSheet.primaryTextColor)
+            }, action: { [weak context, weak controllerInteraction] _, completion in
+                completion(.dismissWithoutContent)
+                guard let context, let controllerInteraction else {
+                    return
+                }
+                if isTranscribing {
+                    NagramTranscriptionService.shared.cancel(context: context, messageId: message.id)
+                    return
+                }
+                let _ = (NagramTranscriptionService.shared.transcribe(context: context, messageId: message.id, force: true)
+                |> deliverOnMainQueue).startStandalone(next: { [weak controllerInteraction] state in
+                    if case let .failed(error) = state {
+                        controllerInteraction?.displayUndo(.info(title: nil, text: error, timeout: nil, customUndoText: nil))
+                    }
+                })
+            })))
         }
         
         if !hasRateTranscription && message.minAutoremoveOrClearTimeout == nil {
@@ -2051,7 +2087,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 // MARK: NAGRAM — 快速保存到 Saved Messages：直接转发到自己的云收藏。
                 if messagesToForward.contains(where: { $0.id.peerId != context.account.peerId || $0.id.namespace == Namespaces.Message.Local }) {
                     actions.append(.saveToSavedMessages, .action(ContextMenuActionItem(text: ngI18n("Nagram.MessageMenu.Item.saveToSavedMessages", context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode), icon: { theme in
-                        return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Archive"), color: theme.actionSheet.primaryTextColor)
+                        return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Fave"), color: theme.actionSheet.primaryTextColor)
                     }, action: { _, f in
                         interfaceInteraction.saveMessagesToSavedMessages(messagesToForward)
                         f(.dismissWithoutContent)

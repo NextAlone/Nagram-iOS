@@ -1,4 +1,6 @@
 import Foundation
+// MARK: NAGRAM
+import NagramStrings
 import UIKit
 import Display
 import AsyncDisplayKit
@@ -334,8 +336,11 @@ final class ShareControllerNode: ViewControllerTracingNode, ASScrollViewDelegate
     var selectedSegmentedIndex: Int = 0
     
     private let defaultAction: ShareControllerAction?
+    private let selectChatListFilter: (Int32?) -> Void // MARK: NAGRAM
     private let requestLayout: (ContainedViewLayoutTransition) -> Void
     private let presentError: (String?, String) -> Void
+    // MARK: NAGRAM — Selecting another peer must not start a second send while reading attachments.
+    private var isSending = false
     
     private var containerLayout: (ContainerViewLayout, CGFloat, CGFloat)?
     
@@ -397,6 +402,7 @@ final class ShareControllerNode: ViewControllerTracingNode, ASScrollViewDelegate
         presetText: String?,
         defaultAction: ShareControllerAction?,
         mediaParameters: ShareControllerSubject.MediaParameters?,
+        selectChatListFilter: @escaping (Int32?) -> Void, // MARK: NAGRAM
         requestLayout: @escaping (ContainedViewLayoutTransition) -> Void,
         presentError: @escaping (String?, String) -> Void,
         externalShare: Bool,
@@ -428,6 +434,7 @@ final class ShareControllerNode: ViewControllerTracingNode, ASScrollViewDelegate
         self.presetText = presetText
         
         self.defaultAction = defaultAction
+        self.selectChatListFilter = selectChatListFilter // MARK: NAGRAM
         self.requestLayout = requestLayout
         
         if let forceTheme = self.forceTheme {
@@ -1014,7 +1021,10 @@ final class ShareControllerNode: ViewControllerTracingNode, ASScrollViewDelegate
                             if strongSelf.previousContentNode === previous {
                                 strongSelf.previousContentNode = nil
                             }
-                            previous.removeFromSupernode()
+                            // MARK: NAGRAM — A fast preparation failure may have restored this node.
+                            if strongSelf.contentNode !== previous {
+                                previous.removeFromSupernode()
+                            }
                         }
                     })
                 } else {
@@ -1097,7 +1107,6 @@ final class ShareControllerNode: ViewControllerTracingNode, ASScrollViewDelegate
         
         let buttonHeight: CGFloat = 57.0
         let sectionSpacing: CGFloat = 8.0
-        let titleAreaHeight: CGFloat = 64.0
         
         let maximumContentHeight = layout.size.height - insets.top - max(bottomInset + buttonHeight, insets.bottom) - sectionSpacing
         
@@ -1176,17 +1185,19 @@ final class ShareControllerNode: ViewControllerTracingNode, ASScrollViewDelegate
         
         transition.updateFrame(node: self.actionSeparatorNode, frame: CGRect(origin: CGPoint(x: 0.0, y: contentContainerFrame.size.height - bottomGridInset - UIScreenPixel), size: CGSize(width: contentContainerFrame.size.width, height: UIScreenPixel)), beginWithCurrentState: true)
         
-        let gridSize = CGSize(width: contentFrame.size.width, height: max(32.0, contentFrame.size.height - titleAreaHeight))
-        
         if let contentNode = self.contentNode {
-            transition.updateFrame(node: contentNode, frame: CGRect(origin: CGPoint(x: floor((contentContainerFrame.size.width - contentFrame.size.width) / 2.0), y: titleAreaHeight), size: gridSize))
-            contentNode.updateLayout(size: gridSize, isLandscape: layout.size.width > layout.size.height, bottomInset: bottomGridInset, transition: transition)
+            let titleAreaHeight = (contentNode as? SharePeersContainerNode)?.titleAreaHeight ?? 64.0 // MARK: NAGRAM
+            let contentSize = CGSize(width: contentFrame.size.width, height: max(32.0, contentFrame.size.height - titleAreaHeight))
+            transition.updateFrame(node: contentNode, frame: CGRect(origin: CGPoint(x: floor((contentContainerFrame.size.width - contentFrame.size.width) / 2.0), y: titleAreaHeight), size: contentSize))
+            contentNode.updateLayout(size: contentSize, isLandscape: layout.size.width > layout.size.height, bottomInset: bottomGridInset, transition: transition)
         }
         
         if let topicsContentNode = self.topicsContentNode {
-            transition.updateFrame(node: topicsContentNode, frame: CGRect(origin: CGPoint(x: floor((contentContainerFrame.size.width - contentFrame.size.width) / 2.0), y: titleAreaHeight), size: gridSize))
+            let topicsTitleAreaHeight: CGFloat = 64.0
+            let topicsContentSize = CGSize(width: contentFrame.size.width, height: max(32.0, contentFrame.size.height - topicsTitleAreaHeight))
+            transition.updateFrame(node: topicsContentNode, frame: CGRect(origin: CGPoint(x: floor((contentContainerFrame.size.width - contentFrame.size.width) / 2.0), y: topicsTitleAreaHeight), size: topicsContentSize))
             
-            topicsContentNode.updateLayout(size: gridSize, isLandscape: layout.size.width > layout.size.height, bottomInset: self.contentNode === self.peersContentNode ? bottomGridInset : 0.0, transition: transition)
+            topicsContentNode.updateLayout(size: topicsContentSize, isLandscape: layout.size.width > layout.size.height, bottomInset: self.contentNode === self.peersContentNode ? bottomGridInset : 0.0, transition: transition)
         }
         
         if let controller = self.controller {
@@ -1400,6 +1411,10 @@ final class ShareControllerNode: ViewControllerTracingNode, ASScrollViewDelegate
     }
     
     private func commitSend(peerId: PeerId?, showNames: Bool, silently: Bool) {
+        // MARK: NAGRAM
+        guard !self.isSending else {
+            return
+        }
         if !self.inputFieldNode.text.isEmpty {
             for peer in self.controllerInteraction!.selectedPeers {
                 if case let .channel(channel) = peer.peer, channel.isRestrictedBySlowmode {
@@ -1409,6 +1424,12 @@ final class ShareControllerNode: ViewControllerTracingNode, ASScrollViewDelegate
             }
         }
         
+        // MARK: NAGRAM — Preserve the selection/search view for a failed attempt.
+        self.isSending = self.fromForeignApp
+        let previousContentNode = self.contentNode
+        if self.fromForeignApp {
+            Logger.shared.log("SharePreparation", "send UI started")
+        }
         self.inputFieldNode.deactivateInput()
         let transition: ContainedViewLayoutTransition
         if peerId == nil {
@@ -1530,8 +1551,39 @@ final class ShareControllerNode: ViewControllerTracingNode, ASScrollViewDelegate
                             strongSelf.dismiss?(true)
                         }
                 }
-            }, error: { _ in
-                
+            }, error: { [weak self] error in
+                // MARK: NAGRAM — Failed sends must not leave a hidden button and a stuck selection.
+                guard let self else {
+                    return
+                }
+                self.isSending = false
+                guard self.fromForeignApp else {
+                    return
+                }
+                Logger.shared.log("SharePreparation", "send failed: \(error)")
+                if let previousContentNode {
+                    self.transitionToContentNode(previousContentNode, animated: false)
+                }
+                let transition = ContainedViewLayoutTransition.immediate
+                transition.updateAlpha(node: self.actionButtonNode, alpha: 1.0)
+                transition.updateAlpha(node: self.inputFieldNode, alpha: 1.0)
+                transition.updateAlpha(node: self.actionSeparatorNode, alpha: 1.0)
+                transition.updateAlpha(node: self.actionsBackgroundNode, alpha: 1.0)
+                if let startAtTimestampNode = self.startAtTimestampNode {
+                    transition.updateAlpha(node: startAtTimestampNode, alpha: 1.0)
+                }
+                let language = self.presentationData.strings.baseLanguageCode
+                let text: String
+                switch error {
+                case let .preparationFailed(code):
+                    let key = code == "provider-timeout" ? "Nagram.Share.ReadTimeout" : "Nagram.Share.PreparationFailed"
+                    text = ngI18n(key, language) + "\n[\(code)]"
+                case .fileTooBig:
+                    text = ngI18n("Nagram.Share.FileTooBig", language)
+                case .generic:
+                    text = ngI18n("Nagram.Share.SendFailed", language)
+                }
+                self.presentError(nil, text)
             }, completed: {
                 if !wasDone && fromForeignApp {
                     doneImpl(false)
@@ -1613,11 +1665,24 @@ final class ShareControllerNode: ViewControllerTracingNode, ASScrollViewDelegate
         }
     }
     
-    func updatePeers(context: ShareControllerAccountContext, switchableAccounts: [ShareControllerSwitchableAccount], peers: [(peer: EngineRenderedPeer, presence: EnginePeer.Presence?, requiresPremiumForMessaging: Bool, requiresStars: Int64?)], accountPeer: EnginePeer, defaultAction: ShareControllerAction?) {
+    func updatePeers(
+        context: ShareControllerAccountContext,
+        switchableAccounts: [ShareControllerSwitchableAccount],
+        peers: [(peer: EngineRenderedPeer, presence: EnginePeer.Presence?, requiresPremiumForMessaging: Bool, requiresStars: Int64?)],
+        accountPeer: EnginePeer,
+        chatListFilters: [ChatListFilter],
+        selectedChatListFilterId: Int32?,
+        defaultAction: ShareControllerAction?
+    ) { // MARK: NAGRAM
         self.context = context
                 
         if let peersContentNode = self.peersContentNode, peersContentNode.accountPeer.id == accountPeer.id {
+            let previousTitleAreaHeight = peersContentNode.titleAreaHeight // MARK: NAGRAM
+            peersContentNode.updateChatListFilters(chatListFilters, selectedFilterId: selectedChatListFilterId, transition: .animated(duration: 0.25, curve: .easeInOut))
             peersContentNode.peersValue.set(.single(peers))
+            if previousTitleAreaHeight != peersContentNode.titleAreaHeight, let (layout, navigationBarHeight, _) = self.containerLayout {
+                self.containerLayoutUpdated(layout, navigationBarHeight: navigationBarHeight, transition: .animated(duration: 0.25, curve: .easeInOut))
+            }
             return
         }
         
@@ -1652,7 +1717,7 @@ final class ShareControllerNode: ViewControllerTracingNode, ASScrollViewDelegate
         }
         
         let animated = self.peersContentNode == nil
-        let peersContentNode = SharePeersContainerNode(environment: self.environment, context: context, switchableAccounts: switchableAccounts, theme: self.presentationData.theme, strings: self.presentationData.strings, nameDisplayOrder: self.presentationData.nameDisplayOrder, peers: peers, accountPeer: accountPeer, controllerInteraction: self.controllerInteraction!, externalShare: self.externalShare, isMainApp: self.environment.isMainApp, switchToAnotherAccount: { [weak self] in
+        let peersContentNode = SharePeersContainerNode(environment: self.environment, context: context, switchableAccounts: switchableAccounts, presentationData: self.presentationData, peers: peers, accountPeer: accountPeer, chatListFilters: chatListFilters, selectedChatListFilterId: selectedChatListFilterId, controllerInteraction: self.controllerInteraction!, externalShare: self.externalShare, isMainApp: self.environment.isMainApp, selectChatListFilter: self.selectChatListFilter, switchToAnotherAccount: { [weak self] in // MARK: NAGRAM
             self?.switchToAnotherAccount?()
         }, debugAction: { [weak self] in
             self?.debugAction?()

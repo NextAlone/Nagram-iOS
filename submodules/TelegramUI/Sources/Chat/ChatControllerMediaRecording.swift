@@ -6,6 +6,7 @@ import AsyncDisplayKit
 import TelegramCore
 import SafariServices
 import MobileCoreServices
+import NagramSettings // MARK: NAGRAM
 import Intents
 import LegacyComponents
 import TelegramPresentationData
@@ -180,6 +181,8 @@ extension ChatControllerImpl {
                     viewOnceAvailable: viewOnceAvailable,
                     inputPanelFrame: (currentInputPanelFrame, self.chatDisplayNode.inputNode != nil),
                     chatNode: self.chatDisplayNode.historyNode,
+                    // MARK: NAGRAM - Apply the preferred camera when starting a new video message.
+                    initialCameraPosition: NagramSettings.shared.roundVideoCameraValue == .front ? .front : .back,
                     completion: { [weak self] message, silentPosting, scheduleTime, repeatPeriod in
                         guard let self, let videoController = self.videoRecorderValue else {
                             return

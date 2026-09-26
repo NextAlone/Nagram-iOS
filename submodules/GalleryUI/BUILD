@@ -10,6 +10,8 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        # MARK: NAGRAM — localized media information.
+        "//Nagram/Strings:NagramStrings",
         # MARK: NAGRAM
         "//Nagram/MediaMetadata:NagramMediaMetadata",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",

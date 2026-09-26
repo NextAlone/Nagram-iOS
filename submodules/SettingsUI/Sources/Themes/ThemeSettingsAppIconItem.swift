@@ -39,18 +39,32 @@ private func nagramAppIconTitle(_ iconName: String, strings: PresentationStrings
     let isChinese = strings.baseLanguageCode.hasPrefix("zh")
     switch iconName {
         case "Nagram":
-            return isChinese ? "轻盈" : "Light"
+            return isChinese ? "轻盈" : "Default"
         case "NagramBlock":
-            return isChinese ? "几何" : "Geometric"
+            return isChinese ? "几何" : "Block"
+        case "NagramBlockBlack":
+            return isChinese ? "几何黑" : "Block Black"
+        case "NagramBlockBlue":
+            return isChinese ? "几何蓝" : "Block Blue"
+        case "NagramBlockNiello":
+            return isChinese ? "几何金" : "Block Niello"
+        case "NagramBlockPurple":
+            return isChinese ? "几何紫" : "Block Purple"
+        case "NagramClassic":
+            return isChinese ? "经典" : "Classic"
         case "NagramColorful":
-            return isChinese ? "缤纷" : "Colorful"
+            return isChinese ? "多彩" : "Colorful"
+        case "NagramCyan":
+            return isChinese ? "冬青" : "Cyan"
+        case "NagramBlack":
+            return isChinese ? "暗黑" : "Dark"
         default:
             return nil
     }
 }
 
 private func loadThemeSettingsAppIconImage(_ icon: PresentationAppIcon) -> UIImage? {
-    if icon.name == "Nagram" || icon.name == "NagramBlock" || icon.name == "NagramColorful" {
+    if icon.name.hasPrefix("Nagram") {
         for suffix in ["@3x", "@2x", "Ipad@2x", "LargeIpad@2x", "Ipad"] {
             let imageName = "\(icon.name)\(suffix)"
             if let path = getAppBundle().path(forResource: imageName, ofType: "png"), let image = UIImage(contentsOfFile: path) {

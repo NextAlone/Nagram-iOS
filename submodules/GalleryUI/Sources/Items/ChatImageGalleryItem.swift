@@ -30,6 +30,7 @@ import ComponentFlow
 import ComponentDisplayAdapters
 // MARK: NAGRAM
 import NagramMediaMetadata
+import NagramStrings // MARK: NAGRAM
 import NagramSettings
 
 enum ChatMediaGalleryThumbnail: Equatable {
@@ -736,8 +737,8 @@ final class ChatImageGalleryItemNode: ZoomableContentGalleryItemNode {
                     }
                     f(.default)
                 })))
-                
-                if !message.isCopyProtected() && !self.peerIsCopyProtected && message.paidContent == nil, let media = self.contextAndMedia?.1 {
+                // MARK: NAGRAM — Allow protected media actions when forceCopyEnabled is enabled.
+                if (NagramSettings.shared.forceCopyEnabled || (!message.isCopyProtected() && !self.peerIsCopyProtected)) && message.paidContent == nil, let media = self.contextAndMedia?.1 {
                     items.append(.action(ContextMenuActionItem(text: self.presentationData.strings.Gallery_CreateSticker, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Sticker"), color: theme.actionSheet.primaryTextColor) }, action: { [weak self] _, f in
                         f(.default)
                         guard let self else {
@@ -804,7 +805,7 @@ final class ChatImageGalleryItemNode: ZoomableContentGalleryItemNode {
             
             // MARK: NAGRAM — 媒体信息菜单项
             if NagramSettings.shared.mediaMetadataEnabled, let media = self.contextAndMedia?.1 {
-                items.append(.action(ContextMenuActionItem(text: "查看信息", icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Info"), color: theme.actionSheet.primaryTextColor) }, action: { [weak self] _, f in
+                items.append(.action(ContextMenuActionItem(text: ngI18n("Nagram.MediaMetadata.ViewInfo", self.presentationData.strings.baseLanguageCode), icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Info"), color: theme.actionSheet.primaryTextColor) }, action: { [weak self] _, f in
                     f(.default)
                     guard let self, let controller = self.galleryController() else {
                         return

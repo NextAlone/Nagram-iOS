@@ -16,8 +16,19 @@ private enum InternalAudioTranscriptionResult {
 }
 
 func _internal_transcribeAudio(postbox: Postbox, network: Network, messageId: MessageId) -> Signal<EngineAudioTranscriptionResult, NoError> {
+    // MARK: NAGRAM — An explicit request establishes a generation before any asynchronous work.
+    let requestId = Int64.random(in: Int64.min ... Int64.max)
     return postbox.transaction { transaction -> Api.InputPeer? in
-        return transaction.getPeer(messageId.peerId).flatMap(apiInputPeer)
+        guard transaction.getMessage(messageId) != nil, let inputPeer = transaction.getPeer(messageId.peerId).flatMap(apiInputPeer) else {
+            return nil
+        }
+        transaction.updateMessage(messageId, update: { currentMessage in
+            let storeForwardInfo = currentMessage.forwardInfo.flatMap(StoreMessageForwardInfo.init)
+            var attributes = currentMessage.attributes.filter { !($0 is AudioTranscriptionMessageAttribute) && !($0 is TranslationMessageAttribute) }
+            attributes.append(AudioTranscriptionMessageAttribute(id: 0, text: "", isPending: true, didRate: false, error: nil, source: .telegram, requestId: requestId))
+            return .update(StoreMessage(id: currentMessage.id, customStableId: nil, globallyUniqueId: currentMessage.globallyUniqueId, groupingKey: currentMessage.groupingKey, threadId: currentMessage.threadId, timestamp: currentMessage.timestamp, flags: StoreMessageFlags(currentMessage.flags), tags: currentMessage.tags, globalTags: currentMessage.globalTags, localTags: currentMessage.localTags, forwardInfo: storeForwardInfo, authorId: currentMessage.author?.id, text: currentMessage.text, attributes: attributes, media: currentMessage.media))
+        })
+        return inputPeer
     }
     |> mapToSignal { inputPeer -> Signal<EngineAudioTranscriptionResult, NoError> in
         guard let inputPeer = inputPeer else {
@@ -45,6 +56,10 @@ func _internal_transcribeAudio(postbox: Postbox, network: Network, messageId: Me
         }
         |> mapToSignal { result -> Signal<EngineAudioTranscriptionResult, NoError> in
             return postbox.transaction { transaction -> EngineAudioTranscriptionResult in
+                // MARK: NAGRAM — A newer local or external request owns this message now.
+                guard let message = transaction.getMessage(messageId), let current = message.attributes.first(where: { $0 is AudioTranscriptionMessageAttribute }) as? AudioTranscriptionMessageAttribute, current.source == .telegram, current.requestId == requestId else {
+                    return .error
+                }
                 let updatedAttribute: AudioTranscriptionMessageAttribute
                 switch result {
                 case let .success(transcribedAudio):
@@ -52,7 +67,12 @@ func _internal_transcribeAudio(postbox: Postbox, network: Network, messageId: Me
                     case let .transcribedAudio(transcribedAudioData):
                         let (flags, transcriptionId, text, trialRemainingCount, trialUntilDate) = (transcribedAudioData.flags, transcribedAudioData.transcriptionId, transcribedAudioData.text, transcribedAudioData.trialRemainsNum, transcribedAudioData.trialRemainsUntilDate)
                         let isPending = (flags & (1 << 0)) != 0
-                        updatedAttribute = AudioTranscriptionMessageAttribute(id: transcriptionId, text: text, isPending: isPending, didRate: false, error: nil)
+                        // MARK: NAGRAM — A final push may arrive before the initial request response.
+                        if current.id == transcriptionId && !current.isPending && isPending {
+                            updatedAttribute = current
+                        } else {
+                            updatedAttribute = AudioTranscriptionMessageAttribute(id: transcriptionId, text: text, isPending: isPending, didRate: false, error: nil, source: .telegram, requestId: requestId)
+                        }
                         
                         _internal_updateAudioTranscriptionTrialState(transaction: transaction) { current in
                             var updated = current
@@ -67,7 +87,8 @@ func _internal_transcribeAudio(postbox: Postbox, network: Network, messageId: Me
                         }
                     }
                 case let .error(error):
-                    updatedAttribute = AudioTranscriptionMessageAttribute(id: 0, text: "", isPending: false, didRate: false, error: error)
+                    // MARK: NAGRAM
+                    updatedAttribute = AudioTranscriptionMessageAttribute(id: 0, text: "", isPending: false, didRate: false, error: error, source: .telegram, requestId: requestId)
                 case let .limitExceeded(timeout):
                     let cooldownTime = Int32(CFAbsoluteTimeGetCurrent() + NSTimeIntervalSince1970) + timeout
                     _internal_updateAudioTranscriptionTrialState(transaction: transaction) { current in
@@ -75,19 +96,24 @@ func _internal_transcribeAudio(postbox: Postbox, network: Network, messageId: Me
                         updated = updated.withUpdatedCooldownUntilTime(cooldownTime)
                         return updated
                     }
-                    return .error
+                    // MARK: NAGRAM — The merge hook removes this reset marker, preserving the trial lock UI.
+                    updatedAttribute = AudioTranscriptionMessageAttribute(id: 0, text: "", isPending: false, didRate: false, error: nil, source: .telegram, requestId: requestId)
                 }
                     
                 transaction.updateMessage(messageId, update: { currentMessage in
                     let storeForwardInfo = currentMessage.forwardInfo.flatMap(StoreMessageForwardInfo.init)
-                    var attributes = currentMessage.attributes.filter { !($0 is AudioTranscriptionMessageAttribute) }
+                    // MARK: NAGRAM
+                    var attributes = currentMessage.attributes.filter { !($0 is AudioTranscriptionMessageAttribute) && !($0 is TranslationMessageAttribute) }
                     
                     attributes.append(updatedAttribute)
                     
                     return .update(StoreMessage(id: currentMessage.id, customStableId: nil, globallyUniqueId: currentMessage.globallyUniqueId, groupingKey: currentMessage.groupingKey, threadId: currentMessage.threadId, timestamp: currentMessage.timestamp, flags: StoreMessageFlags(currentMessage.flags), tags: currentMessage.tags, globalTags: currentMessage.globalTags, localTags: currentMessage.localTags, forwardInfo: storeForwardInfo, authorId: currentMessage.author?.id, text: currentMessage.text, attributes: attributes, media: currentMessage.media))
                 })
                 
-                if updatedAttribute.error == nil {
+                // MARK: NAGRAM
+                if case .limitExceeded = result {
+                    return .error
+                } else if updatedAttribute.error == nil {
                     return .success
                 } else {
                     return .error
@@ -95,10 +121,28 @@ func _internal_transcribeAudio(postbox: Postbox, network: Network, messageId: Me
             }
         }
     }
+    // MARK: NAGRAM — A disposed request without a Telegram transcription id must not stay pending.
+    |> afterDisposed {
+        let _ = postbox.transaction { transaction -> Void in
+            transaction.updateMessage(messageId, update: { currentMessage in
+                guard let current = currentMessage.attributes.first(where: { $0 is AudioTranscriptionMessageAttribute }) as? AudioTranscriptionMessageAttribute, current.source == .telegram, current.requestId == requestId, current.id == 0, current.isPending else {
+                    return .skip
+                }
+                let storeForwardInfo = currentMessage.forwardInfo.flatMap(StoreMessageForwardInfo.init)
+                var attributes = currentMessage.attributes.filter { !($0 is AudioTranscriptionMessageAttribute) }
+                attributes.append(AudioTranscriptionMessageAttribute(id: 0, text: "", isPending: false, didRate: false, error: .generic, source: .telegram, requestId: requestId))
+                return .update(StoreMessage(id: currentMessage.id, customStableId: nil, globallyUniqueId: currentMessage.globallyUniqueId, groupingKey: currentMessage.groupingKey, threadId: currentMessage.threadId, timestamp: currentMessage.timestamp, flags: StoreMessageFlags(currentMessage.flags), tags: currentMessage.tags, globalTags: currentMessage.globalTags, localTags: currentMessage.localTags, forwardInfo: storeForwardInfo, authorId: currentMessage.author?.id, text: currentMessage.text, attributes: attributes, media: currentMessage.media))
+            })
+        }.startStandalone()
+    }
 }
 
 func _internal_rateAudioTranscription(postbox: Postbox, network: Network, messageId: MessageId, id: Int64, isGood: Bool) -> Signal<Never, NoError> {
     return postbox.transaction { transaction -> Api.InputPeer? in
+        // MARK: NAGRAM — Never submit third-party or superseded transcript ratings to Telegram.
+        guard let message = transaction.getMessage(messageId), let current = message.attributes.first(where: { $0 is AudioTranscriptionMessageAttribute }) as? AudioTranscriptionMessageAttribute, current.canRate, current.id == id else {
+            return nil
+        }
         transaction.updateMessage(messageId, update: { currentMessage in
             var storeForwardInfo: StoreMessageForwardInfo?
             if let forwardInfo = currentMessage.forwardInfo {

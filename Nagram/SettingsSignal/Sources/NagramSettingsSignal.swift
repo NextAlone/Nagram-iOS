@@ -7,14 +7,14 @@ import UIKit
 // 用 UserDefaults.didChangeNotification 把开关变化转成 Signal，供需即时刷新的功能（如 hideStories）订阅。
 // 独立模块：依赖 SwiftSignalKit，不污染纯 Foundation 的 NagramSettings 数据层。
 public func nagramBoolSignal(_ key: String, defaultValue: Bool) -> Signal<Bool, NoError> {
-    let initial = Signal<Bool, NoError>.single(UserDefaults.standard.object(forKey: key) as? Bool ?? defaultValue)
+    let initial = Signal<Bool, NoError>.single(NagramDemoMode.userDefaults.object(forKey: key) as? Bool ?? defaultValue)
     let changes = Signal<Bool, NoError> { subscriber in
         let observer = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
-            object: UserDefaults.standard,
+            object: NagramDemoMode.userDefaults,
             queue: nil
         ) { _ in
-            subscriber.putNext(UserDefaults.standard.object(forKey: key) as? Bool ?? defaultValue)
+            subscriber.putNext(NagramDemoMode.userDefaults.object(forKey: key) as? Bool ?? defaultValue)
         }
         return ActionDisposable {
             NotificationCenter.default.removeObserver(observer)
@@ -24,14 +24,14 @@ public func nagramBoolSignal(_ key: String, defaultValue: Bool) -> Signal<Bool, 
 }
 
 public func nagramStringSignal(_ key: String, defaultValue: String) -> Signal<String, NoError> {
-    let initial = Signal<String, NoError>.single(UserDefaults.standard.string(forKey: key) ?? defaultValue)
+    let initial = Signal<String, NoError>.single(NagramDemoMode.userDefaults.string(forKey: key) ?? defaultValue)
     let changes = Signal<String, NoError> { subscriber in
         let observer = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
-            object: UserDefaults.standard,
+            object: NagramDemoMode.userDefaults,
             queue: nil
         ) { _ in
-            subscriber.putNext(UserDefaults.standard.string(forKey: key) ?? defaultValue)
+            subscriber.putNext(NagramDemoMode.userDefaults.string(forKey: key) ?? defaultValue)
         }
         return ActionDisposable {
             NotificationCenter.default.removeObserver(observer)
@@ -40,12 +40,28 @@ public func nagramStringSignal(_ key: String, defaultValue: String) -> Signal<St
     return (initial |> then(changes)) |> distinctUntilChanged
 }
 
+public func nagramSTTSettingsSignal() -> Signal<Int32, NoError> {
+    return Signal { subscriber in
+        let version = Atomic<Int32>(value: 0)
+        subscriber.putNext(0)
+        let changed: (Notification) -> Void = { _ in
+            subscriber.putNext(version.modify { $0 &+ 1 })
+        }
+        let defaultsObserver = NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: NagramDemoMode.userDefaults, queue: nil, using: changed)
+        let keyObserver = NotificationCenter.default.addObserver(forName: NagramSettings.sttSettingsDidChangeNotification, object: nil, queue: nil, using: changed)
+        return ActionDisposable {
+            NotificationCenter.default.removeObserver(defaultsObserver)
+            NotificationCenter.default.removeObserver(keyObserver)
+        }
+    }
+}
+
 public func nagramRecentStickerLimitSignal() -> Signal<Int, NoError> {
     let initial = Signal<Int, NoError>.single(NagramSettings.shared.recentStickerLimitValue)
     let changes = Signal<Int, NoError> { subscriber in
         let observer = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
-            object: UserDefaults.standard,
+            object: NagramDemoMode.userDefaults,
             queue: nil
         ) { _ in
             subscriber.putNext(NagramSettings.shared.recentStickerLimitValue)
@@ -66,7 +82,7 @@ public func nagramBottomBarSettingsSignal() -> Signal<NagramBottomBarSettings, N
     let changes = Signal<NagramBottomBarSettings, NoError> { subscriber in
         let observer = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
-            object: UserDefaults.standard,
+            object: NagramDemoMode.userDefaults,
             queue: nil
         ) { _ in
             subscriber.putNext(NagramSettings.shared.bottomBarSettings)
@@ -82,18 +98,27 @@ public func nagramGlassTransparencySignal() -> Signal<Int32, NoError> {
     let initial = Signal<Int32, NoError>.single(0)
     let changes = Signal<Int32, NoError> { subscriber in
         var version: Int32 = 0
+        var glassTransparencyMode = NagramSettings.shared.glassTransparencyMode
+        var glassTransparencyPercent = NagramSettings.shared.glassTransparencyPercent
         let defaultsObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
-            object: UserDefaults.standard,
-            queue: nil
+            object: NagramDemoMode.userDefaults,
+            queue: .main
         ) { _ in
+            let updatedMode = NagramSettings.shared.glassTransparencyMode
+            let updatedPercent = NagramSettings.shared.glassTransparencyPercent
+            guard updatedMode != glassTransparencyMode || updatedPercent != glassTransparencyPercent else {
+                return
+            }
+            glassTransparencyMode = updatedMode
+            glassTransparencyPercent = updatedPercent
             version += 1
             subscriber.putNext(version)
         }
         let accessibilityObserver = NotificationCenter.default.addObserver(
             forName: UIAccessibility.reduceTransparencyStatusDidChangeNotification,
             object: nil,
-            queue: nil
+            queue: .main
         ) { _ in
             version += 1
             subscriber.putNext(version)

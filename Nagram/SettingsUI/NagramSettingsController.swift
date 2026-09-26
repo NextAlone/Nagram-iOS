@@ -3,6 +3,7 @@ import Display
 import FaceScanScreen
 import Foundation
 import ItemListUI
+import NagramSessionBackupUI
 import NagramSettings
 import NagramStrings
 import PresentationDataUtils
@@ -59,7 +60,7 @@ private final class NagramSettingsRowTag: ItemListItemTag {
 
 // 行类型:开关 / 单选(disclosure + ActionSheet) / 行内滑杆。
 private enum NagramRow {
-    case toggle(titleKey: String, get: () -> Bool, set: (Bool) -> Void)
+    case toggle(titleKey: String, get: () -> Bool, set: (Bool) -> Void, isVisible: () -> Bool = { true })
     case toggleWithEnabled(titleKey: String, get: () -> Bool, set: (Bool) -> Void, enabled: () -> Bool, enableInteractiveChanges: Bool)
     case choice(titleKey: String, prefix: String, options: [String], current: () -> String, set: (String) -> Void)
     case input(titleKey: String, placeholderKey: String, get: () -> String, set: (String) -> Void, isSecret: Bool, isVisible: () -> Bool)
@@ -84,7 +85,7 @@ private func normalizedNagramDeepLinkToken(_ value: String) -> String {
 
 private func nagramRowTitleKey(_ row: NagramRow) -> String {
     switch row {
-    case let .toggle(titleKey, _, _):
+    case let .toggle(titleKey, _, _, _):
         return titleKey
     case let .toggleWithEnabled(titleKey, _, _, _, _):
         return titleKey
@@ -133,6 +134,10 @@ private func nagramRowDeepLinkAliases(titleKey: String) -> [String] {
         return ["LLMModel", "OpenAIModel"]
     case "Nagram.TranslationLLMAPIKey":
         return ["LLMApiKey", "OpenAIApiKey"]
+    case "Nagram.STTProvider":
+        return ["STT", "SpeechToText", "TranscriptionProvider"]
+    case "Nagram.STTSettings":
+        return ["STTSettings", "TranscriptionSettings", "STTAPI", "CustomSTT"]
     case "Nagram.DownloadSpeedBoost":
         return ["enhancedFileLoader", "downloadSpeedBoost"]
     case "Nagram.UploadSpeedBoost":
@@ -147,6 +152,8 @@ private func nagramRowDeepLinkAliases(titleKey: String) -> [String] {
         return ["HideChannelBottomButton"]
     case "Nagram.HideSponsoredMessages":
         return ["HideSponsoredMessages", "DisableSponsoredMessages"]
+    case "Nagram.StayAtLatestMessageAfterRefresh":
+        return ["StayAtLatestMessageAfterRefresh", "KeepLatestMessageAfterRefresh", "ChatRefreshPosition"]
     case "Nagram.ChatListMessagePreviewStyle":
         return ["ChatListLines", "CompactMessagePreview", "MessagePreviewStyle"]
     case "Nagram.ChatListCompact":
@@ -219,6 +226,8 @@ private func nagramRowDeepLinkAliases(titleKey: String) -> [String] {
         return ["AskBeforeCalling", "ConfirmCalls"]
     case "Nagram.DisableFiltering":
         return ["DisableFiltering"]
+    case "Nagram.SkipSensitiveContentWarning":
+        return ["AutoShowRestrictedMedia", "Skip18PlusConfirmation", "SkipAgeRestrictionAlert"]
     case "Nagram.ForceCopy":
         return ["ForceCopy", "ForceCopyEnabled"]
     default:
@@ -376,7 +385,9 @@ private func nagramGroups(
     regexFiltersAction: @escaping () -> Void,
     inlineBotRulesAction: @escaping () -> Void,
     llmTranslationSettingsAction: @escaping () -> Void,
-    groupProfileSettingsAction: @escaping () -> Void
+    sttSettingsAction: @escaping () -> Void,
+    groupProfileSettingsAction: @escaping () -> Void,
+    sessionBackupAction: @escaping () -> Void
 ) -> [NagramGroup] {
     let sensitiveContentEnabled: () -> Bool = {
         return sensitiveContentConfiguration()?.sensitiveContentEnabled ?? false
@@ -391,10 +402,15 @@ private func nagramGroups(
         // 通用
         NagramGroup(tab: .general, headerKey: "Nagram.Section.Interface", footerKey: "Nagram.GlassTransparency.Footer", rows: [
             .navigation(titleKey: "Nagram.BottomBarLayout", action: bottomBarLayoutAction),
+            .toggle(titleKey: "Nagram.HideTabBarPermissionWarnings", get: { NagramSettings.shared.hideTabBarPermissionWarnings }, set: { NagramSettings.shared.hideTabBarPermissionWarnings = $0 }),
             .startupFolder(titleKey: "Nagram.ChatListStartupFolder"),
             .choice(titleKey: "Nagram.ChatListFolderTabDisplayMode", prefix: "Nagram.ChatListFolderTabDisplayMode", options: ["text", "icon", "both"], current: { NagramSettings.shared.chatListFolderTabDisplayModeValue.rawValue }, set: { NagramSettings.shared.chatListFolderTabDisplayMode = $0 }),
             .toggle(titleKey: "Nagram.ChatListFolderTabsCompact", get: { NagramSettings.shared.chatListFolderTabsCompact }, set: { NagramSettings.shared.chatListFolderTabsCompact = $0 }),
             .toggle(titleKey: "Nagram.HideAllChatsFolder", get: { NagramSettings.shared.hideAllChatsFolder }, set: { NagramSettings.shared.hideAllChatsFolder = $0 }),
+            .toggle(titleKey: "Nagram.ShowFoldersInShareSheet", get: { NagramSettings.shared.showFoldersInShareSheet }, set: { NagramSettings.shared.showFoldersInShareSheet = $0 }),
+            .toggle(titleKey: "Nagram.HideSavedAndArchivedMessagesInList", get: { NagramSettings.shared.hideSavedAndArchivedMessagesInList }, set: { NagramSettings.shared.hideSavedAndArchivedMessagesInList = $0 }),
+            .toggle(titleKey: "Nagram.DisableCommunityChatGrouping", get: { NagramSettings.shared.disableCommunityChatGrouping }, set: { NagramSettings.shared.disableCommunityChatGrouping = $0 }),
+            .choice(titleKey: "Nagram.CommunityAvatarTapAction", prefix: "Nagram.CommunityAvatarTapAction", options: NagramCommunityAvatarTapAction.allCases.map { $0.rawValue }, current: { NagramSettings.shared.communityAvatarTapActionValue.rawValue }, set: { NagramSettings.shared.communityAvatarTapAction = $0 }),
             .choice(titleKey: "Nagram.ChatListMessagePreviewStyle", prefix: "Nagram.ChatListMessagePreviewStyle", options: ["three", "two"], current: { NagramSettings.shared.chatListMessagePreviewStyleMode.rawValue }, set: { value in
                 if NagramSettings.shared.chatListCompact && value == NagramChatListMessagePreviewStyle.three.rawValue {
                     return
@@ -410,11 +426,17 @@ private func nagramGroups(
             .choice(titleKey: "Nagram.GlassTransparency", prefix: "Nagram.GlassTransparency", options: ["system", "custom"], current: { NagramSettings.shared.glassTransparencyModeValue.rawValue }, set: { NagramSettings.shared.glassTransparencyMode = $0 }),
             .slider(titleKey: "Nagram.GlassTransparency.OverlayOpacity", minValue: 0, maxValue: 100, get: { NagramSettings.shared.glassTransparencyPercent }, set: { NagramSettings.shared.glassTransparencyPercent = $0 }, isVisible: { NagramSettings.shared.glassTransparencyModeValue == .custom }),
             .toggle(titleKey: "Nagram.ControlHighlight", get: { NagramSettings.shared.controlHighlightEnabled }, set: { NagramSettings.shared.controlHighlightEnabled = $0 }),
+        ]),
+        NagramGroup(tab: .general, headerKey: "Nagram.Section.Stories", footerKey: nil, rows: [
             .toggle(titleKey: "Nagram.HideStories", get: { NagramSettings.shared.hideStories }, set: { NagramSettings.shared.hideStories = $0 }),
+            .toggle(titleKey: "Nagram.HideTopStories", get: { NagramSettings.shared.hideTopStories }, set: { NagramSettings.shared.hideTopStories = $0 }, isVisible: { !NagramSettings.shared.hideStories }),
+            .toggle(titleKey: "Nagram.DisableStoryCameraSwipe", get: { NagramSettings.shared.disableStoryCameraSwipe }, set: { NagramSettings.shared.disableStoryCameraSwipe = $0 }, isVisible: { !NagramSettings.shared.hideStories }),
+            .toggle(titleKey: "Nagram.DisableChatAvatarStories", get: { NagramSettings.shared.disableChatAvatarStories }, set: { NagramSettings.shared.disableChatAvatarStories = $0 }, isVisible: { !NagramSettings.shared.hideStories }),
         ]),
         NagramGroup(tab: .general, headerKey: "Nagram.Section.Camera", footerKey: "Nagram.Section.Camera.Footer", rows: [
             .toggle(titleKey: "Nagram.DisableGalleryCamera", get: { NagramSettings.shared.disableGalleryCamera }, set: { NagramSettings.shared.disableGalleryCamera = $0 }),
             .toggle(titleKey: "Nagram.DisableGalleryCameraPreview", get: { NagramSettings.shared.disableGalleryCameraPreview }, set: { NagramSettings.shared.disableGalleryCameraPreview = $0 }),
+            .choice(titleKey: "Nagram.RoundVideoCamera", prefix: "Nagram.RoundVideoCamera", options: ["front", "back"], current: { NagramSettings.shared.roundVideoCameraValue.rawValue }, set: { NagramSettings.shared.roundVideoCamera = $0 }),
         ]),
         NagramGroup(tab: .general, headerKey: "Nagram.Section.Network", footerKey: nil, rows: [
             .choice(titleKey: "Nagram.DownloadSpeedBoost", prefix: "Nagram.DownloadSpeedBoost", options: ["none", "medium", "maximum"], current: { NagramSettings.shared.downloadSpeedBoost }, set: { NagramSettings.shared.downloadSpeedBoost = $0 }),
@@ -429,12 +451,21 @@ private func nagramGroups(
             .toggle(titleKey: "Nagram.HideSponsoredMessages", get: { NagramSettings.shared.hideSponsoredMessages }, set: { NagramSettings.shared.hideSponsoredMessages = $0 }),
             .toggle(titleKey: "Nagram.HidePrivateChatActivities", get: { NagramSettings.shared.hidePrivateChatActivities }, set: { NagramSettings.shared.hidePrivateChatActivities = $0 }),
         ]),
+        NagramGroup(tab: .chat, headerKey: "Nagram.Section.MessageList", footerKey: "Nagram.StayAtLatestMessageAfterRefresh.Footer", rows: [
+            .toggle(titleKey: "Nagram.StayAtLatestMessageAfterRefresh", get: { NagramSettings.shared.stayAtLatestMessageAfterRefresh }, set: { NagramSettings.shared.stayAtLatestMessageAfterRefresh = $0 }),
+        ]),
         NagramGroup(tab: .chat, headerKey: "Nagram.Section.Channels", footerKey: "Nagram.HideChannelForwardButton.Footer", rows: [
             .toggle(titleKey: "Nagram.HideChannelForwardButton", get: { NagramSettings.shared.wideChannelPosts }, set: { NagramSettings.shared.wideChannelPosts = $0 }),
         ]),
         NagramGroup(tab: .chat, headerKey: "Nagram.Section.Translation", footerKey: "Nagram.Section.Translation.Footer", rows: [
             .choice(titleKey: "Nagram.TranslationProvider", prefix: "Nagram.TranslationProvider", options: NagramTranslationProvider.allCases.map { $0.rawValue }, current: { NagramSettings.shared.translationProviderValue.rawValue }, set: { NagramSettings.shared.translationProvider = $0 }),
             .navigation(titleKey: "Nagram.TranslationLLMSettings", action: llmTranslationSettingsAction),
+            .toggle(titleKey: "Nagram.TranslateBeforeSend", get: { NagramSettings.shared.translateBeforeSend }, set: { NagramSettings.shared.translateBeforeSend = $0 }),
+            .choice(titleKey: "Nagram.TranslateBeforeSendTargetLang", prefix: "Nagram.TranslateBeforeSendTargetLang", options: ["en", "ar", "zh", "fr", "de", "it", "ja", "ko", "pt-BR", "ru", "es", "uk"], current: { NagramSettings.shared.translateBeforeSendTargetLang }, set: { NagramSettings.shared.translateBeforeSendTargetLang = $0 }),
+        ]),
+        NagramGroup(tab: .chat, headerKey: "Nagram.Section.STT", footerKey: "Nagram.Section.STT.Footer", rows: [
+            .choice(titleKey: "Nagram.STTProvider", prefix: "Nagram.STTProvider", options: ["default", "openAICompatible"], current: { NagramSettings.shared.sttProvider == "openAICompatible" ? "openAICompatible" : "default" }, set: { NagramSettings.shared.sttProvider = $0 }),
+            .navigation(titleKey: "Nagram.STTSettings", action: sttSettingsAction),
         ]),
         NagramGroup(tab: .chat, headerKey: "Nagram.Section.Pangu", footerKey: "Nagram.PanguInfo", rows: [
             .toggle(titleKey: "Nagram.PanguOnReceiving", get: { NagramSettings.shared.enablePanguOnReceiving }, set: { NagramSettings.shared.enablePanguOnReceiving = $0 }),
@@ -501,6 +532,7 @@ private func nagramGroups(
         ]),
         NagramGroup(tab: .other, headerKey: "Nagram.Section.Privacy", footerKey: "Nagram.DisableFiltering.Footer", rows: [
             .toggleWithEnabled(titleKey: "Nagram.DisableFiltering", get: sensitiveContentEnabled, set: setSensitiveContentEnabled, enabled: sensitiveContentCanAdjust, enableInteractiveChanges: false),
+            .toggle(titleKey: "Nagram.SkipSensitiveContentWarning", get: { NagramSettings.shared.skipSensitiveContentWarning }, set: { NagramSettings.shared.skipSensitiveContentWarning = $0 }),
         ]),
         NagramGroup(tab: .other, headerKey: nil, footerKey: "Nagram.ForceCopy.Footer", rows: [
             .toggle(titleKey: "Nagram.ForceCopy", get: { NagramSettings.shared.forceCopyEnabled }, set: { NagramSettings.shared.forceCopyEnabled = $0 }),
@@ -508,6 +540,10 @@ private func nagramGroups(
         NagramGroup(tab: .other, headerKey: "Nagram.Section.AutoInlineBot", footerKey: "Nagram.AutoInlineBot.Footer", rows: [
             .toggle(titleKey: "Nagram.AutoInlineBot.Enabled", get: { NagramSettings.shared.autoInlineBotEnabled }, set: { NagramSettings.shared.autoInlineBotEnabled = $0 }),
             .navigation(titleKey: "Nagram.InlineBotRules", action: inlineBotRulesAction),
+        ]),
+        NagramGroup(tab: .other, headerKey: "Nagram.Section.SessionBackup", footerKey: "Nagram.SessionBackup.Footer", rows: [
+            .navigation(titleKey: "Nagram.SessionBackup", action: sessionBackupAction),
+            .toggle(titleKey: "Nagram.SessionBackup.ICloud", get: { NagramSettings.shared.sessionBackupICloudSync }, set: { NagramSettings.shared.sessionBackupICloudSync = $0 }),
         ]),
     ]
 }
@@ -696,8 +732,12 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
         pushControllerImpl?(nagramInlineBotRulesController(context: context))
     }, llmTranslationSettingsAction: {
         pushControllerImpl?(nagramLLMTranslationSettingsController(context: context))
+    }, sttSettingsAction: {
+        pushControllerImpl?(nagramSTTSettingsController(context: context))
     }, groupProfileSettingsAction: {
         pushControllerImpl?(nagramGroupProfileSettingsController(context: context))
+    }, sessionBackupAction: {
+        pushControllerImpl?(nagramSessionBackupController(context: context))
     })
     let flatRows: [NagramRow] = groups.flatMap { $0.rows }
     let flatRowDeepLinks: [String] = groups.flatMap { group in
@@ -723,7 +763,7 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
 
     let arguments = NagramSettingsArguments(toggle: { index, value in
         switch flatRows[index] {
-        case let .toggle(_, _, set), let .toggleWithEnabled(_, _, set, _, _):
+        case let .toggle(_, _, set, _), let .toggleWithEnabled(_, _, set, _, _):
             set(value)
             bump()
         default:
@@ -870,7 +910,8 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
                         initialScrollToItem = ListViewScrollToItem(index: entries.count, position: .visible, animated: false, curve: .Default(duration: nil), directionHint: .Down)
                     }
                     switch row {
-                    case let .toggle(titleKey, get, _):
+                    case let .toggle(titleKey, get, _, isVisible):
+                        guard isVisible() else { continue }
                         entries.append(.toggle(stableId: rowStableId, section: sectionId, title: ngI18n(titleKey, lang), value: get(), enabled: true, enableInteractiveChanges: true, index: rowIndex))
                     case let .toggleWithEnabled(titleKey, get, _, enabled, enableInteractiveChanges):
                         entries.append(.toggle(stableId: rowStableId, section: sectionId, title: ngI18n(titleKey, lang), value: get(), enabled: enabled(), enableInteractiveChanges: enableInteractiveChanges, index: rowIndex))

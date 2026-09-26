@@ -5077,6 +5077,10 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                 messages.append(.message(text: "", attributes: [], inlineStickers: [:], mediaReference: AnyMediaReference.standalone(media: TelegramMediaDice(emoji: trimmedInputText)), threadId: self.chatLocation.threadId, replyToMessageId: self.chatPresentationInterfaceState.interfaceState.replyMessageSubject?.subjectModel, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: []))
             } else {
                 var inputText = convertMarkdownToAttributes(effectiveInputText)
+                // MARK: NAGRAM — “回车发送”键盘可能插入非 LF 的可视换行，发送前规范化。
+                if NagramSettings.shared.sendWithReturnKey {
+                    inputText = nagramNormalizeTextInputLineBreaks(inputText)
+                }
                 // MARK: NAGRAM — 发送时盘古之白
                 if NagramSettings.shared.enablePanguOnSending {
                     inputText = NagramPangu.transform(inputText)

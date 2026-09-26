@@ -50,7 +50,7 @@ python3 build-system/Make/Make.py --overrideXcodeVersion \
 
 For physical-device work, first follow the signing-mode and preflight requirements in `docs/build.md`; success requires producing the IPA, installing it with `devicectl`, and verifying the install.
 
-`Make.py test` defaults to `Tests/AllTests` and accepts `--target <label>`. App-side unit tests are minimal; `//submodules/TextFormat:TextFormatTests` covers the mention/date link codecs. The RichTextEditor SwiftPM package has its own `swift test` / `Scripts/iostest.sh` suite.
+`Make.py test` defaults to `Tests/AllTests` and accepts `--target <label>`. App-side unit tests are minimal; `//submodules/TextFormat:TextFormatTests` covers the mention/date link codecs, and `//Tests/NagramSessionMigrationTests` covers the session-import datacenter-migration error parsing. Note that `Tests/AllTests` does **not** currently list `TextFormatTests` — run that one with `--target`. The RichTextEditor SwiftPM package has its own `swift test` / `Scripts/iostest.sh` suite.
 
 ## Code Style Guidelines
 
@@ -68,7 +68,7 @@ For physical-device work, first follow the signing-mode and preflight requiremen
 - Most upstream libraries are in `submodules/`; modifications there require a nearby `// MARK: NAGRAM`.
 - Vendored external code is in `third-party/`.
 - Build rules, wrapper, and configuration templates are in `build-system/`.
-- App-side unit tests are minimal: the first `ios_unit_test` (`//submodules/TextFormat:TextFormatTests`) was added 2026-06-19 (run via `Make.py test --target` — see Build). The RichTextEditor SwiftPM package keeps its own suite (`swift test` / `Scripts/iostest.sh`). Most modules still have no tests.
+- App-side unit tests are minimal: the first `ios_unit_test` (`//submodules/TextFormat:TextFormatTests`) was added 2026-06-19 (run via `Make.py test --target` — see Build); `//Tests/NagramSessionMigrationTests` is the second. Nagram's session-backup codec tests (`Tests/NagramSessionBackupTests`) are **not** a Bazel target — they are compiled with plain `swiftc` by `scripts/test-session-backup-interop.sh`, which also cross-checks the format against a Python Pyrogram reference and Mithka's own Dart decoder. The RichTextEditor SwiftPM package keeps its own suite (`swift test` / `Scripts/iostest.sh`). Most modules still have no tests.
 
 ## RichTextEditor editor & the `ChatInputContent` composer
 

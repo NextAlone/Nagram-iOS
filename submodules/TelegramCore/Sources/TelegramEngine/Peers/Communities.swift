@@ -456,7 +456,9 @@ func _internal_toggleCommunityCollapsedInDialogs(account: Account, communityId: 
         }
         |> mapToSignal { updates -> Signal<Never, CommunityCollapsedInDialogsError> in
             account.stateManager.addUpdates(updates)
-            return account.postbox.transaction { transaction -> Void in
+            // MARK: NAGRAM — 展开时排除已退出的群，并按服务端文件夹归属恢复隐藏会话。
+            return account.postbox.transaction { transaction -> [Api.InputPeer] in
+                var peersToRestore: [Api.InputPeer] = []
                 if var community = transaction.getPeer(communityId) as? TelegramCommunity {
                     community = community.withUpdatedCollapsedInDialogs(collapsed)
                     transaction.updatePeersInternal([community]) { _, peer in
@@ -471,20 +473,25 @@ func _internal_toggleCommunityCollapsedInDialogs(account: Account, communityId: 
                     for peerId in linkedPeerIds {
                         if collapsed {
                             transaction.updatePeerChatListInclusion(peerId, inclusion: .notIncluded)
-                        } else if isPeerHiddenByCollapsedCommunity(transaction: transaction, peerId: peerId) {
+                        } else if shouldExcludePeerFromChatList(transaction: transaction, peerId: peerId) {
                             transaction.updatePeerChatListInclusion(peerId, inclusion: .notIncluded)
-                        } else if let peer = transaction.getPeer(peerId) {
-                            transaction.updatePeerChatListInclusion(peerId, inclusion: .ifHasMessagesOrOneOf(
-                                groupId: .root,
-                                pinningIndex: transaction.getPeerChatListIndex(peerId)?.1.pinningIndex,
-                                minTimestamp: minTimestampForPeerInclusion(peer)
-                            ))
+                        } else if transaction.getPeerChatListInclusion(peerId) == .notIncluded,
+                                  let peer = transaction.getPeer(peerId),
+                                  let inputPeer = apiInputPeer(peer) {
+                            peersToRestore.append(inputPeer)
                         }
                     }
                 }
+                return peersToRestore
             }
             |> castError(CommunityCollapsedInDialogsError.self)
-            |> ignoreValues
+            |> mapToSignal { peersToRestore -> Signal<Never, CommunityCollapsedInDialogsError> in
+                if peersToRestore.isEmpty {
+                    return .complete()
+                }
+                return loadAndStorePeerChatInfos(accountPeerId: account.peerId, postbox: account.postbox, network: account.network, peers: peersToRestore)
+                |> castError(CommunityCollapsedInDialogsError.self)
+            }
         }
     }
     |> castError(CommunityCollapsedInDialogsError.self)

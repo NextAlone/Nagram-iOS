@@ -1,4 +1,5 @@
 import Foundation
+import NagramStrings
 import AVFoundation
 import CoreMedia
 import Display
@@ -21,32 +22,32 @@ public enum NagramMediaMetadata {
         presentationData: PresentationData,
         present: (ViewController) -> Void
     ) {
-        let text = buildText(context: context, mediaReference: mediaReference)
+        let text = buildText(context: context, mediaReference: mediaReference, languageCode: presentationData.strings.baseLanguageCode)
         let controller = textAlertController(
             context: context,
             forceTheme: defaultDarkColorPresentationTheme,
-            title: "媒体信息",
+            title: ngI18n("Nagram.MediaMetadata.Title", presentationData.strings.baseLanguageCode),
             text: text,
             actions: [TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})]
         )
         present(controller)
     }
 
-    private static func buildText(context: AccountContext, mediaReference: AnyMediaReference) -> String {
+    private static func buildText(context: AccountContext, mediaReference: AnyMediaReference, languageCode: String) -> String {
         var lines: [(String, String)] = []
         let mediaBox = context.account.postbox.mediaBox
 
         if let imageRef = mediaReference.concrete(TelegramMediaImage.self) {
             let image = imageRef.media
             if let representation = largestImageRepresentation(image.representations) {
-                lines.append(("分辨率", "\(Int(representation.dimensions.width)) × \(Int(representation.dimensions.height))"))
+                lines.append((ngI18n("Nagram.MediaMetadata.Resolution", languageCode), "\(Int(representation.dimensions.width)) × \(Int(representation.dimensions.height))"))
                 if let localPath = mediaBox.completedResourcePath(representation.resource), let size = fileSize(atPath: localPath) {
-                    lines.append(("文件大小", formatBytes(size)))
+                    lines.append((ngI18n("Nagram.MediaMetadata.FileSize", languageCode), formatBytes(size)))
                 } else if let declared = representation.resource.size, declared > 0 {
-                    lines.append(("文件大小", formatBytes(declared)))
+                    lines.append((ngI18n("Nagram.MediaMetadata.FileSize", languageCode), formatBytes(declared)))
                 }
             }
-            lines.append(("类型", "图片"))
+            lines.append((ngI18n("Nagram.MediaMetadata.Type", languageCode), ngI18n("Nagram.MediaMetadata.Image", languageCode)))
         } else if let fileRef = mediaReference.concrete(TelegramMediaFile.self) {
             let file = fileRef.media
             var isVideo = false
@@ -77,23 +78,23 @@ public enum NagramMediaMetadata {
 
             let typeLabel: String
             if isVideo {
-                typeLabel = isAnimated ? "GIF" : "视频"
+                typeLabel = isAnimated ? "GIF" : ngI18n("Nagram.MediaMetadata.Video", languageCode)
             } else if audioDuration != nil {
-                typeLabel = "音频"
+                typeLabel = ngI18n("Nagram.MediaMetadata.Audio", languageCode)
             } else if isAnimated {
-                typeLabel = "动图"
+                typeLabel = ngI18n("Nagram.MediaMetadata.Animation", languageCode)
             } else {
-                typeLabel = "文件"
+                typeLabel = ngI18n("Nagram.MediaMetadata.File", languageCode)
             }
-            lines.append(("类型", typeLabel))
+            lines.append((ngI18n("Nagram.MediaMetadata.Type", languageCode), typeLabel))
 
             if let dims = videoDimensions {
-                lines.append(("分辨率", "\(Int(dims.width)) × \(Int(dims.height))"))
+                lines.append((ngI18n("Nagram.MediaMetadata.Resolution", languageCode), "\(Int(dims.width)) × \(Int(dims.height))"))
             }
             if let duration = videoDuration {
-                lines.append(("时长", formatDuration(duration)))
+                lines.append((ngI18n("Nagram.MediaMetadata.Duration", languageCode), formatDuration(duration)))
             } else if let duration = audioDuration {
-                lines.append(("时长", formatDuration(Double(duration))))
+                lines.append((ngI18n("Nagram.MediaMetadata.Duration", languageCode), formatDuration(Double(duration))))
             }
 
             let localPath = mediaBox.completedResourcePath(file.resource)
@@ -104,7 +105,7 @@ public enum NagramMediaMetadata {
                 fileBytes = size
             }
             if let bytes = fileBytes {
-                lines.append(("文件大小", formatBytes(bytes)))
+                lines.append((ngI18n("Nagram.MediaMetadata.FileSize", languageCode), formatBytes(bytes)))
             }
 
             if isVideo {
@@ -125,17 +126,17 @@ public enum NagramMediaMetadata {
                     }
                 }
                 if let fps = probe.frameRate {
-                    lines.append(("帧率", String(format: "%.1f fps", fps)))
+                    lines.append((ngI18n("Nagram.MediaMetadata.FrameRate", languageCode), String(format: "%.1f fps", fps)))
                 }
                 if let rate = probe.bitrate {
-                    lines.append(("码率", formatBitrate(rate)))
+                    lines.append((ngI18n("Nagram.MediaMetadata.Bitrate", languageCode), formatBitrate(rate)))
                 } else if let bytes = fileBytes, let duration = videoDuration, duration > 0 {
-                    lines.append(("码率", formatBitrate(Double(bytes) * 8.0 / duration)))
+                    lines.append((ngI18n("Nagram.MediaMetadata.Bitrate", languageCode), formatBitrate(Double(bytes) * 8.0 / duration)))
                 }
                 if let codec = probe.codec {
-                    lines.append(("编码", codec))
+                    lines.append((ngI18n("Nagram.MediaMetadata.Codec", languageCode), codec))
                 } else if let codec = declaredCodec {
-                    lines.append(("编码", codec.uppercased()))
+                    lines.append((ngI18n("Nagram.MediaMetadata.Codec", languageCode), codec.uppercased()))
                 }
             }
 
@@ -143,7 +144,7 @@ public enum NagramMediaMetadata {
                 lines.append(("MIME", file.mimeType))
             }
         } else {
-            lines.append(("类型", "未知"))
+            lines.append((ngI18n("Nagram.MediaMetadata.Type", languageCode), ngI18n("Nagram.MediaMetadata.Unknown", languageCode)))
         }
 
         let width = lines.map { $0.0.count }.max() ?? 0

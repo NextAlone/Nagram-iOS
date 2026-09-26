@@ -5,11 +5,13 @@ enum NagramSettingsSyncKeys {
 
     private static let explicitKeys: Set<String> = [
         "nagram.forceCopyEnabled",
+        "nagram.skipSensitiveContentWarning",
         "nagram.hideReactions",
         "nagram.disableScrollToNextChannel",
         "nagram.disableScrollToNextTopic",
         "nagram.disableGalleryCamera",
         "nagram.disableGalleryCameraPreview",
+        "nagram.roundVideoCamera",
         "nagram.disableSendAsButton",
         "nagram.hideRecordingButton",
         "nagram.secondsInMessages",
@@ -28,9 +30,13 @@ enum NagramSettingsSyncKeys {
         "nagram.chatListSwipeAction",
         "nagram.openArchiveOnPull",
         "nagram.showArchiveInFolders",
+        "nagram.hideSavedAndArchivedMessagesInList",
+        "nagram.disableCommunityChatGrouping",
+        "nagram.communityAvatarTapAction",
         "nagram.chatListStartupFolderMode",
         "nagram.chatListFolderTabsCompact",
         "nagram.hideAllChatsFolder",
+        "nagram.showFoldersInShareSheet",
         "nagram.chatListFolderTabDisplayMode",
         "nagram.chatListMessagePreviewStyle",
         "nagram.chatListLines",
@@ -50,6 +56,12 @@ enum NagramSettingsSyncKeys {
         "nagram.translationLLMPrompt",
         "nagram.translationLLMUseContext",
         "nagram.translationLLMTemperatureTenths",
+        "nagram.sttProvider",
+        "nagram.sttBaseURL",
+        "nagram.sttEndpoint",
+        "nagram.sttModel",
+        "nagram.sttLanguage",
+        "nagram.sttPrompt",
         "nagram.sendWithReturnKey",
         "nagram.showTextStyleToolbar",
         "nagram.enablePanguOnSending",
@@ -58,6 +70,9 @@ enum NagramSettingsSyncKeys {
         "nagram.wideChannelPosts",
         "nagram.recentStickerLimit",
         "nagram.hideStories",
+        "nagram.hideTopStories",
+        "nagram.disableStoryCameraSwipe",
+        "nagram.disableChatAvatarStories",
         "nagram.showRegDate",
         "nagram.groupProfileSettingItems",
         "nagram.hidePhoneInSettings",
@@ -125,11 +140,11 @@ final class NagramSettingsCloudSync {
 
     private init() {}
 
-    static func isEnabled(defaults: UserDefaults = .standard) -> Bool {
-        return defaults.bool(forKey: self.enabledKey)
+    static func isEnabled(defaults: UserDefaults = NagramDemoMode.userDefaults) -> Bool {
+        return !NagramDemoMode.isEnabled && defaults.bool(forKey: self.enabledKey)
     }
 
-    func setEnabled(_ enabled: Bool, defaults: UserDefaults = .standard) {
+    func setEnabled(_ enabled: Bool, defaults: UserDefaults = NagramDemoMode.userDefaults) {
         defaults.set(enabled, forKey: Self.enabledKey)
         guard defaults === UserDefaults.standard else {
             return
@@ -178,7 +193,7 @@ final class NagramSettingsCloudSync {
         }
     }
 
-    func set(_ value: Any, forKey key: String, defaults: UserDefaults = .standard) {
+    func set(_ value: Any, forKey key: String, defaults: UserDefaults = NagramDemoMode.userDefaults) {
         defaults.set(value, forKey: key)
         guard defaults === UserDefaults.standard, Self.isEnabled() else {
             return
@@ -187,7 +202,7 @@ final class NagramSettingsCloudSync {
         self.exportValue(value, forKey: key)
     }
 
-    func removeObject(forKey key: String, defaults: UserDefaults = .standard) {
+    func removeObject(forKey key: String, defaults: UserDefaults = NagramDemoMode.userDefaults) {
         defaults.removeObject(forKey: key)
         guard defaults === UserDefaults.standard, Self.isEnabled() else {
             return

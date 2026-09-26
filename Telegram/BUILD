@@ -275,7 +275,10 @@ filegroup(
     name = "AppResources",
     srcs = glob([
         "Telegram-iOS/Resources/**/*",
-    ], exclude = ["Telegram-iOS/Resources/**/.*"]),
+    ], exclude = ["Telegram-iOS/Resources/**/.*"]) + [
+        # MARK: NAGRAM — Fixed speech sample for the user-triggered STT API test.
+        "//Nagram/Transcription:TestAudio",
+    ],
 )
 
 filegroup(
@@ -333,38 +336,52 @@ filegroup(
 )
 
 alternate_icon_folders = [
-    # MARK: NAGRAM — expose the Nagram primary icon in the in-app icon picker
+    # MARK: NAGRAM — only ship Nagram alternate app icons.
     "Nagram",
-    "BlackIcon",
-    "BlackClassicIcon",
-    "BlackFilledIcon",
-    "BlueIcon",
-    "BlueClassicIcon",
-    "BlueFilledIcon",
-    "WhiteFilledIcon",
-    "New1",
-    "New2",
-    "Premium",
-    "PremiumBlack",
-    "PremiumTurbo",
 ]
 
-composer_source_icon_folders = ["Nagram", "NagramBlock", "NagramColorful"]
+# MARK: NAGRAM — the IPA post-processor selects the matching icon set from the
+# active Xcode toolchain. The Xcode 26 Composer sources are supplied separately.
+composer_source_icon_folders = [
+    "Nagram",
+    "NagramBlock",
+    "NagramBlockBlack",
+    "NagramBlockBlue",
+    "NagramBlockNiello",
+    "NagramBlockPurple",
+    "NagramClassic",
+    "NagramColorful",
+    "NagramCyan",
+    "NagramBlack",
+]
 composer_build_icon_folders = ["NagramBuild"]
+composer_xcode26_icon_folders = [
+    "Nagram26",
+    "NagramBlock26",
+    "NagramBlockBlack26",
+    "NagramBlockBlue26",
+    "NagramBlockNiello26",
+    "NagramBlockPurple26",
+    "NagramClassic26",
+    "NagramColorful26",
+    "NagramCyan26",
+    "NagramBlack26",
+]
 
-filegroup(
-    name = "NagramPrecompiledComposerIcons",
-    srcs = glob(
-        ["Telegram-iOS/NagramPrecompiledComposerIcons/*"],
-        allow_empty = True,
-    ),
-)
+[
+    filegroup(
+        name = "{}_icon".format(name),
+        srcs = glob(
+            ["Telegram-iOS/{}.icon/**/*".format(name)],
+            allow_empty = True,
+        ),
+    ) for name in composer_xcode26_icon_folders
+]
 
 filegroup(
     name = "NagramIconPreviews",
     srcs = glob([
-        "Telegram-iOS/NagramBlock*.png",
-        "Telegram-iOS/NagramColorful*.png",
+        "Telegram-iOS/Nagram*.png",
     ]),
 )
 
@@ -456,6 +473,8 @@ plist_fragment(
             <key>CFBundleURLSchemes</key>
             <array>
                 <string>telegram</string>
+                <!-- MARK: NAGRAM — Nagram-branded alias of telegram://. -->
+                <string>nagram</string>
             </array>
         </dict>
         <dict>
@@ -466,6 +485,8 @@ plist_fragment(
             <key>CFBundleURLSchemes</key>
             <array>
                 <string>tg</string>
+                <!-- MARK: NAGRAM — Nagram-branded alias of tg://. -->
+                <string>na</string>
                 <string>tonsite</string>
             </array>
         </dict>
@@ -1014,10 +1035,26 @@ sh_binary(
     name = "NagramFixComposerAlternateIcons",
     data = [
         ":Icons",
+        ":Nagram26_icon",
+        ":NagramBlock26_icon",
+        ":NagramBlockBlack26_icon",
+        ":NagramBlockBlue26_icon",
+        ":NagramBlockNiello26_icon",
+        ":NagramBlockPurple26_icon",
+        ":NagramClassic26_icon",
+        ":NagramColorful26_icon",
+        ":NagramCyan26_icon",
+        ":NagramBlack26_icon",
         ":Nagram_icon",
         ":NagramBlock_icon",
+        ":NagramBlockBlack_icon",
+        ":NagramBlockBlue_icon",
+        ":NagramBlockNiello_icon",
+        ":NagramBlockPurple_icon",
+        ":NagramClassic_icon",
         ":NagramColorful_icon",
-        ":NagramPrecompiledComposerIcons",
+        ":NagramCyan_icon",
+        ":NagramBlack_icon",
         "//submodules/LegacyComponents:LegacyComponentsAssets",
         "//submodules/PasswordSetupUI:PasswordSetupUIAssets",
         "//submodules/TelegramUI:TelegramUIAssets",
@@ -1818,7 +1855,8 @@ plist_fragment(
             <string>Telegram iOS Color Theme File</string>
             <key>UTTypeIconFiles</key>
             <array>
-                <string>BlueIcon@3x.png</string>
+                <!-- MARK: NAGRAM -->
+                <string>Nagram@3x.png</string>
             </array>
             <key>UTTypeIdentifier</key>
             <string>org.telegram.Telegram-iOS.theme</string>

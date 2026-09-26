@@ -410,9 +410,41 @@ public enum DeviceMetrics: CaseIterable, Equatable {
     }
     
     public var showAppBadge: Bool {
-        if case .iPhoneX = self {
-            return false
+        // MARK: NAGRAM - Match Swiftgram's supported-device list.
+        switch self {
+            case .iPhoneX, .iPhoneXSMax, .iPhoneXr, .iPhone12Mini, .iPhone12, .iPhone12ProMax, .iPhone13Mini, .iPhone13, .iPhone13Pro, .iPhone13ProMax, .iPhone14Pro, .iPhone14ProZoomed, .iPhone14ProMax, .iPhone14ProMaxZoomed, .iPhone16Pro, .iPhone16ProMax, .iPhoneAir:
+                return true
+            default:
+                return false
         }
-        return self.hasTopNotch
+    }
+
+    // MARK: NAGRAM - Match Swiftgram's per-device badge offset and Display Zoom scaling.
+    public var appBadgeOffset: CGFloat {
+        let defaultOffset: CGFloat
+        switch self {
+            case .iPhoneX, .iPhone12Mini, .iPhone13Mini:
+                defaultOffset = 2.0
+            case .iPhoneXSMax:
+                defaultOffset = 4.0
+            case .iPhoneXr:
+                defaultOffset = 6.0
+            case .iPhone12, .iPhone13, .iPhone13Pro:
+                defaultOffset = 4.0
+            case .iPhone12ProMax, .iPhone13ProMax:
+                defaultOffset = 6.0
+            case .iPhone14Pro, .iPhone14ProZoomed:
+                defaultOffset = 18.0
+            case .iPhone14ProMax, .iPhone14ProMaxZoomed:
+                defaultOffset = 19.0
+            case .iPhone16Pro:
+                defaultOffset = 21.0
+            case .iPhone16ProMax, .iPhoneAir:
+                defaultOffset = 22.0
+            default:
+                defaultOffset = 0.0
+        }
+        let scaleFactor = UIScreen.main.scale / UIScreen.main.nativeScale
+        return floorToScreenPixels(defaultOffset * scaleFactor)
     }
 }

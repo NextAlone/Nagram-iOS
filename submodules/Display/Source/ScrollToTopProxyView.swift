@@ -11,6 +11,10 @@ class ScrollToTopView: UIScrollView, UIScrollViewDelegate {
         self.delegate = self
         self.scrollsToTop = true
         self.contentInsetAdjustmentBehavior = .never
+        // MARK: NAGRAM - Keep the status-bar scroll-to-top proxy visually transparent.
+        if #available(iOS 26.0, *) {
+            self.topEdgeEffect.isHidden = true
+        }
         if #available(iOS 17.0, *) {
             self.allowsKeyboardScrolling = false
         }

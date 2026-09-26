@@ -25,7 +25,9 @@ public enum SendMessageActionSheetControllerParams {
         public let hasTimers: Bool
         public let sendPaidMessageStars: StarsAmount?
         public let isMonoforum: Bool
-        
+        // MARK: NAGRAM — 发送前翻译输入内容(NAG-75):非 nil 时菜单显示「翻译」项
+        public let nagramTranslateInput: (() -> Void)?
+
         public init(
             isScheduledMessages: Bool,
             mediaPreview: ChatSendMessageContextScreenMediaPreview?,
@@ -38,7 +40,8 @@ public enum SendMessageActionSheetControllerParams {
             currentPrice: Int64?,
             hasTimers: Bool,
             sendPaidMessageStars: StarsAmount?,
-            isMonoforum: Bool
+            isMonoforum: Bool,
+            nagramTranslateInput: (() -> Void)? = nil // MARK: NAGRAM
         ) {
             self.isScheduledMessages = isScheduledMessages
             self.mediaPreview = mediaPreview
@@ -52,6 +55,7 @@ public enum SendMessageActionSheetControllerParams {
             self.hasTimers = hasTimers
             self.sendPaidMessageStars = sendPaidMessageStars
             self.isMonoforum = isMonoforum
+            self.nagramTranslateInput = nagramTranslateInput // MARK: NAGRAM
         }
     }
     

@@ -311,13 +311,15 @@ private func _internal_translateMessagesByPeerId(account: Account, peerId: Engin
         
         let audioTranscriptions = messages.compactMap { message in
             if let audioTranscription = message.attributes.first(where: { $0 is AudioTranscriptionMessageAttribute }) as? AudioTranscriptionMessageAttribute, !audioTranscription.text.isEmpty && !audioTranscription.isPending {
-                return (audioTranscription.text, message.id)
+                // MARK: NAGRAM — Retain the source generation until the translation is committed.
+                return (audioTranscription, message.id)
             } else {
                 return nil
             }
         }
-        let audioTranscriptionsSignals = audioTranscriptions.map { (text, id) in
-            return _internal_translate(network: account.network, text: text, toLang: toLang)
+        // MARK: NAGRAM
+        let audioTranscriptionsSignals = audioTranscriptions.map { (transcription, _) in
+            return _internal_translate(network: account.network, text: transcription.text, toLang: toLang)
         }
         
         var flags: Int32 = 0
@@ -329,7 +331,9 @@ private func _internal_translateMessagesByPeerId(account: Account, peerId: Engin
         // Rich messages (a `RichTextMessageAttribute`) translate through `messages.translateRichMessage`
         // (per the layer-228 contract: pick translateText vs translateRichMessage by message type).
         let richMessageIds = messages.filter { $0.attributes.contains(where: { $0 is RichTextMessageAttribute }) }.map { $0.id }
-        let plainMessageIds = messageIds.filter { !richMessageIds.contains($0) }
+        // MARK: NAGRAM — Transcripts use the captured text, not a second server-side message lookup.
+        let audioTranscriptionMessageIds = Set(audioTranscriptions.map { $0.1 })
+        let plainMessageIds = messageIds.filter { !richMessageIds.contains($0) && !audioTranscriptionMessageIds.contains($0) }
 
         let richSignal: Signal<Void, TranslationError>
         if richMessageIds.isEmpty {
@@ -464,6 +468,11 @@ private func _internal_translateMessagesByPeerId(account: Account, peerId: Engin
                     for (i, audioTranscription) in audioTranscriptions.enumerated() {
                         if let result = audioTranscriptionsResults[i] {
                             transaction.updateMessage(audioTranscription.1, update: { currentMessage in
+                                // MARK: NAGRAM — Discard a translation of a replaced transcription.
+                                let source = audioTranscription.0
+                                guard let current = currentMessage.attributes.first(where: { $0 is AudioTranscriptionMessageAttribute }) as? AudioTranscriptionMessageAttribute, !current.isPending, current.text == source.text, current.id == source.id, current.source == source.source, current.requestId == source.requestId else {
+                                    return .skip
+                                }
                                 let storeForwardInfo = currentMessage.forwardInfo.flatMap(StoreMessageForwardInfo.init)
                                 var attributes = currentMessage.attributes.filter { !($0 is TranslationMessageAttribute) }
                                 

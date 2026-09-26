@@ -151,17 +151,24 @@ public final class AsyncListComponent: Component {
         }
         
         public func next() -> VisibleItem? {
-            if self.index >= self.indices.count {
+            // MARK: NAGRAM
+            // The indices are captured from live item nodes, which can be stale relative to
+            // self.view.component when an update re-enters (component.items already shortened,
+            // list transaction not yet applied). Skip out-of-range entries instead of trapping.
+            while self.index < self.indices.count {
+                let index = self.index
+                self.index += 1
+
+                if let component = self.view.component {
+                    let (itemIndex, itemFrame) = self.indices[index]
+                    if itemIndex < 0 || itemIndex >= component.items.count {
+                        continue
+                    }
+                    return VisibleItem(item: component.items[itemIndex], frame: itemFrame)
+                }
+
                 return nil
             }
-            let index = self.index
-            self.index += 1
-            
-            if let component = self.view.component {
-                let (itemIndex, itemFrame) = self.indices[index]
-                return VisibleItem(item: component.items[itemIndex], frame: itemFrame)
-            }
-            
             return nil
         }
     }

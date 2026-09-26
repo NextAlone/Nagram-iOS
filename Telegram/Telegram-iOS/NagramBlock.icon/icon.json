@@ -1,6 +1,7 @@
 {
   "color-space-for-untagged-svg-colors" : "display-p3",
   "features" : [
+    "refractivity",
     "specular-location"
   ],
   "fill-specializations" : [
@@ -25,6 +26,10 @@
         {
           "appearance" : "dark",
           "value" : null
+        },
+        {
+          "appearance" : "tinted",
+          "value" : 0.5
         }
       ],
       "layers" : [
@@ -34,6 +39,12 @@
               "appearance" : "dark",
               "value" : {
                 "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
+              }
+            },
+            {
+              "appearance" : "tinted",
+              "value" : {
+                "solid" : "extended-gray:1.00000,1.00000"
               }
             }
           ],
@@ -47,6 +58,12 @@
               "value" : {
                 "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
               }
+            },
+            {
+              "appearance" : "tinted",
+              "value" : {
+                "solid" : "extended-gray:1.00000,1.00000"
+              }
             }
           ],
           "image-name" : "block-2.svg",
@@ -58,6 +75,12 @@
               "appearance" : "dark",
               "value" : {
                 "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
+              }
+            },
+            {
+              "appearance" : "tinted",
+              "value" : {
+                "solid" : "extended-gray:1.00000,1.00000"
               }
             }
           ],
@@ -87,6 +110,14 @@
             "depth" : 0,
             "enabled" : false,
             "strength" : 0.5
+          }
+        },
+        {
+          "appearance" : "tinted",
+          "value" : {
+            "depth" : 0.7175,
+            "enabled" : true,
+            "strength" : 0
           }
         }
       ],
@@ -118,7 +149,7 @@
         {
           "value" : {
             "enabled" : true,
-            "value" : 0.1
+            "value" : 0.4
           }
         },
         {
@@ -132,7 +163,7 @@
           "appearance" : "tinted",
           "value" : {
             "enabled" : true,
-            "value" : 0.1
+            "value" : 0.8
           }
         }
       ]

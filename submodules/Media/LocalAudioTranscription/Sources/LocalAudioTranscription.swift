@@ -13,10 +13,16 @@ private struct TranscriptionResult {
 private func transcribeAudio(path: String, locale: String) -> Signal<TranscriptionResult?, NoError> {
     return Signal { subscriber in
         let disposable = MetaDisposable()
+        // MARK: NAGRAM — Authorization may finish after the owning transcription was canceled.
+        let isDisposed = Atomic(value: false)
         
         if #available(iOS 13.0, *) {
             SFSpeechRecognizer.requestAuthorization { status in
                 Queue.mainQueue().async {
+                    // MARK: NAGRAM
+                    guard !isDisposed.with({ $0 }) else {
+                        return
+                    }
                     switch status {
                     case .notDetermined:
                         subscriber.putNext(nil)
@@ -51,7 +57,15 @@ private func transcribeAudio(path: String, locale: String) -> Signal<Transcripti
                         }
                         
                         let tempFilePath = NSTemporaryDirectory() + "/\(UInt64.random(in: 0 ... UInt64.max)).m4a"
-                        let _ = try? FileManager.default.copyItem(atPath: path, toPath: tempFilePath)
+                        // MARK: NAGRAM — Own and clean the recognition copy on every terminal path.
+                        do {
+                            try FileManager.default.copyItem(atPath: path, toPath: tempFilePath)
+                        } catch {
+                            try? FileManager.default.removeItem(atPath: tempFilePath)
+                            subscriber.putNext(nil)
+                            subscriber.putCompletion()
+                            return
+                        }
                         
                         let request = SFSpeechURLRecognitionRequest(url: URL(fileURLWithPath: tempFilePath))
                         if #available(iOS 16.0, *) {
@@ -82,6 +96,8 @@ private func transcribeAudio(path: String, locale: String) -> Signal<Transcripti
                         
                         disposable.set(ActionDisposable {
                             task.cancel()
+                            // MARK: NAGRAM
+                            try? FileManager.default.removeItem(atPath: tempFilePath)
                         })
                     @unknown default:
                         subscriber.putNext(nil)
@@ -94,7 +110,11 @@ private func transcribeAudio(path: String, locale: String) -> Signal<Transcripti
             subscriber.putCompletion()
         }
         
-        return disposable
+        // MARK: NAGRAM
+        return ActionDisposable {
+            _ = isDisposed.swap(true)
+            disposable.dispose()
+        }
     }
     |> runOn(.mainQueue())
 }

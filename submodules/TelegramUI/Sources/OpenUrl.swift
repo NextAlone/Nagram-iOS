@@ -137,6 +137,20 @@ func formattedConfirmationCode(_ code: Int) -> String {
     return result
 }
 
+// MARK: NAGRAM — na:// and nagram:// are Nagram-branded aliases of tg://.
+private let nagramAppSchemeAliases: Set<String> = ["na", "nagram"]
+
+func nagramCanonicalAppSchemeUrl(_ url: String) -> String {
+    guard let separator = url.firstIndex(of: ":"), nagramAppSchemeAliases.contains(url[..<separator].lowercased()) else {
+        return url
+    }
+    return "tg" + url[separator...]
+}
+
+func nagramCanonicalAppSchemeUrl(_ url: URL) -> URL {
+    return URL(string: nagramCanonicalAppSchemeUrl(url.absoluteString)) ?? url
+}
+
 private func canonicalExternalUrl(from url: String) -> URL? {
     var urlWithScheme = url
     if !url.contains("://") && !url.hasPrefix("mailto:") {
@@ -372,6 +386,8 @@ private func makeNagramSettingsPath(pathComponents: [String], queryItems: [URLQu
 }
 
 func openExternalUrlImpl(context: AccountContext, urlContext: OpenURLContext, url: String, forceExternal: Bool, presentationData: PresentationData, navigationController: NavigationController?, dismissInput: @escaping () -> Void) {
+    // MARK: NAGRAM
+    let url = nagramCanonicalAppSchemeUrl(url)
     if forceExternal || url.lowercased().hasPrefix("tel:") || url.lowercased().hasPrefix("calshow:") {
         if url.lowercased().hasPrefix("tel:+888") {
             context.sharedContext.presentGlobalController(textAlertController(context: context, title: nil, text: presentationData.strings.Conversation_CantPhoneCallAnonymousNumberError, actions: [

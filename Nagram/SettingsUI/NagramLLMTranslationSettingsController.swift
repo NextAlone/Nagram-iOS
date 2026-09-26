@@ -4,6 +4,7 @@ import Foundation
 import ItemListUI
 import NagramSettings
 import NagramStrings
+import NagramTranslate
 import PresentationDataUtils
 import SwiftSignalKit
 import TelegramPresentationData
@@ -21,14 +22,16 @@ private final class NagramLLMTranslationArguments {
     let chooseFormat: () -> Void
     let fetchModels: () -> Void
     let selectFetchedModel: () -> Void
+    let testModel: () -> Void
     let updateUseContext: (Bool) -> Void
     let updateTemperature: (Int32) -> Void
 
-    init(inputUpdated: @escaping (NagramLLMTranslationInputField, String) -> Void, chooseFormat: @escaping () -> Void, fetchModels: @escaping () -> Void, selectFetchedModel: @escaping () -> Void, updateUseContext: @escaping (Bool) -> Void, updateTemperature: @escaping (Int32) -> Void) {
+    init(inputUpdated: @escaping (NagramLLMTranslationInputField, String) -> Void, chooseFormat: @escaping () -> Void, fetchModels: @escaping () -> Void, selectFetchedModel: @escaping () -> Void, testModel: @escaping () -> Void, updateUseContext: @escaping (Bool) -> Void, updateTemperature: @escaping (Int32) -> Void) {
         self.inputUpdated = inputUpdated
         self.chooseFormat = chooseFormat
         self.fetchModels = fetchModels
         self.selectFetchedModel = selectFetchedModel
+        self.testModel = testModel
         self.updateUseContext = updateUseContext
         self.updateTemperature = updateTemperature
     }
@@ -40,6 +43,7 @@ private enum NagramLLMTranslationEntryStableId: Hashable {
     case input(NagramLLMTranslationInputField)
     case fetchModels
     case fetchedModels
+    case testModel
     case useContext
     case temperature
     case footer(Int32)
@@ -54,11 +58,12 @@ private enum NagramLLMTranslationEntry: ItemListNodeEntry {
     case temperature(section: Int32, title: String, minValue: Int32, maxValue: Int32, value: Int32)
     case fetchModels(section: Int32, title: String)
     case fetchedModels(section: Int32, title: String, label: String)
+    case testModel(section: Int32, title: String)
     case footer(section: Int32, text: String)
 
     var section: ItemListSectionId {
         switch self {
-        case let .header(section, _), let .format(section, _, _), let .input(section, _, _, _, _, _), let .prompt(section, _, _), let .useContext(section, _, _), let .temperature(section, _, _, _, _), let .fetchModels(section, _), let .fetchedModels(section, _, _), let .footer(section, _):
+        case let .header(section, _), let .format(section, _, _), let .input(section, _, _, _, _, _), let .prompt(section, _, _), let .useContext(section, _, _), let .temperature(section, _, _, _, _), let .fetchModels(section, _), let .fetchedModels(section, _, _), let .testModel(section, _), let .footer(section, _):
             return section
         }
     }
@@ -81,6 +86,8 @@ private enum NagramLLMTranslationEntry: ItemListNodeEntry {
             return .fetchModels
         case .fetchedModels:
             return .fetchedModels
+        case .testModel:
+            return .testModel
         case let .footer(section, _):
             return .footer(section)
         }
@@ -100,6 +107,8 @@ private enum NagramLLMTranslationEntry: ItemListNodeEntry {
             return 1010
         case .fetchedModels:
             return 1020
+        case .testModel:
+            return 1030
         case let .footer(section, _):
             return section * 1000 + 900
         }
@@ -130,6 +139,9 @@ private enum NagramLLMTranslationEntry: ItemListNodeEntry {
             return false
         case let .fetchedModels(lSection, lTitle, lLabel):
             if case let .fetchedModels(rSection, rTitle, rLabel) = rhs { return lSection == rSection && lTitle == rTitle && lLabel == rLabel }
+            return false
+        case let .testModel(lSection, lTitle):
+            if case let .testModel(rSection, rTitle) = rhs { return lSection == rSection && lTitle == rTitle }
             return false
         case let .footer(lSection, lText):
             if case let .footer(rSection, rText) = rhs { return lSection == rSection && lText == rText }
@@ -176,6 +188,10 @@ private enum NagramLLMTranslationEntry: ItemListNodeEntry {
         case let .fetchedModels(section, title, label):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: label, sectionId: section, style: .blocks, action: {
                 arguments.selectFetchedModel()
+            })
+        case let .testModel(section, title):
+            return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: title, kind: .generic, alignment: .natural, sectionId: section, style: .blocks, action: {
+                arguments.testModel()
             })
         case let .footer(section, text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: section)
@@ -246,7 +262,7 @@ private func nagramLLMFetchModels() -> Signal<[String], NagramLLMModelFetchError
     }
 }
 
-private func nagramLLMTranslationEntries(presentationData: PresentationData, isFetchingModels: Bool, fetchedModels: [String], fetchErrorKey: String?) -> [NagramLLMTranslationEntry] {
+private func nagramLLMTranslationEntries(presentationData: PresentationData, isFetchingModels: Bool, fetchedModels: [String], fetchErrorKey: String?, isTestingModel: Bool) -> [NagramLLMTranslationEntry] {
     let lang = presentationData.strings.baseLanguageCode
     let settings = NagramSettings.shared
     let format = settings.translationLLMAPIFormatValue
@@ -264,6 +280,7 @@ private func nagramLLMTranslationEntries(presentationData: PresentationData, isF
     if !fetchedModels.isEmpty {
         entries.append(.fetchedModels(section: 1, title: ngI18n("Nagram.TranslationLLMFetchedModels", lang), label: "\(fetchedModels.count)"))
     }
+    entries.append(.testModel(section: 1, title: ngI18n(isTestingModel ? "Nagram.TranslationLLMTestingModel" : "Nagram.TranslationLLMTestModel", lang)))
     if let fetchErrorKey {
         entries.append(.footer(section: 1, text: ngI18n(fetchErrorKey, lang)))
     }
@@ -290,10 +307,24 @@ public func nagramLLMTranslationSettingsController(context: AccountContext) -> V
     }
 
     let fetchDisposable = MetaDisposable()
+    let testDisposable = MetaDisposable()
     var isFetchingModels = false
+    var isTestingModel = false
     var fetchedModels: [String] = []
     var fetchErrorKey: String?
     var presentControllerImpl: ((ViewController, ViewControllerPresentationArguments?) -> Void)?
+
+    let presentTestResult: (String, String?) -> Void = { textKey, detail in
+        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+        let lang = presentationData.strings.baseLanguageCode
+        var text = ngI18n(textKey, lang)
+        if let detail, !detail.isEmpty {
+            text += "\n\n\(detail)"
+        }
+        presentControllerImpl?(textAlertController(context: context, title: ngI18n("Nagram.TranslationLLMTestModel", lang), text: text, actions: [
+            TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
+        ]), nil)
+    }
 
     let presentModels: ([String]) -> Void = { models in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
@@ -354,7 +385,7 @@ public func nagramLLMTranslationSettingsController(context: AccountContext) -> V
         ])
         presentControllerImpl?(actionSheet, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
     }, fetchModels: {
-        guard !isFetchingModels else {
+        guard !isFetchingModels && !isTestingModel else {
             return
         }
         isFetchingModels = true
@@ -377,6 +408,23 @@ public func nagramLLMTranslationSettingsController(context: AccountContext) -> V
         if !fetchedModels.isEmpty {
             presentModels(fetchedModels)
         }
+    }, testModel: {
+        guard !isTestingModel && !isFetchingModels else {
+            return
+        }
+        isTestingModel = true
+        fetchErrorKey = nil
+        bump()
+        testDisposable.set((nagramLLMTestModel()
+        |> deliverOnMainQueue).start(next: { _ in
+            isTestingModel = false
+            bump()
+            presentTestResult("Nagram.TranslationLLMTestModelSucceeded", nil)
+        }, error: { error in
+            isTestingModel = false
+            bump()
+            presentTestResult("Nagram.TranslationLLMTestModelFailed", error.message)
+        }))
     }, updateUseContext: { value in
         NagramSettings.shared.translationLLMUseContext = value
         bump()
@@ -390,13 +438,14 @@ public func nagramLLMTranslationSettingsController(context: AccountContext) -> V
     )
     |> map { presentationData, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let lang = presentationData.strings.baseLanguageCode
-        let entries = nagramLLMTranslationEntries(presentationData: presentationData, isFetchingModels: isFetchingModels, fetchedModels: fetchedModels, fetchErrorKey: fetchErrorKey)
+        let entries = nagramLLMTranslationEntries(presentationData: presentationData, isFetchingModels: isFetchingModels, fetchedModels: fetchedModels, fetchErrorKey: fetchErrorKey, isTestingModel: isTestingModel)
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(ngI18n("Nagram.TranslationLLMSettings", lang)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, animateChanges: true)
         return (controllerState, (listState, arguments))
     }
     |> afterDisposed {
         fetchDisposable.dispose()
+        testDisposable.dispose()
     }
 
     let controller = ItemListController(context: context, state: signal)

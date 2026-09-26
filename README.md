@@ -1,10 +1,18 @@
 # Nagram-iOS
 
-> 基于 [Telegram-iOS](https://github.com/TelegramMessenger/Telegram-iOS) 官方源码的第三方增强分支,对标 Android 端 [Nagram](https://github.com/NextAlone/Nagram),面向中文用户做功能增强与隐私强化。
+> 基于 [Telegram-iOS](https://github.com/TelegramMessenger/Telegram-iOS) 官方源码的第三方增强分支，面向中文用户做功能增强与隐私强化。
 
 ## 项目说明
 
 所有增强改动集中在仓库根的 `Nagram/` 目录(following upstream `SG*` naming convention),需要侵入上游的改动一律加锚注释 `// MARK: NAGRAM`,便于跟随上游同步。设置入口为「我的资料」下方的独立分组「Nagram」。
+
+## 版权与品牌
+
+- **源码版权:** Nagram-iOS 专属源码与项目素材 Copyright © NextAlone 及 Nagram-iOS 贡献者；上游及第三方组件的版权仍归各自权利人所有，并继续适用各自的许可与版权声明。
+- **应用图标:** Nagram 专属应用图标作品 Copyright © MaitungTM. All rights reserved.
+- **名称与商标:** Nagram 名称、Logo 和项目标识归 [@NextAlone](https://github.com/NextAlone) 所有并管理；源码许可不包含商标授权。
+
+源码许可与品牌资产相互独立。修改版、分支版及第三方发行版须使用不同的名称与图标，不得暗示其为 Nagram 官方版本或已获官方背书。完整政策及所涵盖的 iOS 图标资源见 [`BRANDING.md`](BRANDING.md)。
 
 ## 已实现功能
 

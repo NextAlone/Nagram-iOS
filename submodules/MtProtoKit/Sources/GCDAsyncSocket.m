@@ -2516,87 +2516,20 @@ enum GCDAsyncSocketConfig
 	
 	[self endConnectTimeout];
 	
-	#if TARGET_OS_IPHONE
-	// The endConnectTimeout method executed above incremented the connectIndex.
-	aConnectIndex = connectIndex;
-	#endif
-	
-	// Setup read/write streams (as workaround for specific shortcomings in the iOS platform)
-	// 
-	// Note:
-	// There may be configuration options that must be set by the delegate before opening the streams.
-	// The primary example is the kCFStreamNetworkServiceTypeVoIP flag, which only works on an unopened stream.
-	// 
-	// Thus we wait until after the socket:didConnectToHost:port: delegate method has completed.
-	// This gives the delegate time to properly configure the streams if needed.
-	
-	dispatch_block_t SetupStreamsPart1 = ^{
-		#if TARGET_OS_IPHONE
-		
-		if (![self createReadAndWriteStream])
-		{
-			[self closeWithError:[self otherError:@"Error creating CFStreams"]];
-			return;
-		}
-		
-		if (![self registerForStreamCallbacksIncludingReadWrite:NO])
-		{
-			[self closeWithError:[self otherError:@"Error in CFStreamSetClient"]];
-			return;
-		}
-		
-		#endif
-	};
-	dispatch_block_t SetupStreamsPart2 = ^{
-		#if TARGET_OS_IPHONE
-		
-		if (aConnectIndex != connectIndex)
-		{
-			// The socket has been disconnected.
-			return;
-		}
-		
-		if (![self addStreamsToRunLoop])
-		{
-			[self closeWithError:[self otherError:@"Error in CFStreamScheduleWithRunLoop"]];
-			return;
-		}
-		
-		if (![self openStreams])
-		{
-			[self closeWithError:[self otherError:@"Error creating CFStreams"]];
-			return;
-		}
-		
-		#endif
-	};
-	
-	// Notify delegate
-	
+	// MARK: NAGRAM — MTProto uses dispatch-source I/O, not legacy VoIP CFStreams.
+	// Creating a second CFNetwork wrapper for every TCP socket causes recursive
+	// CFSocketInvalidate crashes during teardown. Explicit TLS/stream APIs still
+	// create their streams on demand.
 	NSString *host = [self connectedHost];
 	uint16_t port = [self connectedPort];
-	
-    __strong id theDelegate = delegate;
+	__strong id theDelegate = delegate;
 	if (delegateQueue && [theDelegate respondsToSelector:@selector(socket:didConnectToHost:port:)])
 	{
-		SetupStreamsPart1();
-		
 		dispatch_async(delegateQueue, ^{ @autoreleasepool {
-			
 			[theDelegate socket:self didConnectToHost:host port:port];
-			
-			dispatch_async(socketQueue, ^{ @autoreleasepool {
-				
-				SetupStreamsPart2();
-			}});
 		}});
 	}
-	else
-	{
-		SetupStreamsPart1();
-		SetupStreamsPart2();
-	}
-		
+
 	// Get the connected socket
 	
 	int socketFD = (socket4FD != SOCKET_NULL) ? socket4FD : socket6FD;

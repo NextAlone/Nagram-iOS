@@ -13,6 +13,7 @@ import PeerPresenceStatusManager
 import AppBundle
 import SegmentedControlNode
 import ContextUI
+import ChatListFilterTabContainerNode // MARK: NAGRAM
 
 private let subtitleFont = Font.regular(12.0)
 
@@ -95,6 +96,7 @@ private func preparedGridEntryTransition(environment: ShareControllerEnvironment
 final class SharePeersContainerNode: ASDisplayNode, ShareContentContainerNode {
     private let environment: ShareControllerEnvironment
     private let context: ShareControllerAccountContext
+    private var presentationData: PresentationData // MARK: NAGRAM
     private var theme: PresentationTheme
     private let themePromise: Promise<PresentationTheme>
     private let strings: PresentationStrings
@@ -118,6 +120,10 @@ final class SharePeersContainerNode: ASDisplayNode, ShareContentContainerNode {
     private let contentTitleAccountNode: AvatarNode
     private let contentSeparatorNode: ASDisplayNode
     private let searchButtonNode: HighlightableButtonNode
+    private let chatListFilterNode: ChatListFilterTabContainerNode? // MARK: NAGRAM
+    private var chatListFilters: [ChatListFilter] // MARK: NAGRAM
+    private var selectedChatListFilterId: Int32? // MARK: NAGRAM
+    private let selectChatListFilter: (Int32?) -> Void // MARK: NAGRAM
     
     private let shareButtonNode: HighlightableButtonNode
     private let shareReferenceNode: ContextReferenceContentNode
@@ -146,16 +152,28 @@ final class SharePeersContainerNode: ASDisplayNode, ShareContentContainerNode {
     }
     private let tick = ValuePromise<Int>(0)
     
-    init(environment: ShareControllerEnvironment, context: ShareControllerAccountContext, switchableAccounts: [ShareControllerSwitchableAccount], theme: PresentationTheme, strings: PresentationStrings, nameDisplayOrder: PresentationPersonNameOrder, peers: [(peer: EngineRenderedPeer, presence: EnginePeer.Presence?, requiresPremiumForMessaging: Bool, requiresStars: Int64?)], accountPeer: EnginePeer, controllerInteraction: ShareControllerInteraction, externalShare: Bool, isMainApp: Bool, switchToAnotherAccount: @escaping () -> Void, debugAction: @escaping () -> Void, extendedInitialReveal: Bool, segmentedValues: [ShareControllerSegmentedValue]?, fromPublicChannel: Bool) {
+    init(environment: ShareControllerEnvironment, context: ShareControllerAccountContext, switchableAccounts: [ShareControllerSwitchableAccount], presentationData: PresentationData, peers: [(peer: EngineRenderedPeer, presence: EnginePeer.Presence?, requiresPremiumForMessaging: Bool, requiresStars: Int64?)], accountPeer: EnginePeer, chatListFilters: [ChatListFilter], selectedChatListFilterId: Int32?, controllerInteraction: ShareControllerInteraction, externalShare: Bool, isMainApp: Bool, selectChatListFilter: @escaping (Int32?) -> Void, switchToAnotherAccount: @escaping () -> Void, debugAction: @escaping () -> Void, extendedInitialReveal: Bool, segmentedValues: [ShareControllerSegmentedValue]?, fromPublicChannel: Bool) { // MARK: NAGRAM
+        let theme = presentationData.theme
+        let strings = presentationData.strings
+        
         self.environment = environment
         self.context = context
+        self.presentationData = presentationData
         self.theme = theme
         self.themePromise = Promise()
         self.themePromise.set(.single(theme))
         self.strings = strings
-        self.nameDisplayOrder = nameDisplayOrder
+        self.nameDisplayOrder = presentationData.nameDisplayOrder
         self.controllerInteraction = controllerInteraction
         self.accountPeer = accountPeer
+        if isMainApp, let context = context as? ShareControllerAppAccountContext {
+            self.chatListFilterNode = ChatListFilterTabContainerNode(context: context.context)
+        } else {
+            self.chatListFilterNode = nil
+        }
+        self.chatListFilters = chatListFilters
+        self.selectedChatListFilterId = selectedChatListFilterId
+        self.selectChatListFilter = selectChatListFilter
         self.switchToAnotherAccount = switchToAnotherAccount
         self.debugAction = debugAction
         self.extendedInitialReveal = extendedInitialReveal
@@ -281,6 +299,21 @@ final class SharePeersContainerNode: ASDisplayNode, ShareContentContainerNode {
         self.headerNode.addSubnode(self.contentTitleAccountNode)
         self.headerNode.addSubnode(self.segmentedNode)
         self.headerNode.addSubnode(self.searchButtonNode)
+        if let chatListFilterNode = self.chatListFilterNode { // MARK: NAGRAM
+            self.headerNode.addSubnode(chatListFilterNode)
+            chatListFilterNode.isHidden = !self.displaysChatListFilters
+            chatListFilterNode.tabSelected = { [weak self] id, isDisabled in
+                guard let self, !isDisabled else {
+                    return
+                }
+                switch id {
+                case .all:
+                    self.selectChatListFilter(nil)
+                case let .filter(id):
+                    self.selectChatListFilter(id)
+                }
+            }
+        }
         
         self.shareContainerNode.addSubnode(self.shareReferenceNode)
         self.shareButtonNode.addSubnode(self.shareContainerNode)
@@ -332,10 +365,84 @@ final class SharePeersContainerNode: ASDisplayNode, ShareContentContainerNode {
         self.disposable.dispose()
     }
     
+    // MARK: NAGRAM — 文件夹标签只在存在自定义文件夹时占用标题区高度。
+    var titleAreaHeight: CGFloat {
+        return self.displaysChatListFilters ? 108.0 : 64.0
+    }
+    
+    private var displaysChatListFilters: Bool {
+        return self.chatListFilterNode != nil && self.chatListFilters.contains(where: { filter in
+            if case .filter = filter {
+                return true
+            } else {
+                return false
+            }
+        })
+    }
+    
+    private func chatListFilterEntries() -> [ChatListFilterTabEntry] {
+        return self.chatListFilters.map { filter in
+            switch filter {
+            case .allChats:
+                return .all(unreadCount: 0)
+            case let .filter(id, title, _, _):
+                return .filter(
+                    id: id,
+                    text: title,
+                    unread: ChatListFilterTabEntryUnreadCount(value: 0, hasUnmuted: false)
+                )
+            }
+        }
+    }
+    
+    func updateChatListFilters(_ filters: [ChatListFilter], selectedFilterId: Int32?, transition: ContainedViewLayoutTransition) {
+        self.chatListFilters = filters
+        self.selectedChatListFilterId = selectedFilterId
+        if let (size, _) = self.validLayout {
+            self.updateChatListFilterNode(size: size, transition: transition)
+        }
+    }
+    
+    private func updateChatListFilterNode(size: CGSize, transition: ContainedViewLayoutTransition) {
+        guard let chatListFilterNode = self.chatListFilterNode else {
+            return
+        }
+        chatListFilterNode.isHidden = !self.displaysChatListFilters
+        guard self.displaysChatListFilters else {
+            return
+        }
+        
+        let selectedFilter: ChatListFilterTabEntryId
+        if let selectedChatListFilterId = self.selectedChatListFilterId {
+            selectedFilter = .filter(selectedChatListFilterId)
+        } else {
+            selectedFilter = .all
+        }
+        let filterSize = CGSize(width: size.width, height: 44.0)
+        transition.updateFrame(node: chatListFilterNode, frame: CGRect(origin: CGPoint(x: 0.0, y: 64.0), size: filterSize))
+        chatListFilterNode.update(
+            size: filterSize,
+            sideInset: 0.0,
+            filters: self.chatListFilterEntries(),
+            selectedFilter: selectedFilter,
+            isReordering: false,
+            isEditing: false,
+            canReorderAllChats: false,
+            filtersLimit: nil,
+            transitionFraction: 0.0,
+            presentationData: self.presentationData,
+            transition: transition
+        )
+    }
+    
     func updateTheme(_ theme: PresentationTheme) {
         self.theme = theme
+        self.presentationData = self.presentationData.withUpdated(theme: theme) // MARK: NAGRAM
         self.themePromise.set(.single(theme))
         self.contentTitleNode.attributedText = NSAttributedString(string: self.strings.ShareMenu_ShareTo, font: Font.medium(20.0), textColor: self.theme.actionSheet.primaryTextColor)
+        if let (size, _) = self.validLayout {
+            self.updateChatListFilterNode(size: size, transition: .immediate)
+        }
         self.updateSelectedPeers(animated: false)
     }
     
@@ -423,6 +530,7 @@ final class SharePeersContainerNode: ASDisplayNode, ShareContentContainerNode {
         self.shareButtonNode.alpha = 0.0
         self.contentTitleNode.alpha = 0.0
         self.contentSubtitleNode.alpha = 0.0
+        self.chatListFilterNode?.alpha = 0.0 // MARK: NAGRAM
         self.contentGridNode.alpha = 0.0
     }
     
@@ -446,6 +554,11 @@ final class SharePeersContainerNode: ASDisplayNode, ShareContentContainerNode {
         self.contentSubtitleNode.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.2)
         self.contentSubtitleNode.layer.animatePosition(from: CGPoint(x: 0.0, y: -10.0), to: .zero, duration: 0.2, additive: true)
         self.contentSubtitleNode.layer.animateScale(from: 0.85, to: 1.0, duration: 0.2)
+        
+        if let chatListFilterNode = self.chatListFilterNode { // MARK: NAGRAM
+            chatListFilterNode.alpha = 1.0
+            chatListFilterNode.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.2)
+        }
         
         self.contentGridNode.layer.animatePosition(from: CGPoint(x: 0.0, y: -scrollDelta), to: .zero, duration: 0.4, timingFunction: kCAMediaTimingFunctionSpring, additive: true)
         
@@ -519,6 +632,11 @@ final class SharePeersContainerNode: ASDisplayNode, ShareContentContainerNode {
         self.contentSubtitleNode.layer.animatePosition(from: .zero, to: CGPoint(x: 0.0, y: -10.0), duration: 0.2, additive: true)
         self.contentSubtitleNode.layer.animateScale(from: 1.0, to: 0.85, duration: 0.3)
         
+        if let chatListFilterNode = self.chatListFilterNode { // MARK: NAGRAM
+            chatListFilterNode.alpha = 0.0
+            chatListFilterNode.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.2)
+        }
+        
         self.contentGridNode.layer.animatePosition(from: .zero, to: CGPoint(x: 0.0, y: -scrollDelta), duration: 0.4, timingFunction: kCAMediaTimingFunctionSpring, additive: true)
         
         if let sourceFrame = self.frameForPeerId(peerId), let (size, bottomInset) = self.validLayout {
@@ -573,6 +691,7 @@ final class SharePeersContainerNode: ASDisplayNode, ShareContentContainerNode {
     func updateLayout(size: CGSize, isLandscape: Bool, bottomInset: CGFloat, transition: ContainedViewLayoutTransition) {
         let firstLayout = self.validLayout == nil
         self.validLayout = (size, bottomInset)
+        self.updateChatListFilterNode(size: size, transition: transition) // MARK: NAGRAM
         
         self.contentTitleNode.isHidden = self.isEmbedded
         self.contentSubtitleNode.isHidden = self.isEmbedded
@@ -617,19 +736,19 @@ final class SharePeersContainerNode: ASDisplayNode, ShareContentContainerNode {
         let actualTransition = self.overrideGridOffsetTransition ?? transition
         self.overrideGridOffsetTransition = nil
         
-        let titleAreaHeight: CGFloat = 64.0
+        let titleAreaHeight = self.titleAreaHeight // MARK: NAGRAM
         
         let rawTitleOffset = -titleAreaHeight - presentationLayout.contentOffset.y
         let titleOffset = max(-titleAreaHeight, rawTitleOffset)
         
-        let headerFrame = CGRect(origin: CGPoint(x: 0.0, y: titleOffset), size: CGSize(width: size.width, height: 64.0))
+        let headerFrame = CGRect(origin: CGPoint(x: 0.0, y: titleOffset), size: CGSize(width: size.width, height: titleAreaHeight))
         transition.updateFrame(node: self.headerNode, frame: headerFrame)
         
         let titleSize = self.contentTitleNode.measure(size)
         let titleFrame = CGRect(origin: CGPoint(x: floor((size.width - titleSize.width) / 2.0), y: 15.0), size: titleSize)
         transition.updateFrame(node: self.contentTitleNode, frame: titleFrame)
         
-        let subtitleSize = self.contentSubtitleNode.updateLayout(CGSize(width: size.width - 44.0 * 2.0 - 8.0 * 2.0, height: titleAreaHeight))
+        let subtitleSize = self.contentSubtitleNode.updateLayout(CGSize(width: size.width - 44.0 * 2.0 - 8.0 * 2.0, height: 64.0))
         let subtitleFrame = CGRect(origin: CGPoint(x: floor((size.width - subtitleSize.width) / 2.0), y: 40.0), size: subtitleSize)
         var originalSubtitleFrame = self.contentSubtitleNode.frame
         originalSubtitleFrame.origin.x = subtitleFrame.origin.x
@@ -723,7 +842,10 @@ final class SharePeersContainerNode: ASDisplayNode, ShareContentContainerNode {
     }
         
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        let nodes: [ASDisplayNode] = [self.searchButtonNode, self.shareButtonNode, self.contentTitleAccountNode]
+        var nodes: [ASDisplayNode] = [self.searchButtonNode, self.shareButtonNode, self.contentTitleAccountNode]
+        if let chatListFilterNode = self.chatListFilterNode { // MARK: NAGRAM
+            nodes.append(chatListFilterNode)
+        }
         for node in nodes {
             let nodeFrame = node.frame
             if node.isHidden {

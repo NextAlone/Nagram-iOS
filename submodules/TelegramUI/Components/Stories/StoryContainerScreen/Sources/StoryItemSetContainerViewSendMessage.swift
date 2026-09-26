@@ -56,6 +56,9 @@ import ShareWithPeersScreen
 import AlertComponent
 import ShareController
 
+// MARK: NAGRAM
+import NagramSettings
+
 private var ObjCKey_DeinitWatcher: Int?
 
 final class StoryItemSetContainerSendMessage: @unchecked(Sendable) {
@@ -1109,7 +1112,8 @@ final class StoryItemSetContainerSendMessage: @unchecked(Sendable) {
                 if isVideo {
                     if self.videoRecorderValue == nil {
                         if let currentInputPanelFrame = view.inputPanel.view?.frame {
-                            self.videoRecorder.set(.single(legacyInstantVideoController(theme: defaultDarkPresentationTheme, forStory: true, panelFrame: view.convert(currentInputPanelFrame, to: nil), context: component.context, peerId: peer.id, slowmodeState: nil, hasSchedule: true, send: { [weak self, weak view] videoController, message in
+                            // MARK: NAGRAM - Apply the round-video camera preference to story replies.
+                            self.videoRecorder.set(.single(legacyInstantVideoController(theme: defaultDarkPresentationTheme, forStory: true, initialFrontCamera: NagramSettings.shared.roundVideoCameraValue == .front, panelFrame: view.convert(currentInputPanelFrame, to: nil), context: component.context, peerId: peer.id, slowmodeState: nil, hasSchedule: true, send: { [weak self, weak view] videoController, message in
                                 guard let self, let view else {
                                     return
                                 }

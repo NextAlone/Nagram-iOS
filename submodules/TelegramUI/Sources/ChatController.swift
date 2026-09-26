@@ -4459,8 +4459,19 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 if let messageId = message?.id, let message = self.chatDisplayNode.historyNode.messageInCurrentHistoryView(messageId)?._asMessage() ?? message {
                     var quoteData: EngineMessageReplyQuote?
                     
+                    // MARK: NAGRAM — The selected text can outlive an edit to the message.
+                    let messageText = message.text as NSString
+                    guard range.lowerBound >= 0, range.upperBound <= messageText.length else {
+                        completion(nil)
+                        let strings = self.presentationData.strings
+                        let authorName = message.author.flatMap(EnginePeer.init)?.compactDisplayTitle ?? ""
+                        self.present(textAlertController(context: self.context, title: strings.Chat_ErrorQuoteOutdatedTitle, text: strings.Chat_ErrorQuoteOutdatedText(authorName).string, actions: [
+                            TextAlertAction(type: .defaultAction, title: strings.Common_OK, action: {})
+                        ], parseMarkdown: true), in: .window(.root))
+                        return
+                    }
                     let nsRange = NSRange(location: range.lowerBound, length: range.upperBound - range.lowerBound)
-                    let quoteText = (message.text as NSString).substring(with: nsRange)
+                    let quoteText = messageText.substring(with: nsRange)
                     
                     let trimmedText = trimStringWithEntities(string: quoteText, entities: messageTextEntitiesInRange(entities: message.textEntitiesAttribute?.entities ?? [], range: nsRange, onlyQuoteable: true), maxLength: quoteMaxLength(appConfig: self.context.currentAppConfiguration.with({ $0 })))
                     if !trimmedText.string.isEmpty {
@@ -5403,6 +5414,10 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     reveal()
                 })
             } else {
+                if NagramSettings.shared.skipSensitiveContentWarning { // MARK: NAGRAM
+                    reveal()
+                    return
+                }
                 let controller = chatAgeRestrictionAlertController(context: self.context, updatedPresentationData: self.updatedPresentationData, parentController: self, completion: { alwaysShow in
                     if alwaysShow {
                         let _ = updateRemoteContentSettingsConfiguration(postbox: context.account.postbox, network: context.account.network, sensitiveContentEnabled: true).start()

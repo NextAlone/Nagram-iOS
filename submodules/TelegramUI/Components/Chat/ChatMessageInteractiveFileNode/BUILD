@@ -24,6 +24,7 @@ swift_library(
         "//submodules/FileMediaResourceStatus",
         "//submodules/CheckNode",
         "//submodules/MusicAlbumArtResources",
+        "//Nagram/Transcription:NagramTranscription",  # MARK: NAGRAM
         "//submodules/AudioBlob",
         "//submodules/ContextUI",
         "//submodules/ChatPresentationInterfaceState",

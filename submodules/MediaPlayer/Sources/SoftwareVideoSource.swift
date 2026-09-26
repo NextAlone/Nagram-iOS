@@ -530,9 +530,14 @@ public final class SoftwareAudioSource {
         }
     }
     
-    public func readSampleBuffer() -> CMSampleBuffer? {
+    // MARK: NAGRAM — STT drains already-decoded frames without changing existing playback callers.
+    public func readSampleBuffer(drainRemainingFrames: Bool = false) -> CMSampleBuffer? {
         guard let audioStream = self.audioStream, let _ = self.avFormatContext else {
             return nil
+        }
+
+        if drainRemainingFrames, let result = audioStream.decoder.takeQueuedFrame() {
+            return result.sampleBuffer
         }
         
         while true {
@@ -543,6 +548,10 @@ public final class SoftwareAudioSource {
                     }
                 }
             } else {
+                // MARK: NAGRAM — Preserve decoded frames still queued when the input reaches EOF.
+                if drainRemainingFrames, let result = audioStream.decoder.takeRemainingFrame() {
+                    return result.sampleBuffer
+                }
                 return nil
             }
         }

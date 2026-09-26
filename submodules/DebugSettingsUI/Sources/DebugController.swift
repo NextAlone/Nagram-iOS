@@ -190,19 +190,20 @@ private enum DebugControllerEntry: ItemListNodeEntry {
         case .redactSensitiveData:
             return 12
         case .emptyControlNotificationLogging:
-            return 105
-        case .webViewInspection:
+            // MARK: NAGRAM - Keep the inserted entry ordered before web settings.
             return 13
-        case .resetWebViewCache:
+        case .webViewInspection:
             return 14
-        case .keepChatNavigationStack:
+        case .resetWebViewCache:
             return 15
-        case .skipReadHistory:
+        case .keepChatNavigationStack:
             return 16
-        case .alwaysDisplayTyping:
+        case .skipReadHistory:
             return 17
-        case .debugRatingLayout:
+        case .alwaysDisplayTyping:
             return 18
+        case .debugRatingLayout:
+            return 19
         case .crashOnSlowQueries:
             return 20
         case .crashOnMemoryPressure:

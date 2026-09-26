@@ -1,5 +1,35 @@
 import Foundation
 
+/// Some third-party keyboards insert visual line separators to keep a newline key beside `.send`.
+/// Telegram expects LF in message text; the replacements are one UTF-16 unit so entity offsets stay stable.
+public func nagramNormalizeTextInputLineBreaks(_ text: NSAttributedString) -> NSAttributedString {
+    let string = text.string as NSString
+    var locations: [Int] = []
+    var index = 0
+    while index < string.length {
+        switch string.character(at: index) {
+        case 0x000d:
+            if index + 1 >= string.length || string.character(at: index + 1) != 0x000a {
+                locations.append(index)
+            }
+        case 0x0085, 0x2028, 0x2029:
+            locations.append(index)
+        default:
+            break
+        }
+        index += 1
+    }
+    guard !locations.isEmpty else {
+        return text
+    }
+
+    let result = NSMutableAttributedString(attributedString: text)
+    for location in locations.reversed() {
+        result.replaceCharacters(in: NSRange(location: location, length: 1), with: "\n")
+    }
+    return result
+}
+
 public struct NagramPanguTransform: Equatable {
     public let text: String
     public let insertedUtf16Offsets: [Int]

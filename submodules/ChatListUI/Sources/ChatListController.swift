@@ -216,6 +216,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     private var storyArchiveSubscriptionsDisposable: Disposable?
     
     private var rawStorySubscriptions: EngineStorySubscriptions?
+    private var nagramAccountStoryCount: Int = 0 // MARK: NAGRAM — 顶部隐藏后仍需保留发布数量限制。
     private var shouldFixStorySubscriptionOrder: Bool = false
     private var fixedStorySubscriptionOrder: [EnginePeer.Id] = []
     private(set) var orderedStorySubscriptions: EngineStorySubscriptions?
@@ -2210,14 +2211,15 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                 self.storiesReady.set(.single(true))
             } else {
                 // MARK: NAGRAM — 隐藏动态:combineLatest hideStories 开关,开启时清空 stories 订阅(即时刷新)
-                self.storySubscriptionsDisposable = (combineLatest(self.context.engine.messages.storySubscriptions(isHidden: self.location == .chatList(groupId: .archive)), nagramBoolSignal("nagram.hideStories", defaultValue: false))
-                |> deliverOnMainQueue).startStrict(next: { [weak self] rawStorySubscriptions, hideStories in
+                self.storySubscriptionsDisposable = (combineLatest(self.context.engine.messages.storySubscriptions(isHidden: self.location == .chatList(groupId: .archive)), nagramBoolSignal("nagram.hideStories", defaultValue: false), nagramBoolSignal("nagram.hideTopStories", defaultValue: false))
+                |> deliverOnMainQueue).startStrict(next: { [weak self] rawStorySubscriptions, hideStories, hideTopStories in
                     guard let self else {
                         return
                     }
 
+                    self.nagramAccountStoryCount = rawStorySubscriptions.accountItem?.storyCount ?? 0 // MARK: NAGRAM
                     var rawStorySubscriptions = rawStorySubscriptions
-                    if hideStories {
+                    if hideStories || hideTopStories { // MARK: NAGRAM — 顶部区域独立于发布和头像动态。
                         rawStorySubscriptions = EngineStorySubscriptions(accountItem: nil, items: [], hasMoreToken: nil)
                     }
                     self.rawStorySubscriptions = rawStorySubscriptions
@@ -3022,12 +3024,10 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         }
         
         let storiesCountLimit = self.context.userLimits.maxExpiringStoriesCount
-        var storiesCount = 0
-        if let rawStorySubscriptions = self.rawStorySubscriptions, let accountItem = rawStorySubscriptions.accountItem {
-            storiesCount = accountItem.storyCount
-            if accountItem.storyCount >= self.context.userLimits.maxExpiringStoriesCount {
-                reachedCountLimit = true
-            }
+        // MARK: NAGRAM — 隐藏顶部区域不影响手动发布时的数量限制。
+        let storiesCount = self.nagramAccountStoryCount
+        if storiesCount >= self.context.userLimits.maxExpiringStoriesCount {
+            reachedCountLimit = true
         }
         
         switch self.storyPostingAvailability {
@@ -6786,7 +6786,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         return self.storyCameraTransitionInCoordinator != nil
     }
     func storyCameraPanGestureChanged(transitionFraction: CGFloat) {
-        if NagramSettings.shared.hideStories { // MARK: NAGRAM — 隐藏动态时禁止侧滑进入动态发布页
+        if NagramSettings.shared.disableStoryCameraSwipeEffective { // MARK: NAGRAM — 总开关或独立开关禁止滑动录制动态
             return
         }
         guard let rootController = self.context.sharedContext.mainWindow?.viewController as? TelegramRootControllerInterface else {
@@ -6829,13 +6829,15 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     
     func storyCameraPanGestureEnded(transitionFraction: CGFloat, velocity: CGFloat) {
         if let coordinator = self.storyCameraTransitionInCoordinator {
-            coordinator.completeWithTransitionProgressAndVelocity(transitionFraction, velocity)
+            // MARK: NAGRAM — 手势途中关闭录制入口时取消相机转场。
+            let disabled = NagramSettings.shared.disableStoryCameraSwipeEffective
+            coordinator.completeWithTransitionProgressAndVelocity(disabled ? 0.0 : transitionFraction, disabled ? 0.0 : velocity)
             self.storyCameraTransitionInCoordinator = nil
         }
     }
     
     var isStoryPostingAvailable: Bool {
-        if NagramSettings.shared.hideStories { // MARK: NAGRAM — 隐藏动态时同步禁用发布动态手势入口
+        if NagramSettings.shared.disableStoryCameraSwipeEffective { // MARK: NAGRAM — 仅影响录制手势，保留发布按钮
             return false
         }
         guard !self.context.isFrozen else {

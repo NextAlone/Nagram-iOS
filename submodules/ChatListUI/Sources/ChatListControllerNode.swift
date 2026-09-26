@@ -200,11 +200,15 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
     
     private func syncItemNodeNavigationOffset(_ itemNode: ChatListContainerItemNode) { // MARK: NAGRAM
         let scrollOffset: CGFloat
-        if let currentItemNodeValue = self.currentItemNodeValue, currentItemNodeValue.listNode.isNavigationHidden {
+        if let currentItemNodeValue = self.currentItemNodeValue,
+           case let .known(value) = currentItemNodeValue.listNode.visibleContentOffset(), value < 0.0 {
+            scrollOffset = max(-self.tempTopInset, value)
+        } else if let currentItemNodeValue = self.currentItemNodeValue, currentItemNodeValue.listNode.isNavigationHidden {
             scrollOffset = self.currentSearchScrollHeight()
         } else {
             scrollOffset = 0.0
         }
+        itemNode.listNode.startedScrollingAtUpperBound = self.currentItemNodeValue?.listNode.startedScrollingAtUpperBound ?? false
         let _ = itemNode.listNode.scrollToOffsetFromTop(scrollOffset, animated: false)
     }
     
@@ -631,6 +635,10 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
                 return []
             }
             if self.availableFilters.count > 1 {
+                // MARK: NAGRAM — Folder-only swipes also start at the screen edges.
+                if !NagramSettings.shared.chatListSwipeActionMode.allowsQuickActions {
+                    return [.left, .right]
+                }
                 return [.leftCenter, .rightCenter]
             } else {
                 return [.rightEdge]

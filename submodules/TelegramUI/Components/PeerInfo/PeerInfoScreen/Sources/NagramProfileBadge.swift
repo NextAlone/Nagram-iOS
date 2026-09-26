@@ -30,10 +30,20 @@ enum NagramProfileBadge: Equatable {
 }
 
 private let nagramDeveloperUserIds: Set<Int64> = [
-    784901712,   // NextAlone
+    896711046, // nekohasekai
+    380570774, // Haruhi
+    784901712, // NextAlone
+    457896977, // Queally
+    782954985, // MaiTungTM
     1711019015,  // Lagrio
     554072292,  // NahidaBuer
-    676660002,  // xtao
+    5412523572, // blxueya
+    676660002, // xtao
+    1068402676, // Kitsune
+    6244360706, // Sevtinge
+    625965913,   // YuKongA
+    387785790,    // waifucon
+    812417693,  // lutit
 ]
 
 private let nagramSponsorUserIds: Set<Int64> = [

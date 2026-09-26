@@ -10,6 +10,8 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        # MARK: NAGRAM — Share failure guidance.
+        "//Nagram/Strings:NagramStrings",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/Postbox:Postbox",
@@ -47,6 +49,8 @@ swift_library(
         "//submodules/TelegramUI/Components/MessageInputPanelComponent",
         "//submodules/TelegramUI/Components/ChatEntityKeyboardInputNode",
         "//submodules/TelegramUI/Components/Chat/ChatMessagePaymentAlertController",
+        # MARK: NAGRAM — 分享面板文件夹标签
+        "//submodules/TelegramUI/Components/ChatList/ChatListFilterTabContainerNode",
         "//submodules/ChatPresentationInterfaceState",
         "//submodules/CheckNode",
         # MARK: NAGRAM — 分享发送时盘古之白
