@@ -67,10 +67,13 @@ public class InteractiveTransitionGestureRecognizer: UIPanGestureRecognizer {
     private var validatedGesture = false
     private var firstLocation: CGPoint = CGPoint()
     private var currentAllowedDirections: InteractiveTransitionGestureRecognizerDirections = []
-    
-    public init(target: Any?, action: Selector?, allowedDirections: @escaping (CGPoint) -> InteractiveTransitionGestureRecognizerDirections, edgeWidth: InteractiveTransitionGestureRecognizerEdgeWidth = .constant(16.0)) {
+    // MARK: NAGRAM — Opt-in: claim only clearly horizontal movement, in the edge zones too.
+    private let requiresClearHorizontalIntent: Bool
+
+    public init(target: Any?, action: Selector?, allowedDirections: @escaping (CGPoint) -> InteractiveTransitionGestureRecognizerDirections, edgeWidth: InteractiveTransitionGestureRecognizerEdgeWidth = .constant(16.0), requiresClearHorizontalIntent: Bool = false) {
         self.allowedDirections = allowedDirections
         self.edgeWidth = edgeWidth
+        self.requiresClearHorizontalIntent = requiresClearHorizontalIntent
         
         super.init(target: target, action: action)
         
@@ -176,7 +179,28 @@ public class InteractiveTransitionGestureRecognizer: UIPanGestureRecognizer {
                     return
                 }
                 
-                if self.currentAllowedDirections.contains(.rightEdge) && self.firstLocation.x < edgeWidth {
+                let isInEdgeZone = (self.currentAllowedDirections.contains(.rightEdge) && self.firstLocation.x < edgeWidth) || (self.currentAllowedDirections.contains(.leftEdge) && self.firstLocation.x > size.width - edgeWidth)
+                if self.requiresClearHorizontalIntent {
+                    // MARK: NAGRAM — Vertical priority. Claim only on clearly horizontal movement
+                    // (>8pt and at least 2.5:1); fail on diagonal/vertical movement so the list scrolls.
+                    if !isInEdgeZone {
+                        if !self.currentAllowedDirections.contains(.leftCenter) && translation.x < 0.0 {
+                            self.state = .failed
+                            return
+                        }
+                        if !self.currentAllowedDirections.contains(.rightCenter) && translation.x > 0.0 {
+                            self.state = .failed
+                            return
+                        }
+                    }
+                    let totalMovement = sqrt(absTranslationX * absTranslationX + absTranslationY * absTranslationY)
+                    if absTranslationX > 8.0 && absTranslationX > absTranslationY * 2.5 {
+                        self.validatedGesture = true
+                        fireBegan = true
+                    } else if (absTranslationY > 4.0 && absTranslationY * 1.5 > absTranslationX) || totalMovement > 12.0 {
+                        self.state = .failed
+                    }
+                } else if self.currentAllowedDirections.contains(.rightEdge) && self.firstLocation.x < edgeWidth {
                     self.validatedGesture = true
                 } else if self.currentAllowedDirections.contains(.leftEdge) && self.firstLocation.x > size.width - edgeWidth {
                     self.validatedGesture = true
