@@ -671,14 +671,76 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
         return false
     }
     
-    @objc private func panGesture(_ recognizer: UIPanGestureRecognizer) {
+    private var panDirectionMode: InteractiveTransitionGestureRecognizerDirectionMode = .horizontal
+    private var verticalDriveBaseTranslationY: CGFloat = 0.0
+    private var verticalDriveBaseOffsetY: CGFloat = 0.0
+
+    // MARK: NAGRAM — Direction switching: a claimed pan can flip to vertical (and back)
+    // mid-gesture instead of staying locked to folder switching for the whole touch.
+    private func beginVerticalDrive(translation: CGPoint) {
+        self.verticalDriveBaseTranslationY = translation.y
+        self.verticalDriveBaseOffsetY = self.currentItemNode.scroller.contentOffset.y
+        self.isSwitchingCurrentItemFilterByDragging = false
+
+        // Release the folder page back to the current filter without committing a switch.
+        if let (layout, navigationBarHeight, visualNavigationHeight, originalNavigationHeight, cleanNavigationBarHeight, insets, isReorderingFilters, isEditing, inlineNavigationLocation, inlineNavigationTransitionFraction, storiesInset) = self.validLayout {
+            self.transitionFraction = 0.0
+            self.transitionFractionOffset = 0.0
+            self.disableItemNodeOperationsWhileAnimating = true
+            let transition: ContainedViewLayoutTransition = .animated(duration: 0.45, curve: .spring)
+            self.update(layout: layout, navigationBarHeight: navigationBarHeight, visualNavigationHeight: visualNavigationHeight, originalNavigationHeight: originalNavigationHeight, cleanNavigationBarHeight: cleanNavigationBarHeight, insets: insets, isReorderingFilters: isReorderingFilters, isEditing: isEditing, inlineNavigationLocation: inlineNavigationLocation, inlineNavigationTransitionFraction: inlineNavigationTransitionFraction, storiesInset: storiesInset, transition: transition)
+            DispatchQueue.main.async { [weak self] in
+                guard let self else {
+                    return
+                }
+                self.disableItemNodeOperationsWhileAnimating = false
+                if let (layout, navigationBarHeight, visualNavigationHeight, originalNavigationHeight, cleanNavigationBarHeight, insets, isReorderingFilters, isEditing, inlineNavigationLocation, inlineNavigationTransitionFraction, storiesInset) = self.validLayout {
+                    self.update(layout: layout, navigationBarHeight: navigationBarHeight, visualNavigationHeight: visualNavigationHeight, originalNavigationHeight: originalNavigationHeight, cleanNavigationBarHeight: cleanNavigationBarHeight, insets: insets, isReorderingFilters: isReorderingFilters, isEditing: isEditing, inlineNavigationLocation: inlineNavigationLocation, inlineNavigationTransitionFraction: inlineNavigationTransitionFraction, storiesInset: storiesInset, transition: .immediate)
+                }
+            }
+            self.currentItemFilterUpdated?(self.currentItemFilter, self.transitionFraction, transition, false)
+            self.pinnedHeaderDisplayFractionUpdated?(transition)
+        }
+    }
+
+    private func updateVerticalDrive(translation: CGPoint) {
+        let scroller = self.currentItemNode.scroller
+        var contentOffset = scroller.contentOffset
+        contentOffset.y = self.verticalDriveBaseOffsetY - (translation.y - self.verticalDriveBaseTranslationY)
+        scroller.contentOffset = contentOffset
+    }
+
+    private func endVerticalDrive(translation: CGPoint) {
+        // Resume folder tracking from the current visual position so the page doesn't jump.
+        if let (layout, _, _, _, _, _, _, _, _, _, _) = self.validLayout, let itemNode = self.itemNodes[self.selectedId] {
+            let currentFraction: CGFloat
+            if let presentationLayer = itemNode.layer.presentation() {
+                currentFraction = presentationLayer.frame.minX / layout.size.width
+            } else {
+                currentFraction = self.transitionFraction
+            }
+            self.transitionFraction = currentFraction
+            self.transitionFractionOffset = currentFraction - translation.x / layout.size.width
+            if !self.isSwitchingCurrentItemFilterByDragging {
+                self.isSwitchingCurrentItemFilterByDragging = true
+                self.currentItemFilterUpdated?(self.currentItemFilter, self.transitionFraction, .immediate, true)
+                self.pinnedHeaderDisplayFractionUpdated?(.immediate)
+            }
+        }
+    }
+
+    @objc private func panGesture(_ recognizer: InteractiveTransitionGestureRecognizer) {
         let filtersLimit = self.filtersLimit.flatMap({ $0 + 1 }) ?? Int32(self.availableFilters.count)
         let maxFilterIndex = min(Int(filtersLimit), self.availableFilters.count) - 1
         
         switch recognizer.state {
         case .began:
             self.onFilterSwitch?()
-            
+
+            self.panDirectionMode = recognizer.directionMode
+            self.verticalDriveBaseTranslationY = 0.0
+            self.verticalDriveBaseOffsetY = 0.0
+
             self.transitionFractionOffset = 0.0
             if let (layout, navigationBarHeight, visualNavigationHeight, originalNavigationHeight, cleanNavigationBarHeight, insets, isReorderingFilters, isEditing, inlineNavigationLocation, inlineNavigationTransitionFraction, storiesInset) = self.validLayout, let itemNode = self.itemNodes[self.selectedId] {
                 for (id, itemNode) in self.itemNodes {
@@ -704,8 +766,23 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
                 }
             }
         case .changed:
+            let translation = recognizer.translation(in: self.view)
+
+            if recognizer.directionMode != self.panDirectionMode {
+                self.panDirectionMode = recognizer.directionMode
+                switch recognizer.directionMode {
+                case .vertical:
+                    self.beginVerticalDrive(translation: translation)
+                case .horizontal:
+                    self.endVerticalDrive(translation: translation)
+                }
+            }
+            if recognizer.directionMode == .vertical {
+                self.updateVerticalDrive(translation: translation)
+                return
+            }
+
             if let (layout, navigationBarHeight, visualNavigationHeight, originalNavigationHeight: originalNavigationHeight, cleanNavigationBarHeight, insets, isReorderingFilters, isEditing, inlineNavigationLocation, inlineNavigationTransitionFraction, storiesInset) = self.validLayout, let selectedIndex = self.availableFilters.firstIndex(where: { $0.id == self.selectedId }) {
-                let translation = recognizer.translation(in: self.view)
                 var transitionFraction = translation.x / layout.size.width
                 
                 var transition: ContainedViewLayoutTransition = .immediate
@@ -784,23 +861,28 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
                 let translation = recognizer.translation(in: self.view)
                 let velocity = recognizer.velocity(in: self.view)
                 var directionIsToRight: Bool?
-                if abs(velocity.x) > 10.0 {
-                    if translation.x < 0.0 {
-                        if velocity.x >= 0.0 {
-                            directionIsToRight = nil
+                // Commit a folder switch only on a completed gesture that is clearly
+                // horizontal; a cancelled gesture or one that ended in vertical mode
+                // always settles back to the current filter.
+                if case .ended = recognizer.state, recognizer.directionMode == .horizontal {
+                    if abs(velocity.x) > 10.0 && abs(velocity.x) > abs(velocity.y) {
+                        if translation.x < 0.0 {
+                            if velocity.x >= 0.0 {
+                                directionIsToRight = nil
+                            } else {
+                                directionIsToRight = true
+                            }
                         } else {
-                            directionIsToRight = true
+                            if velocity.x <= 0.0 {
+                                directionIsToRight = nil
+                            } else {
+                                directionIsToRight = false
+                            }
                         }
                     } else {
-                        if velocity.x <= 0.0 {
-                            directionIsToRight = nil
-                        } else {
-                            directionIsToRight = false
+                        if abs(translation.x) > layout.size.width / 2.0 && abs(translation.x) > abs(translation.y) {
+                            directionIsToRight = translation.x > layout.size.width / 2.0
                         }
-                    }
-                } else {
-                    if abs(translation.x) > layout.size.width / 2.0 {
-                        directionIsToRight = translation.x > layout.size.width / 2.0
                     }
                 }
                 
