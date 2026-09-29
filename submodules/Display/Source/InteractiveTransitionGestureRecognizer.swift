@@ -60,24 +60,13 @@ public enum InteractiveTransitionGestureRecognizerEdgeWidth {
     case widthMultiplier(factor: CGFloat, min: CGFloat, max: CGFloat)
 }
 
-public enum InteractiveTransitionGestureRecognizerDirectionMode {
-    case horizontal
-    case vertical
-}
-
 public class InteractiveTransitionGestureRecognizer: UIPanGestureRecognizer {
     private let edgeWidth: InteractiveTransitionGestureRecognizerEdgeWidth
     private let allowedDirections: (CGPoint) -> InteractiveTransitionGestureRecognizerDirections
-
+    
     private var validatedGesture = false
     private var firstLocation: CGPoint = CGPoint()
     private var currentAllowedDirections: InteractiveTransitionGestureRecognizerDirections = []
-    private var directionCheckpoint: CGPoint = CGPoint()
-
-    /// Axis of a claimed gesture, re-evaluated continuously from `directionCheckpoint`.
-    /// Vertical has priority: a claimed gesture switches to `.vertical` as soon as the
-    /// post-claim drift is clearly vertical, and can switch back while the finger is down.
-    public private(set) var directionMode: InteractiveTransitionGestureRecognizerDirectionMode = .horizontal
     
     public init(target: Any?, action: Selector?, allowedDirections: @escaping (CGPoint) -> InteractiveTransitionGestureRecognizerDirections, edgeWidth: InteractiveTransitionGestureRecognizerEdgeWidth = .constant(16.0)) {
         self.allowedDirections = allowedDirections
@@ -91,11 +80,9 @@ public class InteractiveTransitionGestureRecognizer: UIPanGestureRecognizer {
     
     override public func reset() {
         super.reset()
-
+        
         self.validatedGesture = false
         self.currentAllowedDirections = []
-        self.directionCheckpoint = CGPoint()
-        self.directionMode = .horizontal
     }
 
     public func cancel() {
@@ -151,7 +138,9 @@ public class InteractiveTransitionGestureRecognizer: UIPanGestureRecognizer {
         let size = self.view?.bounds.size ?? CGSize()
         
         //print("moved: \(CFAbsoluteTimeGetCurrent()) absTranslationX: \(absTranslationX) absTranslationY: \(absTranslationY)")
-
+        
+        var fireBegan = false
+        
         if self.currentAllowedDirections.contains(.down) {
             if !self.validatedGesture {
                 let totalMovement = sqrt(absTranslationX * absTranslationX + absTranslationY * absTranslationY)
@@ -176,7 +165,7 @@ public class InteractiveTransitionGestureRecognizer: UIPanGestureRecognizer {
             case let .widthMultiplier(factor, minValue, maxValue):
                 edgeWidth = max(minValue, min(size.width * factor, maxValue))
             }
-
+            
             if !self.validatedGesture {
                 if self.firstLocation.x < edgeWidth && !self.currentAllowedDirections.contains(.rightEdge) {
                     self.state = .failed
@@ -186,73 +175,41 @@ public class InteractiveTransitionGestureRecognizer: UIPanGestureRecognizer {
                     self.state = .failed
                     return
                 }
-
+                
                 if self.currentAllowedDirections.contains(.rightEdge) && self.firstLocation.x < edgeWidth {
                     self.validatedGesture = true
-                    self.directionCheckpoint = location
                 } else if self.currentAllowedDirections.contains(.leftEdge) && self.firstLocation.x > size.width - edgeWidth {
                     self.validatedGesture = true
-                    self.directionCheckpoint = location
                 } else if !self.currentAllowedDirections.contains(.leftCenter) && translation.x < 0.0 {
                     self.state = .failed
                 } else if !self.currentAllowedDirections.contains(.rightCenter) && translation.x > 0.0 {
                     self.state = .failed
                 } else {
-                    // Vertical has priority: give up on any clearly vertical movement,
-                    // claim the gesture only on clearly horizontal movement, and let
-                    // the 10pt forced decision fall through to vertical on ties.
                     let totalMovement = sqrt(absTranslationX * absTranslationX + absTranslationY * absTranslationY)
-                    if absTranslationY > 2.0 && absTranslationY > absTranslationX * 1.2 {
-                        self.state = .failed
-                    } else if absTranslationX > 6.0 && absTranslationX > absTranslationY * 2.0 {
-                        self.validatedGesture = true
-                        self.directionCheckpoint = location
-                    } else if totalMovement > 10.0 {
+                    if totalMovement > 10.0 {
                         // Force dominant direction after 10pt movement
-                        if absTranslationX > absTranslationY * 1.5 {
+                        if absTranslationX >= absTranslationY {
                             self.validatedGesture = true
-                            self.directionCheckpoint = location
+                            fireBegan = true
                         } else {
                             self.state = .failed
                         }
-                    }
-                }
-            } else {
-                // A claimed gesture is not locked to horizontal for the rest of the
-                // touch. Before the pan has begun, clear vertical evidence fails this
-                // recognizer outright so the vertical scroll takes over the gesture;
-                // after it has begun, the axis can still flip in both directions.
-                if self.state == .possible {
-                    if absTranslationY > 2.0 && absTranslationY > absTranslationX * 1.2 {
-                        self.validatedGesture = false
+                    } else if absTranslationY > 2.0 && absTranslationY > absTranslationX * 2.0 {
                         self.state = .failed
-                        return
+                    } else if absTranslationX > 2.0 && absTranslationY * 2.0 < absTranslationX {
+                        self.validatedGesture = true
+                        fireBegan = true
                     }
-                } else {
-                    self.updateDirectionMode(location: location)
                 }
             }
         }
-
+        
         if self.validatedGesture {
             super.touchesMoved(touches, with: event)
-        }
-    }
-
-    private func updateDirectionMode(location: CGPoint) {
-        let absDeltaX: CGFloat = abs(location.x - self.directionCheckpoint.x)
-        let absDeltaY: CGFloat = abs(location.y - self.directionCheckpoint.y)
-
-        switch self.directionMode {
-        case .horizontal:
-            if absDeltaY > 20.0 && absDeltaY > absDeltaX * 1.5 {
-                self.directionMode = .vertical
-                self.directionCheckpoint = location
-            }
-        case .vertical:
-            if absDeltaX > 12.0 && absDeltaX > absDeltaY * 2.0 {
-                self.directionMode = .horizontal
-                self.directionCheckpoint = location
+            if fireBegan {
+                if self.state == .possible {
+                    self.state = .began
+                }
             }
         }
     }
