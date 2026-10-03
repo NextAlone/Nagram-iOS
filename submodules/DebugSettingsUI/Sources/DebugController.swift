@@ -1632,7 +1632,7 @@ private func debugControllerEntries(context: AccountContext?, sharedContext: Sha
         entries.append(.resetTranslationStates)
                 
         entries.append(.compressedEmojiCache(experimentalSettings.compressedEmojiCache))
-        entries.append(.storiesJpegExperiment(experimentalSettings.storiesJpegExperiment))
+        // MARK: NAGRAM — "JPEG X" is not offered: the JPEG XL encoder is not linked into the app.
         entries.append(.disableReloginTokens(experimentalSettings.disableReloginTokens))
         
         entries.append(.checkSerializedData(experimentalSettings.checkSerializedData))
