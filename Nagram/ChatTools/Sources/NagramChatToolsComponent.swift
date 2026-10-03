@@ -1,4 +1,5 @@
 import ComponentFlow
+import Display
 import NagramStrings
 import TelegramPresentationData
 import UIKit
@@ -36,6 +37,13 @@ public final class NagramChatToolsComponent: Component {
             super.init(frame: frame)
             self.showsHorizontalScrollIndicator = false
             self.contentInsetAdjustmentBehavior = .never
+            // Once scrolled away from the origin, a rightward drag scrolls the strip back instead of starting the navigation back swipe.
+            self.disablesInteractiveTransitionGestureRecognizerNow = { [weak self] in
+                guard let self else {
+                    return false
+                }
+                return self.contentOffset.x > .ulpOfOne
+            }
             for action in Action.allCases {
                 let button = UIButton(type: .system)
                 button.accessibilityIdentifier = "Nagram.ChatTools." + action.rawValue
@@ -49,6 +57,11 @@ public final class NagramChatToolsComponent: Component {
 
         required public init?(coder: NSCoder) {
             preconditionFailure()
+        }
+
+        // The strip is covered edge to edge by buttons, so a drag that starts on one has to be able to scroll.
+        public override func touchesShouldCancel(in view: UIView) -> Bool {
+            return true
         }
 
         fileprivate func update(component: NagramChatToolsComponent, availableSize: CGSize) -> CGSize {
