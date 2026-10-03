@@ -1819,9 +1819,11 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         
         let translationState: Signal<(ChatTranslationState?, Bool), NoError>
         if let peerId = chatLocation.peerId, peerId.namespace != Namespaces.Peer.SecretChat && peerId != context.account.peerId && subject != .scheduledMessages {
+            // MARK: NAGRAM — a channel post's comments follow the channel's auto translate switch.
+            let nagramAutoTranslateInheritedPeerId = self.chatLocation.nagramAutoTranslateInheritedPeerId
             translationState = combineLatest(
-                chatTranslationState(context: context, peerId: peerId, threadId: self.chatLocation.threadId),
-                nagramAutoTranslateSignal(accountPeerId: context.account.peerId.toInt64(), peerId: peerId.toInt64(), threadId: self.chatLocation.threadId)
+                chatTranslationState(context: context, peerId: peerId, threadId: self.chatLocation.threadId, nagramAutoTranslateInheritedPeerId: nagramAutoTranslateInheritedPeerId),
+                nagramAutoTranslateSignal(accountPeerId: context.account.peerId.toInt64(), peerId: peerId.toInt64(), threadId: self.chatLocation.threadId, inheritedPeerId: nagramAutoTranslateInheritedPeerId?.toInt64())
             )
         } else {
             translationState = .single((nil, false))

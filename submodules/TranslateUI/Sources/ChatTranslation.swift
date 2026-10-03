@@ -113,6 +113,15 @@ private func updateChatTranslationState(engine: TelegramEngine, peerId: EnginePe
     }
 }
 
+// MARK: NAGRAM — chats where the user picked "Show Original" while per-chat auto translate is on. The choice holds until they translate again or the app restarts; without it auto translate re-enabled the state on every cache update (#I0040).
+private struct NagramShowOriginalKey: Hashable {
+    let accountPeerId: EnginePeer.Id
+    let peerId: EnginePeer.Id
+    let threadId: Int64?
+}
+
+private let nagramShowOriginalKeys = Atomic<Set<NagramShowOriginalKey>>(value: Set())
+
 public func updateChatTranslationStateInteractively(engine: TelegramEngine, peerId: EnginePeer.Id, threadId: Int64?, _ f: @escaping (ChatTranslationState?) -> ChatTranslationState?) -> Signal<Never, NoError> {
     let key: EngineDataBuffer
     if let threadId {
@@ -130,7 +139,19 @@ public func updateChatTranslationStateInteractively(engine: TelegramEngine, peer
     }
     |> mapToSignal { current -> Signal<Never, NoError> in
         if let current {
-            return updateChatTranslationState(engine: engine, peerId: peerId, threadId: threadId, state: f(current))
+            let updated = f(current)
+            // MARK: NAGRAM — record the choice before the cache update is observed.
+            let showOriginalKey = NagramShowOriginalKey(accountPeerId: engine.account.peerId, peerId: peerId, threadId: threadId)
+            let _ = nagramShowOriginalKeys.modify { keys in
+                var keys = keys
+                if let updated, !updated.isEnabled {
+                    keys.insert(showOriginalKey)
+                } else {
+                    keys.remove(showOriginalKey)
+                }
+                return keys
+            }
+            return updateChatTranslationState(engine: engine, peerId: peerId, threadId: threadId, state: updated)
         } else {
             return .never()
         }
@@ -215,7 +236,17 @@ public func translateMessageIds(context: AccountContext, messageIds: [EngineMess
     } |> switchToLatest
 }
 
-public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id, threadId: Int64?) -> Signal<ChatTranslationState?, NoError> {
+// MARK: NAGRAM — the comments thread of a channel post follows the channel's per-chat auto translate switch (#I0032).
+public extension ChatLocation {
+    var nagramAutoTranslateInheritedPeerId: EnginePeer.Id? {
+        if case let .replyThread(message) = self, message.isChannelPost, let channelMessageId = message.channelMessageId {
+            return channelMessageId.peerId
+        }
+        return nil
+    }
+}
+
+public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id, threadId: Int64?, nagramAutoTranslateInheritedPeerId: EnginePeer.Id? = nil) -> Signal<ChatTranslationState?, NoError> {
     if peerId.id == EnginePeer.Id.Id._internalFromInt64Value(777000) {
         return .single(nil)
     }
@@ -239,7 +270,7 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
                 return sharedData.entries[ApplicationSpecificSharedDataKeys.translationSettings]?.get(TranslationSettings.self) ?? TranslationSettings.defaultSettings
             },
             context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.AutoTranslateEnabled(id: peerId)),
-            nagramAutoTranslateSignal(accountPeerId: context.account.peerId.toInt64(), peerId: peerId.toInt64(), threadId: threadId)
+            nagramAutoTranslateSignal(accountPeerId: context.account.peerId.toInt64(), peerId: peerId.toInt64(), threadId: threadId, inheritedPeerId: nagramAutoTranslateInheritedPeerId?.toInt64())
         )
         |> mapToSignal { settings, autoTranslateEnabled, nagramAutoTranslateEnabled in
             if !settings.translateChats && !autoTranslateEnabled && !nagramAutoTranslateEnabled {
@@ -259,9 +290,12 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
             return cachedChatTranslationState(engine: context.engine, peerId: peerId, threadId: threadId)
             |> mapToSignal { cached in
                 let currentTime = Int32(CFAbsoluteTimeGetCurrent() + kCFAbsoluteTimeIntervalSince1970)
+                // MARK: NAGRAM — auto translate turns translation on unless the user chose "Show Original" in this chat.
+                let nagramShowOriginalKey = NagramShowOriginalKey(accountPeerId: context.account.peerId, peerId: peerId, threadId: threadId)
+                let nagramForceEnabled = nagramAutoTranslateEnabled && !nagramShowOriginalKeys.with { $0.contains(nagramShowOriginalKey) }
                 if let cached, let timestamp = cached.timestamp, cached.baseLang == baseLang && currentTime - timestamp < 60 * 60 {
                     var effectiveCached = cached
-                    if nagramAutoTranslateEnabled && !cached.isEnabled {
+                    if nagramForceEnabled && !cached.isEnabled {
                         effectiveCached = cached.withIsEnabled(true)
                         let _ = updateChatTranslationState(engine: context.engine, peerId: peerId, threadId: threadId, state: effectiveCached).start()
                     }
@@ -360,7 +394,7 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
                             }
                             
                             let isEnabled: Bool
-                            if nagramAutoTranslateEnabled {
+                            if nagramForceEnabled {
                                 isEnabled = true
                             } else if let currentIsEnabled = cached?.isEnabled {
                                 isEnabled = currentIsEnabled
