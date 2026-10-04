@@ -256,7 +256,16 @@ public func chatInputContent(from attributedText: NSAttributedString) -> ChatInp
             i += 1
         }
         paraRanges.append(NSRange(location: lineStart, length: end - lineStart))
-        for pr in paraRanges {
+        // MARK: NAGRAM — a quote attribute that also covers the separating "\n" is one multi-line quote, not one quote per line (#I0033).
+        func quoteAttribute(at index: Int) -> ChatTextInputTextQuoteAttribute? {
+            guard index >= 0 && index < full.length else { return nil }
+            if let q = attributedText.attribute(ChatTextInputAttributes.block, at: index, effectiveRange: nil) as? ChatTextInputTextQuoteAttribute,
+               case .quote = q.kind {
+                return q
+            }
+            return nil
+        }
+        for (index, pr) in paraRanges.enumerated() {
             var runs: [ChatInputRun] = []
             var isQuote = false
             var quoteCollapsed = false
@@ -287,13 +296,33 @@ public func chatInputContent(from attributedText: NSAttributedString) -> ChatInp
                     runs.append(ChatInputRun(text: full.substring(with: r), attributes: a))
                 }
             }
+            // MARK: NAGRAM — the quote range continues from the previous paragraph when the "\n" between them carries it.
+            var continuedQuote: ChatInputBlockQuote?
+            if index > 0, let separator = quoteAttribute(at: pr.location - 1), case let .blockQuote(previous)? = blocks.last, previous.collapsed == separator.isCollapsed {
+                if pr.length == 0 {
+                    // An empty line strictly inside the range; a trailing empty line stays outside the quote.
+                    if index + 1 < paraRanges.count, quoteAttribute(at: pr.location) != nil {
+                        isQuote = true
+                        quoteCollapsed = separator.isCollapsed
+                        continuedQuote = previous
+                    }
+                } else if isQuote && quoteCollapsed == separator.isCollapsed {
+                    continuedQuote = previous
+                }
+            }
             if isQuote {
-                // A `.block`/`.quote`-kind attribute now maps to `.blockQuote` (Task 16b). Each quote
-                // paragraph on the legacy NSAttributedString path becomes its own `.blockQuote` block
-                // (multi-paragraph grouping is handled by the native Document ↔ ChatInputContent bridge).
-                blocks.append(.blockQuote(ChatInputBlockQuote(
-                    content: ChatInputContent(blocks: [.paragraph(ChatInputParagraph(style: .body, runs: runs))]),
-                    collapsed: quoteCollapsed)))
+                // A `.block`/`.quote`-kind attribute now maps to `.blockQuote` (Task 16b). Quote paragraphs whose
+                // ranges are not joined by a quoted "\n" stay separate `.blockQuote` blocks, so neighboring
+                // quotes remain separable.
+                let paragraph = ChatInputBlock.paragraph(ChatInputParagraph(style: .body, runs: runs))
+                if var continuedQuote {
+                    continuedQuote.content.blocks.append(paragraph)
+                    blocks[blocks.count - 1] = .blockQuote(continuedQuote)
+                } else {
+                    blocks.append(.blockQuote(ChatInputBlockQuote(
+                        content: ChatInputContent(blocks: [paragraph]),
+                        collapsed: quoteCollapsed)))
+                }
             } else {
                 blocks.append(.paragraph(ChatInputParagraph(style: .body, runs: runs)))
             }

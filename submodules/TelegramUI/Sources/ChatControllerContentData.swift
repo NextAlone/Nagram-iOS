@@ -2192,7 +2192,9 @@ extension ChatControllerImpl {
                     let hasAutoTranslate = context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.AutoTranslateEnabled(id: peerId))
                     |> distinctUntilChanged
                     
-                    let hasNagramAutoTranslate = nagramAutoTranslateSignal(accountPeerId: context.account.peerId.toInt64(), peerId: peerId.toInt64(), threadId: chatLocation.threadId)
+                    // MARK: NAGRAM — a channel post's comments follow the channel's auto translate switch.
+                    let nagramAutoTranslateInheritedPeerId = chatLocation.nagramAutoTranslateInheritedPeerId
+                    let hasNagramAutoTranslate = nagramAutoTranslateSignal(accountPeerId: context.account.peerId.toInt64(), peerId: peerId.toInt64(), threadId: chatLocation.threadId, inheritedPeerId: nagramAutoTranslateInheritedPeerId?.toInt64())
                     
                     self.translationStateDisposable?.dispose()
                     self.translationStateDisposable = (combineLatest(
@@ -2208,7 +2210,7 @@ extension ChatControllerImpl {
                             maybeSuggestPremium = true
                         }
                         if (isPremium || maybeSuggestPremium || hasAutoTranslate || hasNagramAutoTranslate) && !isHidden {
-                            return chatTranslationState(context: context, peerId: peerId, threadId: chatLocation.threadId)
+                            return chatTranslationState(context: context, peerId: peerId, threadId: chatLocation.threadId, nagramAutoTranslateInheritedPeerId: nagramAutoTranslateInheritedPeerId)
                             |> map { translationState -> ChatPresentationTranslationState? in
                                 if let translationState, !translationState.fromLang.isEmpty && (translationState.fromLang != baseLanguageCode || translationState.isEnabled) {
                                     return ChatPresentationTranslationState(isEnabled: translationState.isEnabled, fromLang: translationState.fromLang, toLang: translationState.toLang ?? baseLanguageCode, isNagramAutoTranslateEnabled: hasNagramAutoTranslate)

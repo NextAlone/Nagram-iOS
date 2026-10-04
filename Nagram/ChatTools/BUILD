@@ -8,6 +8,7 @@ swift_library(
     deps = [
         "//Nagram/Strings:NagramStrings",
         "//submodules/ComponentFlow",
+        "//submodules/Display",
         "//submodules/TelegramPresentationData",
     ],
     visibility = ["//visibility:public"],

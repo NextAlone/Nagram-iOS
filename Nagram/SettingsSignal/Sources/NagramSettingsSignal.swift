@@ -73,8 +73,18 @@ public func nagramRecentStickerLimitSignal() -> Signal<Int, NoError> {
     return (initial |> then(changes)) |> distinctUntilChanged
 }
 
-public func nagramAutoTranslateSignal(accountPeerId: Int64, peerId: Int64, threadId: Int64?) -> Signal<Bool, NoError> {
-    return nagramBoolSignal(NagramSettings.autoTranslateKey(accountPeerId: accountPeerId, peerId: peerId, threadId: threadId), defaultValue: false)
+/// `inheritedPeerId` is the channel a comments thread belongs to: the thread follows that channel's switch in addition to its own (#I0032).
+public func nagramAutoTranslateSignal(accountPeerId: Int64, peerId: Int64, threadId: Int64?, inheritedPeerId: Int64? = nil) -> Signal<Bool, NoError> {
+    let own = nagramBoolSignal(NagramSettings.autoTranslateKey(accountPeerId: accountPeerId, peerId: peerId, threadId: threadId), defaultValue: false)
+    guard let inheritedPeerId else {
+        return own
+    }
+    let inherited = nagramBoolSignal(NagramSettings.autoTranslateKey(accountPeerId: accountPeerId, peerId: inheritedPeerId, threadId: nil), defaultValue: false)
+    return combineLatest(own, inherited)
+    |> map { own, inherited -> Bool in
+        return own || inherited
+    }
+    |> distinctUntilChanged
 }
 
 public func nagramBottomBarSettingsSignal() -> Signal<NagramBottomBarSettings, NoError> {

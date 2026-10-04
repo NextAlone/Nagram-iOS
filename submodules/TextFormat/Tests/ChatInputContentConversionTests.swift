@@ -73,10 +73,65 @@ final class ChatInputContentConversionTests: XCTestCase {
         }
         XCTAssertEqual(ranges, [NSRange(location: 2, length: 3)], "blockQuote must emit as one contiguous range incl. the interior newline")
         XCTAssertEqual(objects.count, 1, "the whole blockQuote emits one attribute object")
-        // Note: the NSAttributedString → model round-trip is LOSSY for a multi-paragraph blockQuote: the plain-text
-        // projection ("a\nb") is split back into two paragraph ranges, each becoming its own single-paragraph
-        // `.blockQuote`, so the inverse has two `.blockQuote` blocks instead of one multi-paragraph `.blockQuote`.
-        // This is documented lossy behavior of the legacy NSAttributedString path.
+        // MARK: NAGRAM — the inverse keeps the multi-paragraph blockQuote whole (#I0033).
+        XCTAssertEqual(chatInputContent(from: s), content)
+    }
+
+    // MARK: NAGRAM — #I0033: one quote attribute spanning several lines parses to ONE `.blockQuote`.
+    func test_chatInputContent_multiLineQuoteAttr_mapsToOneBlockQuote() {
+        let s = NSMutableAttributedString(string: "before\nq1\nq2\n\nq3\nafter")
+        // "before"=[0,6] \n=6 "q1"=[7,2] \n=9 "q2"=[10,2] \n=12 \n=13 "q3"=[14,2] \n=16 "after"=[17,5]
+        s.addAttribute(ChatTextInputAttributes.block,
+            value: ChatTextInputTextQuoteAttribute(kind: .quote, isCollapsed: false),
+            range: NSRange(location: 7, length: 9))
+
+        let parsed = chatInputContent(from: s)
+        XCTAssertEqual(parsed, ChatInputContent(blocks: [
+            .paragraph(ChatInputParagraph(style: .body, runs: [ChatInputRun(text: "before")])),
+            .blockQuote(ChatInputBlockQuote(
+                content: ChatInputContent(blocks: [
+                    .paragraph(ChatInputParagraph(style: .body, runs: [ChatInputRun(text: "q1")])),
+                    .paragraph(ChatInputParagraph(style: .body, runs: [ChatInputRun(text: "q2")])),
+                    .paragraph(ChatInputParagraph(style: .body, runs: [])),
+                    .paragraph(ChatInputParagraph(style: .body, runs: [ChatInputRun(text: "q3")])),
+                ]),
+                collapsed: false)),
+            .paragraph(ChatInputParagraph(style: .body, runs: [ChatInputRun(text: "after")])),
+        ]))
+
+        let back = attributedString(from: parsed)
+        XCTAssertEqual(back.string, s.string)
+        var ranges: [NSRange] = []
+        back.enumerateAttribute(ChatTextInputAttributes.block, in: NSRange(location: 0, length: back.length), options: []) { value, range, _ in
+            if let v = value as? ChatTextInputTextQuoteAttribute, case .quote = v.kind {
+                ranges.append(range)
+            }
+        }
+        XCTAssertEqual(ranges, [NSRange(location: 7, length: 9)], "the quote stays one contiguous range")
+        XCTAssertEqual(chatInputContent(from: back), parsed, "the round-trip is stable")
+
+        let quoteEntityRanges = generateChatInputTextEntities(back).compactMap { entity -> Range<Int>? in
+            if case .BlockQuote = entity.type {
+                return entity.range
+            }
+            return nil
+        }
+        XCTAssertEqual(quoteEntityRanges, [7 ..< 16], "the message carries a single blockquote entity")
+    }
+
+    // MARK: NAGRAM — a quoted trailing "\n" does not pull the empty last line into the quote.
+    func test_chatInputContent_quoteAttrWithTrailingNewline_keepsLastLineOutside() {
+        let s = NSMutableAttributedString(string: "q1\n")
+        s.addAttribute(ChatTextInputAttributes.block,
+            value: ChatTextInputTextQuoteAttribute(kind: .quote, isCollapsed: false),
+            range: NSRange(location: 0, length: 3))
+
+        XCTAssertEqual(chatInputContent(from: s), ChatInputContent(blocks: [
+            .blockQuote(ChatInputBlockQuote(
+                content: ChatInputContent(blocks: [.paragraph(ChatInputParagraph(style: .body, runs: [ChatInputRun(text: "q1")]))]),
+                collapsed: false)),
+            .paragraph(ChatInputParagraph(style: .body, runs: [])),
+        ]))
     }
 
     /// Per-line `.quote`-attributed spans map to separate `.blockQuote` blocks on parse (Task 16b). The resulting

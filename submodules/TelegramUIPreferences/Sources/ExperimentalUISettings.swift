@@ -255,7 +255,8 @@ public struct ExperimentalUISettings: Codable, Equatable {
         self.disableBackgroundAnimation = try container.decodeIfPresent(Bool.self, forKey: "disableBackgroundAnimation") ?? false
         self.logLanguageRecognition = try container.decodeIfPresent(Bool.self, forKey: "logLanguageRecognition") ?? false
         self.storiesExperiment = try container.decodeIfPresent(Bool.self, forKey: "storiesExperiment") ?? false
-        self.storiesJpegExperiment = try container.decodeIfPresent(Bool.self, forKey: "storiesJpegExperiment") ?? false
+        // MARK: NAGRAM — libjxl is not linked (MozjpegBinding never defines USE_JPEGXL), so "JPEG X" enqueues .jxl uploads that never finish and stall the chat's upload queue. Ignore persisted and iCloud-synced values.
+        self.storiesJpegExperiment = false
         self.crashOnMemoryPressure = try container.decodeIfPresent(Bool.self, forKey: "crashOnMemoryPressure") ?? false
         self.dustEffect = try container.decodeIfPresent(Bool.self, forKey: "dustEffect") ?? false
         self.disableCallV2 = try container.decodeIfPresent(Bool.self, forKey: "disableCallV2") ?? false
