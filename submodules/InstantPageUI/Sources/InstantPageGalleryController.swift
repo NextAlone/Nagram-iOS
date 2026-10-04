@@ -433,6 +433,10 @@ public class InstantPageGalleryController: ViewController, StandalonePresentable
         self.galleryNode.baseNavigationController = { [weak baseNavigationController] in
             return baseNavigationController
         }
+        // MARK: NAGRAM — Video items need the controller to hide and dismiss the gallery when native PiP starts.
+        self.galleryNode.galleryController = { [weak self] in
+            return self
+        }
         
         let ready = self.galleryNode.pager.ready() |> timeout(2.0, queue: Queue.mainQueue(), alternate: .single(Void())) |> afterNext { [weak self] _ in
             self?.didSetReady = true
