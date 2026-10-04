@@ -269,7 +269,6 @@
 "Nagram.ProfileBadge.Sponsor" = "赞助者";
 "Nagram.ProfileBadge.Developer.Info" = "Nagram 核心开发者，参与构建和维护这个应用。";
 "Nagram.ProfileBadge.Sponsor.Info" = "Nagram 赞助者，感谢他们支持项目持续维护。";
-"Nagram.RegDate.Loading" = "加载中";
 "Nagram.RegDate.LoadFailed" = "加载失败，稍后重试";
 "Nagram.RegDate.LoadFailedWithFallback" = "%@（精确日期加载失败）";
 "Nagram.RegDate.Approximately" = "大约 %@";

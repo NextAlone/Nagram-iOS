@@ -15,3 +15,9 @@ swift_library(
         "//visibility:public",
     ],
 )
+
+filegroup(
+    name = "RegistrationDateTable",
+    srcs = ["Resources/NagramIdDate.json"],
+    visibility = ["//visibility:public"],
+)

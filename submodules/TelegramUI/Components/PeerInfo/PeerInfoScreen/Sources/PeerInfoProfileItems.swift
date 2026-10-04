@@ -33,8 +33,6 @@ private func nagramFormattedRegistrationMonth(_ registrationDate: String, string
 
 private func nagramFormattedRegistrationDate(_ result: NagramRegistrationDateResult, languageCode: String) -> String {
     switch result.kind {
-    case .exact:
-        return result.date
     case .approximately:
         return NagramLocalization.shared.localizedString("Nagram.RegDate.Approximately", languageCode, args: result.date)
     case .newerThan:
@@ -49,34 +47,21 @@ private struct NagramRegistrationDateDisplayText {
     let copyText: String?
 }
 
-private func nagramRegistrationDateDisplayText(userId: Int64, fallbackRegistrationDate: String?, presentationData: PresentationData, interaction: PeerInfoInteraction) -> NagramRegistrationDateDisplayText {
+private func nagramRegistrationDateDisplayText(userId: Int64, fallbackRegistrationDate: String?, presentationData: PresentationData) -> NagramRegistrationDateDisplayText {
     let languageCode = presentationData.strings.baseLanguageCode
-    let fallbackText = fallbackRegistrationDate.flatMap { nagramFormattedRegistrationMonth($0, strings: presentationData.strings) }
-    let loadingText = fallbackText ?? ngI18n("Nagram.RegDate.Loading", languageCode)
 
-    switch NagramRegistrationDateService.shared.state(for: userId) {
-    case let .ready(result):
-        let text = nagramFormattedRegistrationDate(result, languageCode: languageCode)
+    if let table = NagramRegistrationDateTable.shared {
+        let text = nagramFormattedRegistrationDate(table.estimate(userId: userId), languageCode: languageCode)
         return NagramRegistrationDateDisplayText(displayText: text, copyText: text)
-    case .loading:
-        return NagramRegistrationDateDisplayText(displayText: loadingText, copyText: fallbackText)
-    case .failed:
-        NagramRegistrationDateService.shared.request(userId: userId, completion: {
-            interaction.requestLayout(false)
-        })
-        if let fallbackText {
-            return NagramRegistrationDateDisplayText(
-                displayText: NagramLocalization.shared.localizedString("Nagram.RegDate.LoadFailedWithFallback", languageCode, args: fallbackText),
-                copyText: fallbackText
-            )
-        } else {
-            return NagramRegistrationDateDisplayText(displayText: ngI18n("Nagram.RegDate.LoadFailed", languageCode), copyText: nil)
-        }
-    case nil:
-        NagramRegistrationDateService.shared.request(userId: userId, completion: {
-            interaction.requestLayout(false)
-        })
-        return NagramRegistrationDateDisplayText(displayText: loadingText, copyText: fallbackText)
+    }
+
+    if let fallbackText = fallbackRegistrationDate.flatMap({ nagramFormattedRegistrationMonth($0, strings: presentationData.strings) }) {
+        return NagramRegistrationDateDisplayText(
+            displayText: NagramLocalization.shared.localizedString("Nagram.RegDate.LoadFailedWithFallback", languageCode, args: fallbackText),
+            copyText: fallbackText
+        )
+    } else {
+        return NagramRegistrationDateDisplayText(displayText: ngI18n("Nagram.RegDate.LoadFailed", languageCode), copyText: nil)
     }
 }
 
@@ -628,8 +613,7 @@ func infoItems(
             let registrationDateText = nagramRegistrationDateDisplayText(
                 userId: user.id.id._internalGetInt64Value(),
                 fallbackRegistrationDate: fallbackRegistrationDate,
-                presentationData: presentationData,
-                interaction: interaction
+                presentationData: presentationData
             )
             nagramAccountInfoTextComponents.append(registrationDateText.displayText)
             if let copyText = registrationDateText.copyText {

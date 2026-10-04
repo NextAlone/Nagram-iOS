@@ -269,7 +269,6 @@
 "Nagram.ProfileBadge.Sponsor" = "Sponsor";
 "Nagram.ProfileBadge.Developer.Info" = "A core Nagram developer who builds and maintains the app.";
 "Nagram.ProfileBadge.Sponsor.Info" = "A Nagram sponsor whose support helps keep the project going.";
-"Nagram.RegDate.Loading" = "Loading";
 "Nagram.RegDate.LoadFailed" = "Failed to load, try again later";
 "Nagram.RegDate.LoadFailedWithFallback" = "%@ (exact date failed to load)";
 "Nagram.RegDate.Approximately" = "Approximately %@";

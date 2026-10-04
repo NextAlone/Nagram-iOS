@@ -269,7 +269,6 @@
 "Nagram.ProfileBadge.Sponsor" = "スポンサー";
 "Nagram.ProfileBadge.Developer.Info" = "Nagram のコア開発者です。アプリの開発と保守に参加しています。";
 "Nagram.ProfileBadge.Sponsor.Info" = "Nagram のスポンサーです。継続的な保守を支えてくれています。";
-"Nagram.RegDate.Loading" = "読み込み中";
 "Nagram.RegDate.LoadFailed" = "読み込みに失敗しました。後でもう一度お試しください";
 "Nagram.RegDate.LoadFailedWithFallback" = "%@（正確な日付を読み込めませんでした）";
 "Nagram.RegDate.Approximately" = "約 %@";

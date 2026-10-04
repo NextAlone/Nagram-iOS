@@ -278,6 +278,8 @@ filegroup(
     ], exclude = ["Telegram-iOS/Resources/**/.*"]) + [
         # MARK: NAGRAM — Fixed speech sample for the user-triggered STT API test.
         "//Nagram/Transcription:TestAudio",
+        # MARK: NAGRAM — User ID → registration date reference table (mirrors Nnngram's id_date.json).
+        "//Nagram/Settings:RegistrationDateTable",
     ],
 )
 
