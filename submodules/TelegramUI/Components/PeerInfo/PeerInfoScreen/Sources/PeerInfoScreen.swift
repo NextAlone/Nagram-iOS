@@ -7127,6 +7127,18 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
         }
     }
     
+    // MARK: NAGRAM — the settings controller instance is reused when pushed from the chat list header; drop its search once it has left the navigation stack.
+    override public func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        
+        if self.isSettings, !(self.parent is TabBarController) {
+            let isInNavigationStack = (self.navigationController as? NavigationController)?.viewControllers.contains(where: { $0 === self }) ?? false
+            if !isInNavigationStack {
+                self.controllerNode.deactivateSearch()
+            }
+        }
+    }
+    
     public func activateEdit() {
         self.controllerNode.activateEdit()
     }
