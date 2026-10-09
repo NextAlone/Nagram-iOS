@@ -116,46 +116,48 @@ public final class NagramTranslateService {
                 return .complete()
             }
             let timeoutSeconds: Double = provider == .llm ? 45.0 : 15.0
-            let signals: [Signal<(EngineMessage.Id, String, [MessageTextEntity], String, AudioTranscriptionMessageAttribute?)?, NoError>] = items.map { messageId, text, entities, transcription in
-                return self.translateExternally(provider: provider, text: text, entities: entities, fromLang: fromLang, toLang: toLang, messageId: messageId)
+            let accountPeerId = self.context.account.peerId
+            let keepsFormatting = NagramSettings.shared.translationKeepFormatting
+            // Every message is requested and stored on its own, so a slow or failed request never holds back the others.
+            let signals: [Signal<Never, NoError>] = items.map { messageId, text, entities, transcription in
+                let request = self.translateExternally(provider: provider, text: text, entities: entities, fromLang: fromLang, toLang: toLang, messageId: messageId)
                 |> timeout(timeoutSeconds, queue: Queue.concurrentDefaultQueue(), alternate: .fail(.generic))
-                |> map { result -> (EngineMessage.Id, String, [MessageTextEntity], String, AudioTranscriptionMessageAttribute?)? in
-                    guard let result, !result.0.isEmpty else {
-                        return nil
-                    }
-                    return (messageId, result.0, result.1, text, transcription)
-                }
-                |> `catch` { _ -> Signal<(EngineMessage.Id, String, [MessageTextEntity], String, AudioTranscriptionMessageAttribute?)?, NoError> in
+                let translation = NagramTranslationRequestQueue.shared.limited(request)
+                |> `catch` { _ -> Signal<(String, [MessageTextEntity])?, NoError> in
                     return .single(nil)
                 }
+                |> mapToSignal { result -> Signal<Never, NoError> in
+                    guard let result, !result.0.isEmpty else {
+                        return .complete()
+                    }
+                    return self.storeTranslation(messageId: messageId, text: result.0, entities: result.1, toLang: toLang, sourceText: text, sourceTranscription: transcription)
+                }
+                let key = NagramTranslationRequestKey(accountPeerId: accountPeerId, messageId: messageId, provider: provider, toLang: toLang, keepsFormatting: keepsFormatting, sourceText: text)
+                return NagramTranslationRequestQueue.shared.deduplicated(key: key, translation)
             }
             return combineLatest(signals)
-            |> mapToSignal { translations -> Signal<Never, NoError> in
-                let translations = translations.compactMap { $0 }
-                guard !translations.isEmpty else {
-                    return .complete()
-                }
-                return self.context.account.postbox.transaction { transaction in
-                    for (messageId, text, entities, sourceText, sourceTranscription) in translations {
-                        transaction.updateMessage(messageId, update: { currentMessage in
-                            if let sourceTranscription {
-                                guard currentMessage.text.isEmpty, let current = currentMessage.attributes.first(where: { $0 is AudioTranscriptionMessageAttribute }) as? AudioTranscriptionMessageAttribute, !current.isPending, current.text == sourceText, current.id == sourceTranscription.id, current.source == sourceTranscription.source, current.requestId == sourceTranscription.requestId else {
-                                    return .skip
-                                }
-                            } else if currentMessage.text != sourceText {
-                                return .skip
-                            }
-                            let storeForwardInfo = currentMessage.forwardInfo.flatMap(StoreMessageForwardInfo.init)
-                            var attributes = currentMessage.attributes.filter { !($0 is TranslationMessageAttribute) }
-                            attributes.append(TranslationMessageAttribute(text: text, entities: entities, toLang: toLang))
-                            return .update(StoreMessage(id: currentMessage.id, customStableId: nil, globallyUniqueId: currentMessage.globallyUniqueId, groupingKey: currentMessage.groupingKey, threadId: currentMessage.threadId, timestamp: currentMessage.timestamp, flags: StoreMessageFlags(currentMessage.flags), tags: currentMessage.tags, globalTags: currentMessage.globalTags, localTags: currentMessage.localTags, forwardInfo: storeForwardInfo, authorId: currentMessage.author?.id, text: currentMessage.text, attributes: attributes, media: currentMessage.media))
-                        })
-                    }
-                }
-                |> ignoreValues
-            }
+            |> ignoreValues
             |> castError(TranslationError.self)
         }
+    }
+
+    private func storeTranslation(messageId: EngineMessage.Id, text: String, entities: [MessageTextEntity], toLang: String, sourceText: String, sourceTranscription: AudioTranscriptionMessageAttribute?) -> Signal<Never, NoError> {
+        return self.context.account.postbox.transaction { transaction in
+            transaction.updateMessage(messageId, update: { currentMessage in
+                if let sourceTranscription {
+                    guard currentMessage.text.isEmpty, let current = currentMessage.attributes.first(where: { $0 is AudioTranscriptionMessageAttribute }) as? AudioTranscriptionMessageAttribute, !current.isPending, current.text == sourceText, current.id == sourceTranscription.id, current.source == sourceTranscription.source, current.requestId == sourceTranscription.requestId else {
+                        return .skip
+                    }
+                } else if currentMessage.text != sourceText {
+                    return .skip
+                }
+                let storeForwardInfo = currentMessage.forwardInfo.flatMap(StoreMessageForwardInfo.init)
+                var attributes = currentMessage.attributes.filter { !($0 is TranslationMessageAttribute) }
+                attributes.append(TranslationMessageAttribute(text: text, entities: entities, toLang: toLang))
+                return .update(StoreMessage(id: currentMessage.id, customStableId: nil, globallyUniqueId: currentMessage.globallyUniqueId, groupingKey: currentMessage.groupingKey, threadId: currentMessage.threadId, timestamp: currentMessage.timestamp, flags: StoreMessageFlags(currentMessage.flags), tags: currentMessage.tags, globalTags: currentMessage.globalTags, localTags: currentMessage.localTags, forwardInfo: storeForwardInfo, authorId: currentMessage.author?.id, text: currentMessage.text, attributes: attributes, media: currentMessage.media))
+            })
+        }
+        |> ignoreValues
     }
 }
 
