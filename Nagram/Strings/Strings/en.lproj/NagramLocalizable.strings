@@ -372,7 +372,7 @@
 "Nagram.HideAllChatsFolder" = "Hide All Chats Folder";
 "Nagram.ShowFoldersInShareSheet" = "Show Folders in Share Sheet";
 "Nagram.Section.Translation" = "Translation";
-"Nagram.Section.Translation.Footer" = "Only the translation provider is replaced; target language follows Telegram's native translate button. LLM supports OpenAI-compatible and Anthropic API formats; API Key is stored locally only. Other providers do not preserve formatting entities.";
+"Nagram.Section.Translation.Footer" = "Only the translation provider is replaced; target language follows Telegram's native translate button. LLM supports OpenAI-compatible and Anthropic API formats; API Key is stored locally only. Keep Formatting sends bold, links and other formatting to external providers as HTML tags; turn it off if tags show up in translations.";
 "Nagram.TranslationProvider" = "Translation Provider";
 "Nagram.TranslationProvider.telegram" = "Telegram";
 "Nagram.TranslationProvider.google" = "Google";
@@ -380,6 +380,7 @@
 "Nagram.TranslationProvider.microsoft" = "Microsoft";
 "Nagram.TranslationProvider.yandex" = "Yandex";
 "Nagram.TranslationProvider.transmart" = "TranSmart";
+"Nagram.TranslationKeepFormatting" = "Keep Formatting";
 "Nagram.TranslateBeforeSend" = "Translate Before Send";
 "Nagram.TranslateBeforeSend.Failed" = "Translation failed";
 "Nagram.TranslateBeforeSendTargetLang" = "Translate To";

@@ -372,7 +372,7 @@
 "Nagram.HideAllChatsFolder" = "隐藏全部会话分组";
 "Nagram.ShowFoldersInShareSheet" = "分享面板显示文件夹";
 "Nagram.Section.Translation" = "翻译";
-"Nagram.Section.Translation.Footer" = "只替换翻译 provider，目标语言跟随 Telegram 原生翻译按钮选择。LLM 支持 OpenAI-compatible 和 Anthropic API 格式；API Key 仅保存在本机。其他 provider 不保留富文本格式。";
+"Nagram.Section.Translation.Footer" = "只替换翻译 provider，目标语言跟随 Telegram 原生翻译按钮选择。LLM 支持 OpenAI-compatible 和 Anthropic API 格式；API Key 仅保存在本机。「保留格式」会把粗体、链接等格式以 HTML 标签发给外部 provider；若译文中出现标签，请关闭。";
 "Nagram.TranslationProvider" = "翻译 Provider";
 "Nagram.TranslationProvider.telegram" = "Telegram";
 "Nagram.TranslationProvider.google" = "Google";
@@ -380,6 +380,7 @@
 "Nagram.TranslationProvider.microsoft" = "Microsoft";
 "Nagram.TranslationProvider.yandex" = "Yandex";
 "Nagram.TranslationProvider.transmart" = "TranSmart";
+"Nagram.TranslationKeepFormatting" = "保留格式";
 "Nagram.TranslateBeforeSend" = "发送前翻译";
 "Nagram.TranslateBeforeSend.Failed" = "翻译失败";
 "Nagram.TranslateBeforeSendTargetLang" = "翻译目标语言";

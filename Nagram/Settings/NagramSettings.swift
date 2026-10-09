@@ -468,6 +468,9 @@ public final class NagramSettings {
     /// Include recent messages when translating chat messages with an LLM.
     @NagramDefault("nagram.translationLLMUseContext", false)
     public var translationLLMUseContext: Bool
+    /// Keep bold, links and other formatting when translating with an external provider.
+    @NagramDefault("nagram.translationKeepFormatting", true)
+    public var translationKeepFormatting: Bool
     /// OpenAI-compatible LLM temperature in tenths (0...20).
     @NagramDefault("nagram.translationLLMTemperatureTenths", 7)
     public var translationLLMTemperatureTenths: Int32

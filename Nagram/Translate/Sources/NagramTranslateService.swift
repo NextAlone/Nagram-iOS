@@ -23,7 +23,7 @@ public final class NagramTranslateService {
         case .telegram:
             return self.context.engine.messages.translate(text: text, toLang: nagramTargetLanguage(toLang, provider: provider), entities: entities, tone: tone, messageId: messageId)
         case .google, .googleCN, .microsoft, .yandex, .transmart, .llm:
-            return self.translateExternally(provider: provider, text: text, fromLang: fromLang, toLang: toLang, messageId: messageId)
+            return self.translateExternally(provider: provider, text: text, entities: entities, fromLang: fromLang, toLang: toLang, messageId: messageId)
         }
     }
 
@@ -37,14 +37,26 @@ public final class NagramTranslateService {
         }
     }
 
-    private func translateExternally(provider: NagramTranslationProvider, text: String, fromLang: String?, toLang: String, messageId: EngineMessage.Id?) -> Signal<(String, [MessageTextEntity])?, TranslationError> {
-        guard provider == .llm, NagramSettings.shared.translationLLMUseContext, let messageId else {
-            return nagramExternalTranslate(provider: provider, text: text, fromLang: fromLang, toLang: toLang)
+    private func translateExternally(provider: NagramTranslationProvider, text: String, entities: [MessageTextEntity], fromLang: String?, toLang: String, messageId: EngineMessage.Id?) -> Signal<(String, [MessageTextEntity])?, TranslationError> {
+        // External providers only take a string, so the formatting travels as HTML tags and is parsed back from the result.
+        let html = NagramSettings.shared.translationKeepFormatting ? nagramTranslationHTML(text: text, entities: entities) : nil
+        let query = html ?? text
+        let translation: Signal<(String, [MessageTextEntity])?, TranslationError>
+        if provider == .llm, NagramSettings.shared.translationLLMUseContext, let messageId {
+            translation = self.translationContext(messageId: messageId)
+            |> castError(TranslationError.self)
+            |> mapToSignal { context in
+                return nagramExternalTranslate(provider: provider, text: query, fromLang: fromLang, toLang: toLang, context: context, isHTML: html != nil)
+            }
+        } else {
+            translation = nagramExternalTranslate(provider: provider, text: query, fromLang: fromLang, toLang: toLang, isHTML: html != nil)
         }
-        return self.translationContext(messageId: messageId)
-        |> castError(TranslationError.self)
-        |> mapToSignal { context in
-            return nagramExternalTranslate(provider: provider, text: text, fromLang: fromLang, toLang: toLang, context: context)
+        guard html != nil else {
+            return translation
+        }
+        return translation
+        |> map { result in
+            return result.map { nagramTranslationRichText(html: $0.0, sourceEntities: entities) }
         }
     }
 
@@ -84,16 +96,16 @@ public final class NagramTranslateService {
     }
 
     private func translateMessagesExternally(provider: NagramTranslationProvider, messageIds: [EngineMessage.Id], fromLang: String?, toLang: String) -> Signal<Never, TranslationError> {
-        return self.context.account.postbox.transaction { transaction -> [(EngineMessage.Id, String, AudioTranscriptionMessageAttribute?)] in
-            var items: [(EngineMessage.Id, String, AudioTranscriptionMessageAttribute?)] = []
+        return self.context.account.postbox.transaction { transaction -> [(EngineMessage.Id, String, [MessageTextEntity], AudioTranscriptionMessageAttribute?)] in
+            var items: [(EngineMessage.Id, String, [MessageTextEntity], AudioTranscriptionMessageAttribute?)] = []
             for messageId in messageIds {
                 guard let message = transaction.getMessage(messageId) else {
                     continue
                 }
                 if !message.text.isEmpty {
-                    items.append((messageId, message.text, nil))
+                    items.append((messageId, message.text, message.textEntitiesAttribute?.entities ?? [], nil))
                 } else if let audioTranscription = message.attributes.first(where: { $0 is AudioTranscriptionMessageAttribute }) as? AudioTranscriptionMessageAttribute, !audioTranscription.text.isEmpty && !audioTranscription.isPending {
-                    items.append((messageId, audioTranscription.text, audioTranscription))
+                    items.append((messageId, audioTranscription.text, [], audioTranscription))
                 }
             }
             return items
@@ -104,16 +116,16 @@ public final class NagramTranslateService {
                 return .complete()
             }
             let timeoutSeconds: Double = provider == .llm ? 45.0 : 15.0
-            let signals: [Signal<(EngineMessage.Id, String, String, AudioTranscriptionMessageAttribute?)?, NoError>] = items.map { messageId, text, transcription in
-                return self.translateExternally(provider: provider, text: text, fromLang: fromLang, toLang: toLang, messageId: messageId)
+            let signals: [Signal<(EngineMessage.Id, String, [MessageTextEntity], String, AudioTranscriptionMessageAttribute?)?, NoError>] = items.map { messageId, text, entities, transcription in
+                return self.translateExternally(provider: provider, text: text, entities: entities, fromLang: fromLang, toLang: toLang, messageId: messageId)
                 |> timeout(timeoutSeconds, queue: Queue.concurrentDefaultQueue(), alternate: .fail(.generic))
-                |> map { result -> (EngineMessage.Id, String, String, AudioTranscriptionMessageAttribute?)? in
-                    guard let translatedText = result?.0, !translatedText.isEmpty else {
+                |> map { result -> (EngineMessage.Id, String, [MessageTextEntity], String, AudioTranscriptionMessageAttribute?)? in
+                    guard let result, !result.0.isEmpty else {
                         return nil
                     }
-                    return (messageId, translatedText, text, transcription)
+                    return (messageId, result.0, result.1, text, transcription)
                 }
-                |> `catch` { _ -> Signal<(EngineMessage.Id, String, String, AudioTranscriptionMessageAttribute?)?, NoError> in
+                |> `catch` { _ -> Signal<(EngineMessage.Id, String, [MessageTextEntity], String, AudioTranscriptionMessageAttribute?)?, NoError> in
                     return .single(nil)
                 }
             }
@@ -124,7 +136,7 @@ public final class NagramTranslateService {
                     return .complete()
                 }
                 return self.context.account.postbox.transaction { transaction in
-                    for (messageId, text, sourceText, sourceTranscription) in translations {
+                    for (messageId, text, entities, sourceText, sourceTranscription) in translations {
                         transaction.updateMessage(messageId, update: { currentMessage in
                             if let sourceTranscription {
                                 guard currentMessage.text.isEmpty, let current = currentMessage.attributes.first(where: { $0 is AudioTranscriptionMessageAttribute }) as? AudioTranscriptionMessageAttribute, !current.isPending, current.text == sourceText, current.id == sourceTranscription.id, current.source == sourceTranscription.source, current.requestId == sourceTranscription.requestId else {
@@ -135,7 +147,7 @@ public final class NagramTranslateService {
                             }
                             let storeForwardInfo = currentMessage.forwardInfo.flatMap(StoreMessageForwardInfo.init)
                             var attributes = currentMessage.attributes.filter { !($0 is TranslationMessageAttribute) }
-                            attributes.append(TranslationMessageAttribute(text: text, entities: [], toLang: toLang))
+                            attributes.append(TranslationMessageAttribute(text: text, entities: entities, toLang: toLang))
                             return .update(StoreMessage(id: currentMessage.id, customStableId: nil, globallyUniqueId: currentMessage.globallyUniqueId, groupingKey: currentMessage.groupingKey, threadId: currentMessage.threadId, timestamp: currentMessage.timestamp, flags: StoreMessageFlags(currentMessage.flags), tags: currentMessage.tags, globalTags: currentMessage.globalTags, localTags: currentMessage.localTags, forwardInfo: storeForwardInfo, authorId: currentMessage.author?.id, text: currentMessage.text, attributes: attributes, media: currentMessage.media))
                         })
                     }

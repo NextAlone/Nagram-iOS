@@ -2906,8 +2906,10 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             var messageIdsToTranslate: [MessageId] = []
             var messageIdsToFactCheck: [MessageId] = []
             if let translateToLanguage {
-                // MARK: NAGRAM — provider/target changes must requeue visible messages once; Telegram's cached attribute only stores toLang.
-                let nagramTranslationCacheKey = "\(NagramSettings.shared.translationProviderValue.rawValue)|\(translateToLanguage)"
+                // MARK: NAGRAM — provider/formatting/target changes must requeue visible messages once; Telegram's cached attribute only stores toLang.
+                let nagramTranslationProvider = NagramSettings.shared.translationProviderValue
+                let nagramKeepsFormatting = nagramTranslationProvider != .telegram && NagramSettings.shared.translationKeepFormatting
+                let nagramTranslationCacheKey = "\(nagramTranslationProvider.rawValue)|\(nagramKeepsFormatting)|\(translateToLanguage)"
                 let previousNagramTranslationCacheKey = self.nagramTranslationCacheKey
                 let shouldForceRefreshTranslations = previousNagramTranslationCacheKey != nil && previousNagramTranslationCacheKey != nagramTranslationCacheKey
                 let shouldReuseExistingTranslations = !shouldForceRefreshTranslations

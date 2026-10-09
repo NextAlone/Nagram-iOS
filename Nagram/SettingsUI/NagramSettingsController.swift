@@ -126,6 +126,8 @@ private func nagramRowDeepLinkAliases(titleKey: String) -> [String] {
         return ["DisableCameraPreview"]
     case "Nagram.TranslationProvider":
         return ["TranslateProvider", "TranslationProvider"]
+    case "Nagram.TranslationKeepFormatting":
+        return ["KeepFormatting"]
     case "Nagram.TranslationLLMSettings":
         return ["LLM", "LLMSettings", "OpenAI", "Anthropic", "LLMEndpoint", "OpenAIEndpoint", "ChatCompletionsEndpoint"]
     case "Nagram.TranslationLLMEndpoint":
@@ -463,6 +465,7 @@ private func nagramGroups(
         NagramGroup(tab: .chat, headerKey: "Nagram.Section.Translation", footerKey: "Nagram.Section.Translation.Footer", rows: [
             .choice(titleKey: "Nagram.TranslationProvider", prefix: "Nagram.TranslationProvider", options: NagramTranslationProvider.allCases.map { $0.rawValue }, current: { NagramSettings.shared.translationProviderValue.rawValue }, set: { NagramSettings.shared.translationProvider = $0 }),
             .navigation(titleKey: "Nagram.TranslationLLMSettings", action: llmTranslationSettingsAction),
+            .toggle(titleKey: "Nagram.TranslationKeepFormatting", get: { NagramSettings.shared.translationKeepFormatting }, set: { NagramSettings.shared.translationKeepFormatting = $0 }),
             .toggle(titleKey: "Nagram.TranslateBeforeSend", get: { NagramSettings.shared.translateBeforeSend }, set: { NagramSettings.shared.translateBeforeSend = $0 }),
             .choice(titleKey: "Nagram.TranslateBeforeSendTargetLang", prefix: "Nagram.TranslateBeforeSendTargetLang", options: ["en", "ar", "zh", "fr", "de", "it", "ja", "ko", "pt-BR", "ru", "es", "uk"], current: { NagramSettings.shared.translateBeforeSendTargetLang }, set: { NagramSettings.shared.translateBeforeSendTargetLang = $0 }),
         ]),
