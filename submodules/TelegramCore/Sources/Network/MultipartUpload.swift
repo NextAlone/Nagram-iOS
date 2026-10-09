@@ -206,7 +206,7 @@ private final class MultipartUploadManager {
     }
     
     func start() {
-        self.queue.async {
+        self.queue.async { [self] in
             self.dataDisposable.set((self.dataSignal
             |> deliverOn(self.queue)).startStrict(next: { [weak self] data in
                 if let strongSelf = self {
@@ -378,6 +378,7 @@ private final class MultipartUploadManager {
                         }))
                     } else {
                         self.completed(nil)
+                        return
                     }
                 } else {
                     break
@@ -422,7 +423,7 @@ func multipartUpload(network: Network, postbox: Postbox, source: MultipartUpload
     
     return uploadInterface
     |> mapToSignalPromotingError { uploadInterface -> Signal<MultipartUploadResult, MultipartUploadError> in
-        return Signal { subscriber in
+        return Signal { [network] subscriber in
             var encryptionKey: SecretFileEncryptionKey?
             if encrypt {
                 var aesKey = Data()

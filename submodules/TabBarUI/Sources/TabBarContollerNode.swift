@@ -117,6 +117,11 @@ final class TabBarControllerNode: ASDisplayNode {
         }
         return nil
     }
+
+    // MARK: NAGRAM
+    var nagramCanActivateSearch: Bool {
+        return !self.tabBarHidden && self.currentController?.toolbar == nil && NagramSettings.shared.bottomBarSettings.isVisible(.search)
+    }
     
     init(theme: PresentationTheme, strings: PresentationStrings, itemSelected: @escaping (Int, Bool, [ASDisplayNode]) -> Void, itemHasDoubleTapAction: @escaping (Int) -> Bool, itemDoubleTapped: @escaping (Int) -> Void, contextAction: @escaping (Int, ContextExtractedContentContainingView, ContextGesture) -> Void, swipeAction: @escaping (Int, TabBarItemSwipeDirection) -> Void, toolbarActionSelected: @escaping (ToolbarActionOption) -> Void, disabledPressed: @escaping () -> Void, activateSearch: @escaping () -> Void, deactivateSearch: @escaping () -> Void) {
         self.theme = theme

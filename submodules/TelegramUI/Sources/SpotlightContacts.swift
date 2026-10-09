@@ -149,7 +149,6 @@ private final class SpotlightIndexStorage {
                 
                 let itemDataPath = path + "/data.json"
                 
-                // MARK: NAGRAM
                 let attributeSet = CSSearchableItemAttributeSet(itemContentType: UTType.text.identifier)
                 attributeSet.version = "\(UInt64.random(in: 0 ..< UInt64.max))"
                 if !item.firstName.isEmpty && !item.lastName.isEmpty {

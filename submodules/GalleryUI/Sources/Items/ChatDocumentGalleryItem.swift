@@ -114,7 +114,6 @@ class ChatDocumentGalleryItemNode: ZoomableContentGalleryItemNode, WKNavigationD
     init(context: AccountContext, presentationData: PresentationData) {
         if #available(iOSApplicationExtension 11.0, iOS 11.0, *) {
             let configuration = WKWebViewConfiguration()
-            // MARK: NAGRAM
             configuration.defaultWebpagePreferences.allowsContentJavaScript = false
             let webView = WKWebView(frame: CGRect(), configuration: configuration)
             webView.allowsLinkPreview = false

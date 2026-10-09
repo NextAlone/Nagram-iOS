@@ -9,22 +9,26 @@
 import UIKit
 import GraphCore
 import Display
+import UIKitRuntimeUtils
 
 private enum Constants {
     static let chartViewHeightFraction: CGFloat = 0.55
 }
 
 private class LeftAlignedIconButton: UIButton {
-    var imageLeadingInset: CGFloat = 0.0
-
-    // MARK: NAGRAM
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        guard let imageView, let titleLabel else {
-            return
-        }
-        imageView.frame.origin.x = imageLeadingInset
-        titleLabel.frame.origin.x = imageView.frame.maxX
+    @available(iOS, deprecated: 15.0, message: "Legacy non-configuration button layout; intentionally retained.")
+    override func titleRect(forContentRect contentRect: CGRect) -> CGRect {
+        var titleRect = super.titleRect(forContentRect: contentRect)
+        let imageSize = currentImage?.size ?? .zero
+        titleRect.origin.x = imageSize.width
+        return titleRect
+    }
+    
+    @available(iOS, deprecated: 15.0, message: "Legacy non-configuration button layout; intentionally retained.")
+    override func imageRect(forContentRect contentRect: CGRect) -> CGRect {
+        var imageRect = super.imageRect(forContentRect: contentRect)
+        imageRect.origin.x = 0.0
+        return imageRect
     }
 }
 
@@ -72,9 +76,9 @@ class ChartStackSection: UIView, ChartThemeContainer {
         backButton.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .regular)
         backButton.setTitleColor(UIColor(rgb: 0x0088ff), for: .normal)
         backButton.setImage(UIImage(bundleImageName: "Chart/arrow_left"), for: .normal)
-        // MARK: NAGRAM
-        (backButton as? LeftAlignedIconButton)?.imageLeadingInset = 6.0
+        backButton.legacyImageEdgeInsets = UIEdgeInsets(top: 0.0, left: 6.0, bottom: 0.0, right: 3.0)
         backButton.imageView?.tintColor = UIColor(rgb: 0x0088ff)
+        backButton.legacyAdjustsImageWhenHighlighted = false
         
         backButton.setVisible(false, animated: false)
     }

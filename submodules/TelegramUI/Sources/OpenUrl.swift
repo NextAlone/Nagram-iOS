@@ -13,6 +13,8 @@ import OpenInExternalAppUI
 import BrowserUI
 import OverlayStatusController
 import PresentationDataUtils
+import UrlWhitelist
+import OpenUserGeneratedUrl
 
 public struct ParsedSecureIdUrl {
     public let peerId: EnginePeer.Id
@@ -24,6 +26,11 @@ public struct ParsedSecureIdUrl {
 }
 
 public func parseProxyUrl(sharedContext: SharedAccountContext, url: URL) -> ProxyServerSettings? {
+    // Checked first: a WEB link is a distinct scheme/path and must never be
+    // downgraded into an .mtp entry by the generic proxy parser.
+    if let webSettings = parseWebProxySettingsLink(url.absoluteString) {
+        return webSettings
+    }
     guard let proxy = parseProxyUrl(sharedContext: sharedContext, url: url.absoluteString) else {
         return nil
     }
@@ -149,19 +156,6 @@ func nagramCanonicalAppSchemeUrl(_ url: String) -> String {
 
 func nagramCanonicalAppSchemeUrl(_ url: URL) -> URL {
     return URL(string: nagramCanonicalAppSchemeUrl(url.absoluteString)) ?? url
-}
-
-private func canonicalExternalUrl(from url: String) -> URL? {
-    var urlWithScheme = url
-    if !url.contains("://") && !url.hasPrefix("mailto:") {
-        urlWithScheme = "http://" + url
-    }
-    if let parsed = URL(string: urlWithScheme) {
-        return parsed
-    } else if let encoded = (urlWithScheme as NSString).addingPercentEncoding(withAllowedCharacters: .urlQueryValueAllowed) {
-        return URL(string: encoded)
-    }
-    return nil
 }
 
 private func makeResolvedUrlHandler(
@@ -391,6 +385,25 @@ private func makeNagramSettingsPath(pathComponents: [String], queryItems: [URLQu
 func openExternalUrlImpl(context: AccountContext, urlContext: OpenURLContext, url: String, forceExternal: Bool, presentationData: PresentationData, navigationController: NavigationController?, dismissInput: @escaping () -> Void) {
     // MARK: NAGRAM
     let url = nagramCanonicalAppSchemeUrl(url)
+    // A login part hides the host a link opens (see `externalUrlWithLoginPart`). Every external link leaves through
+    // here, whoever opens it, so here it is confirmed, unless a prompt that showed the real host was just accepted.
+    if let loginPartUrl = externalUrlWithLoginPart(url), !consumeLoginPartConfirmation(loginPartUrl) {
+        let controller = openLinkConfirmationController(
+            context: context,
+            presentationData: presentationData,
+            updatedPresentationData: .single(presentationData),
+            displayUrl: urlRemovingLoginPart(loginPartUrl).absoluteString,
+            open: {
+                openCheckedExternalUrl(context: context, urlContext: urlContext, url: url, forceExternal: forceExternal, presentationData: presentationData, navigationController: navigationController, dismissInput: dismissInput)
+            }
+        )
+        context.sharedContext.presentGlobalController(controller, nil)
+        return
+    }
+    openCheckedExternalUrl(context: context, urlContext: urlContext, url: url, forceExternal: forceExternal, presentationData: presentationData, navigationController: navigationController, dismissInput: dismissInput)
+}
+
+private func openCheckedExternalUrl(context: AccountContext, urlContext: OpenURLContext, url: String, forceExternal: Bool, presentationData: PresentationData, navigationController: NavigationController?, dismissInput: @escaping () -> Void) {
     if forceExternal || url.lowercased().hasPrefix("tel:") || url.lowercased().hasPrefix("calshow:") {
         if url.lowercased().hasPrefix("tel:+888") {
             context.sharedContext.presentGlobalController(textAlertController(context: context, title: nil, text: presentationData.strings.Conversation_CantPhoneCallAnonymousNumberError, actions: [
@@ -471,6 +484,14 @@ func openExternalUrlImpl(context: AccountContext, urlContext: OpenURLContext, ur
                 handleResolvedUrl(.settings(.path(makeNagramSettingsPath(pathComponents: pathComponents, queryItems: queryItems))))
                 return
             }
+            if host == "sendgrams" {
+                guard parsedUrl.path.isEmpty || parsedUrl.path == "/",
+                      let components = URLComponents(url: parsedUrl, resolvingAgainstBaseURL: false) else {
+                    return
+                }
+                handleInternalUrl("https://t.me/sendgrams" + (components.percentEncodedQuery.map { "?" + $0 } ?? ""))
+                return
+            }
             if let query = parsedUrl.query, let params = QueryParameters(query) {
                 switch host {
                 case "localpeer":
@@ -513,6 +534,16 @@ func openExternalUrlImpl(context: AccountContext, urlContext: OpenURLContext, ur
                             queryItems.append(URLQueryItem(name: "text", value: shareText))
                         }
                         convertedUrl = makeTelegramUrl("/share/url", queryItems: queryItems)
+                    }
+                case "webproxy":
+                    // A WEB relay has no port (always 443) and no user/pass, so it cannot
+                    // reuse the socks/proxy conversion below without being read back as .mtp.
+                    // `host` is a legacy input alias for `server`.
+                    if let server = params["server"] ?? params["host"], !server.isEmpty, let secret = params["secret"], !secret.isEmpty {
+                        convertedUrl = makeTelegramUrl("/webproxy", queryItems: [
+                            URLQueryItem(name: "server", value: server),
+                            URLQueryItem(name: "secret", value: secret)
+                        ])
                     }
                 case "socks", "proxy":
                     let server = params["server"] ?? params["proxy"]

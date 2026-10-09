@@ -215,7 +215,6 @@ public func copyToPasteboard(context: AccountContext, userLocation: MediaResourc
 
                 if mediaReference.media is TelegramMediaImage {
                     if let fileData = try? Data(contentsOf: URL(fileURLWithPath: data.path), options: .mappedIfSafe) {
-                        // MARK: NAGRAM
                         pasteboard.setData(fileData, forPasteboardType: UTType.jpeg.identifier)
                     }
                 }

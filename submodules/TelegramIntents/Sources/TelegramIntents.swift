@@ -199,7 +199,6 @@ public func donateSendMessageIntent(account: Account, sharedContext: SharedAccou
                 
                 let recipient = INPerson(personHandle: recipientHandle, nameComponents: nameComponents, displayName: displayTitle, image: personImage, contactIdentifier: nil, customIdentifier: "tg\(peer.id.toInt64())")
                
-                // MARK: NAGRAM — Use the iOS 14 designated initializer for warnings-as-errors.
                 let intent = INSendMessageIntent(recipients: [recipient], outgoingMessageType: .outgoingMessageText, content: nil, speakableGroupName: INSpeakableString(spokenPhrase: displayTitle), conversationIdentifier: "tg\(peer.id.toInt64())", serviceName: nil, sender: nil, attachments: nil)
                 let interaction = INInteraction(intent: intent, response: nil)
                 interaction.direction = .outgoing

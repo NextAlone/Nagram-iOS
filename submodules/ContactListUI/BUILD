@@ -13,6 +13,7 @@ swift_library(
         # MARK: NAGRAM — 权限警告隐藏开关
         "//Nagram/SettingsSignal:NagramSettingsSignal",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
+        "//submodules/LottieSettings:LottieSettings",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/Display:Display",
         "//submodules/TelegramCore:TelegramCore",

@@ -1,4 +1,5 @@
 import Foundation
+import LottieSettings
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -27,6 +28,7 @@ import ChatControllerInteraction
 import InteractiveTextComponent
 import ShimmeringMask
 import StreamingTextReveal
+import WalletContext
 // MARK: NAGRAM
 import NagramSettings
 
@@ -108,6 +110,7 @@ private func nagramPanguProtectedRange(_ entity: MessageTextEntity) -> Range<Int
          .TextMention,
          .PhoneNumber,
          .BankCard,
+         .TonAddress,
          .CustomEmoji,
          .FormattedDate,
          .Custom:
@@ -193,7 +196,7 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
         }
     }
     
-    required public init() {
+    required public init(lottieSettings: LottieRenderingSettings) {
         self.containerNode = ContainerNode()
         self.containerNode.clipsToBounds = true
         
@@ -201,7 +204,7 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
         
         self.textAccessibilityOverlayNode = TextAccessibilityOverlayNode()
         
-        super.init()
+        super.init(lottieSettings: lottieSettings)
         
         self.addSubnode(self.containerNode)
         
@@ -281,10 +284,10 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
         let currentMaxGlyphCount: Int? = self.textRevealController?.currentGlyphCount
         let previousGlyphCount = self.textNode.textNode.cachedLayout?.attributedString?.length ?? 0
         
-        return { item, layoutConstants, _, _, _, _ in
+        return { [weak self] item, layoutConstants, _, _, _, _ in
             let contentProperties = ChatMessageBubbleContentProperties(hidesSimpleAuthorHeader: false, headerSpacing: 0.0, hidesBackground: .never, forceFullCorners: false, forceAlignment: .none)
             
-            return (contentProperties, nil, CGFloat.greatestFiniteMagnitude, { constrainedSize, position in
+            return (contentProperties, nil, CGFloat.greatestFiniteMagnitude, { [weak self] constrainedSize, position in
                 var topInset: CGFloat = 0.0
                 var bottomInset: CGFloat = 0.0
                 if case let .linear(top, bottom) = position {
@@ -408,12 +411,11 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                 }
                 
                 var rawText: String
-                var attributedText: NSAttributedString
+                let attributedText: NSAttributedString
                 var messageEntities: [MessageTextEntity]?
                 
                 var mediaDuration: Double? = nil
                 var isSeekableWebMedia = false
-                var isUnsupportedMedia = false
                 var story: Stories.Item?
                 var invoice: TelegramMediaInvoice?
                 for media in item.message.media {
@@ -424,8 +426,6 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                         invoice = media
                     } else if let webpage = media as? TelegramMediaWebpage, case let .Loaded(content) = webpage.content, webEmbedType(content: content).supportsSeeking {
                         isSeekableWebMedia = true
-                    } else if media is TelegramMediaUnsupported {
-                        isUnsupportedMedia = true
                     } else if let storyMedia = media as? TelegramMediaStory {
                         if let value = item.message.associatedStories[storyMedia.storyId]?.get(Stories.StoredItem.self) {
                             if case let .item(storyValue) = value {
@@ -442,9 +442,6 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                 } else if let story {
                     rawText = story.text
                     messageEntities = story.entities
-                } else if isUnsupportedMedia {
-                    rawText = item.presentationData.strings.Conversation_UnsupportedMediaPlaceholder
-                    messageEntities = [MessageTextEntity(range: 0..<rawText.count, type: .Italic)]
                 } else {
                     if let updatingMedia = item.attributes.updatingMedia {
                         rawText = updatingMedia.text
@@ -505,7 +502,7 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                 if incoming && item.associatedData.isSuspiciousPeer, let entities = messageEntities {
                     messageEntities = entities.filter { entity in
                         switch entity.type {
-                        case .Url, .TextUrl, .Mention, .TextMention, .Hashtag, .Email, .BankCard:
+                        case .Url, .TextUrl, .Mention, .TextMention, .Hashtag, .Email, .BankCard, .TonAddress:
                             return false
                         default:
                             return true
@@ -688,26 +685,12 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                     attributedText = NSAttributedString(string: " ", font: textFont, textColor: messageTheme.primaryTextColor)
                 }
                 
-                if let entities = entities {
-                    let updatedString = NSMutableAttributedString(attributedString: attributedText)
-                    
-                    for entity in entities.sorted(by: { $0.range.lowerBound > $1.range.lowerBound }) {
-                        guard case let .CustomEmoji(_, fileId) = entity.type else {
-                            continue
-                        }
-                        
-                        let range = NSRange(location: entity.range.lowerBound, length: entity.range.upperBound - entity.range.lowerBound)
-                        
-                        let currentDict = updatedString.attributes(at: range.lowerBound, effectiveRange: nil)
-                        var updatedAttributes: [NSAttributedString.Key: Any] = currentDict
-                        updatedAttributes[ChatTextInputAttributes.customEmoji] = ChatTextInputTextCustomEmojiAttribute(interactivelySelectedFromPackId: nil, fileId: fileId, file: item.message.associatedMedia[EngineMedia.Id(namespace: Namespaces.Media.CloudFile, id: fileId)] as? TelegramMediaFile)
-                        
-                        let insertString = NSAttributedString(string: updatedString.attributedSubstring(from: range).string, attributes: updatedAttributes)
-                        updatedString.replaceCharacters(in: range, with: insertString)
-                    }
-                    attributedText = updatedString
-                }
-                                
+                // The custom-emoji attribute is not re-applied here: `stringWithAppliedEntities`
+                // already attached it, using ranges adjusted for the substitutions it performs
+                // (`.FormattedDate` renders to text of a different length). An entity's own offsets
+                // index `rawText`, not the string above, so indexing with them lands on the wrong
+                // characters — or out of bounds.
+
                 var customTruncationToken: ((UIFont, Bool) -> NSAttributedString?)?
                 var maximumNumberOfLines: Int = 0
                 if item.presentationData.isPreview {
@@ -850,7 +833,7 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                 let sideInsets = layoutConstants.text.bubbleInsets.left + layoutConstants.text.bubbleInsets.right
                 suggestedBoundingWidth += sideInsets
                 
-                return (suggestedBoundingWidth, { boundingWidth in
+                return (suggestedBoundingWidth, { [weak self] boundingWidth in
                     var boundingSize: CGSize
                     
                     let statusSizeAndApply = statusSuggestedWidthAndContinue?.1(boundingWidth - sideInsets)
@@ -1268,6 +1251,7 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                 TelegramTextAttributes.Hashtag,
                 TelegramTextAttributes.Timecode,
                 TelegramTextAttributes.BankCard,
+                TelegramTextAttributes.TonAddress,
                 TelegramTextAttributes.Date
             ]
             for name in possibleNames {
@@ -1280,6 +1264,12 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
             
             if let _ = attributes[NSAttributedString.Key(rawValue: TelegramTextAttributes.Spoiler)], !self.displayContentsUnderSpoilers.value {
                 return ChatMessageBubbleContentTapAction(content: .none)
+            } else if let tonAddress = attributes[NSAttributedString.Key(rawValue: TelegramTextAttributes.TonAddress)] as? TelegramTonAddress {
+                guard tonAddress.range.length == 48, tonAddress.address.utf8.count == 48,
+                      WalletContext.transferAddress(from: tonAddress.address) != nil else {
+                    return ChatMessageBubbleContentTapAction(content: .none)
+                }
+                return ChatMessageBubbleContentTapAction(content: .tonAddress(tonAddress.address), rects: self.textNode.textNode.rangeRects(in: tonAddress.range)?.rects, activate: makeActivate(tonAddress.range))
             } else if let url = attributes[NSAttributedString.Key(rawValue: TelegramTextAttributes.URL)] as? String {
                 var concealed = true
                 var urlRange: NSRange?
@@ -1435,6 +1425,7 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                         TelegramTextAttributes.Hashtag,
                         TelegramTextAttributes.Timecode,
                         TelegramTextAttributes.BankCard,
+                        TelegramTextAttributes.TonAddress,
                         TelegramTextAttributes.Date
                     ]
                     for name in possibleNames {
@@ -1442,6 +1433,9 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                             rects = self.textNode.textNode.attributeRects(name: name, at: index)
                             break
                         }
+                    }
+                    if let tonAddress = attributes[NSAttributedString.Key(rawValue: TelegramTextAttributes.TonAddress)] as? TelegramTonAddress {
+                        rects = self.textNode.textNode.rangeRects(in: tonAddress.range)?.rects
                     }
                     if let _ = attributes[NSAttributedString.Key(rawValue: TelegramTextAttributes.Spoiler)] {
                         spoilerRects = self.textNode.textNode.attributeRects(name: TelegramTextAttributes.Spoiler, at: index)
@@ -1922,7 +1916,7 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
         }
         
         var entities: [MessageTextEntity] = []
-        if let entitySource {
+        if let entitySource { // MARK: NAGRAM
             entities = messageTextEntitiesInRange(entities: entitySource, range: range, onlyQuoteable: true)
         }
         

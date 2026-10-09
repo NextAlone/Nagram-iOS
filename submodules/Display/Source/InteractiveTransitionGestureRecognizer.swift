@@ -66,7 +66,7 @@ public class InteractiveTransitionGestureRecognizer: UIPanGestureRecognizer {
     
     private var validatedGesture = false
     private var firstLocation: CGPoint = CGPoint()
-    private var currentAllowedDirections: InteractiveTransitionGestureRecognizerDirections = []
+    public private(set) var currentAllowedDirections: InteractiveTransitionGestureRecognizerDirections = []
     // MARK: NAGRAM — Opt-in: claim only clearly horizontal movement, in the edge zones too.
     private let requiresClearHorizontalIntent: Bool
 

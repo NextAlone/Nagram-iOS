@@ -36,6 +36,12 @@ private final class NagramSessionImportKeychain: NSObject, MTKeychain {
 // The closure must return a single verification result. Stop the isolated
 // connection before publishing it, so the final account can reuse the key.
 // Cancellation or process termination leaves no account record to recover.
+//
+// The network is pinned to the MtProtoKit engine. NetworkEngineSession.stop()
+// reports no completion, but MtProtoKit runs every MTProto on one shared
+// manager queue, so a block queued there after stop() runs once the stop has
+// been processed. That queue is only reachable through an MTProto instance;
+// one that is never resumed provides it.
 public func nagramWithSessionImportNetwork<T, E: Error>(accountManager: AccountManager<TelegramAccountManagerTypes>, networkArguments: NetworkInitializationArguments, backupData: AccountBackupData, testingEnvironment: Bool, verify: @escaping (Network) -> Signal<T, E>) -> Signal<T, E> {
     return accountManager.transaction { transaction -> ProxySettings? in
         return transaction.getSharedData(SharedDataKeys.proxySettings)?.get(ProxySettings.self)
@@ -46,19 +52,21 @@ public func nagramWithSessionImportNetwork<T, E: Error>(accountManager: AccountM
         keychain.setObject([
             backupData.masterDatacenterId as NSNumber: MTDatacenterAuthInfo(authKey: backupData.masterDatacenterKey, authKeyId: backupData.masterDatacenterKeyId, validUntilTimestamp: Int32.max, saltSet: [], authKeyAttributes: [:])!
         ], forKey: "datacenterAuthInfoById", group: "persistent")
-        return initializedNetwork(accountId: generateAccountRecordId(), arguments: networkArguments, supplementary: true, datacenterId: Int(backupData.masterDatacenterId), keychain: keychain, basePath: "", testingEnvironment: testingEnvironment, languageCode: nil, proxySettings: proxySettings, networkSettings: nil, phoneNumber: nil, useRequestTimeoutTimers: true, appConfiguration: .defaultValue, trackNetworkUsage: false)
+        return initializedNetwork(accountId: generateAccountRecordId(), arguments: networkArguments, supplementary: true, datacenterId: Int(backupData.masterDatacenterId), keychain: keychain, basePath: "", testingEnvironment: testingEnvironment, languageCode: nil, proxySettings: proxySettings, networkSettings: nil, networkEngineSettings: NetworkEngineSettings(engine: .mtProtoKit), phoneNumber: nil, useRequestTimeoutTimers: true, appConfiguration: .defaultValue, trackNetworkUsage: false)
         |> castError(E.self)
         |> mapToSignal { network -> Signal<T, E> in
+            assert(network.engineKind == .mtProtoKit)
             return Signal { subscriber in
                 network.shouldKeepConnection.set(.single(true))
                 let stop = {
                     network.shouldKeepConnection.set(.single(false))
-                    network.mtProto.stop()
+                    network.mainSession.stop()
                     network.context.removeAllAuthTokens()
                 }
                 let disposable = (verify(network) |> take(1)).start(next: { result in
                     stop()
-                    network.mtProto.messageServiceQueue().dispatch(onQueue: {
+                    let managerQueueOwner: MTProto = MTProto(context: network.context, datacenterId: network.datacenterId, usageCalculationInfo: nil, requiredAuthToken: nil, authTokenMasterDatacenterId: 0)
+                    managerQueueOwner.messageServiceQueue().dispatch(onQueue: {
                         subscriber.putNext(result)
                         subscriber.putCompletion()
                     })
@@ -109,51 +117,54 @@ public enum NagramAuthenticatedUserProbeResult {
 // succeeds on the wrong one and hides the migration. updates.getState reads
 // account state, which is exactly what USER_MIGRATE guards.
 public func nagramHomeDatacenterId(network: Network) -> Signal<NagramHomeDatacenterProbeResult, NoError> {
-    Logger.shared.log("NagramMigration", "probing home datacenter from dc \(network.mtProto.datacenterId)")
+    Logger.shared.log("NagramMigration", "probing home datacenter from dc \(network.datacenterId)")
     let requestService = network.requestService
     let data = Api.functions.updates.getState()
-    // Deliberately not Network.request: its shouldContinueExecutionWithErrorContext
+    // Deliberately not Network.request: its shouldContinueAfterError policy
     // returns true, so MTProto keeps retrying the request forever and the error
     // is never delivered. That is right for ordinary traffic and fatal here,
     // because the USER_MIGRATE response *is* the answer this probe wants.
     return Signal<NagramHomeDatacenterProbeResult, NoError> { subscriber in
-        let request = MTRequest()
-        request.setPayload(
-            data.1.makeData() as Data,
+        let request = NetworkEngineRequest(
+            payload: data.1.makeData(),
             metadata: WrappedRequestMetadata(metadata: WrappedFunctionDescription(data.0), tag: nil),
             shortMetadata: WrappedRequestShortMetadata(shortMetadata: WrappedShortFunctionDescription(data.0)),
-            responseParser: { response in
+            parse: { response in
                 if let result = data.2.parse(Buffer(data: response)) {
                     return BoxedMessage(result)
                 }
                 return nil
+            },
+            options: NetworkEngineRequestOptions(),
+            shouldContinueAfterError: { _ in
+                return false
+            },
+            dependsOn: nil,
+            acknowledged: nil,
+            progress: nil,
+            completed: { result in
+                switch result {
+                case let .failure(failure):
+                    let error = failure.error
+                    let resolved = nagramMigrationDatacenterId(errorCode: error.errorCode, errorDescription: error.errorDescription)
+                    Logger.shared.log("NagramMigration", "probe error \(error.errorCode) \(error.errorDescription ?? "nil") -> home dc \(resolved.flatMap { "\($0)" } ?? "unknown")")
+                    if let resolved {
+                        subscriber.putNext(.migrate(resolved))
+                    } else {
+                        subscriber.putNext(.failure(errorCode: error.errorCode, errorDescription: error.errorDescription))
+                    }
+                case .success:
+                    Logger.shared.log("NagramMigration", "probe succeeded: this datacenter already serves the account")
+                    subscriber.putNext(.current)
+                }
+                subscriber.putCompletion()
             }
         )
-        request.dependsOnPasswordEntry = false
-        request.shouldContinueExecutionWithErrorContext = { _ in
-            return false
-        }
-        request.completed = { (_, _, error) -> Void in
-            if let error = error {
-                let resolved = nagramMigrationDatacenterId(errorCode: error.errorCode, errorDescription: error.errorDescription)
-                Logger.shared.log("NagramMigration", "probe error \(error.errorCode) \(error.errorDescription ?? "nil") -> home dc \(resolved.flatMap { "\($0)" } ?? "unknown")")
-                if let resolved {
-                    subscriber.putNext(.migrate(resolved))
-                } else {
-                    subscriber.putNext(.failure(errorCode: error.errorCode, errorDescription: error.errorDescription))
-                }
-            } else {
-                Logger.shared.log("NagramMigration", "probe succeeded: this datacenter already serves the account")
-                subscriber.putNext(.current)
-            }
-            subscriber.putCompletion()
-        }
-        let internalId: Any! = request.internalId
-        requestService.add(request)
+        let disposable = requestService.add(request)
         Logger.shared.log("NagramMigration", "probe request submitted")
-        return ActionDisposable { [weak requestService] in
+        return ActionDisposable {
             Logger.shared.log("NagramMigration", "probe disposed (cancelled before completing)")
-            requestService?.removeRequest(byInternalId: internalId)
+            disposable.dispose()
         }
     }
 }
@@ -168,56 +179,58 @@ public func nagramAuthenticatedUserId(network: Network) -> Signal<NagramAuthenti
     let requestService = network.requestService
     let data = Api.functions.users.getUsers(id: [.inputUserSelf])
     return Signal<NagramAuthenticatedUserProbeResult, NoError> { subscriber in
-        let request = MTRequest()
-        request.setPayload(
-            data.1.makeData() as Data,
+        let request = NetworkEngineRequest(
+            payload: data.1.makeData(),
             metadata: WrappedRequestMetadata(metadata: WrappedFunctionDescription(data.0), tag: nil),
             shortMetadata: WrappedRequestShortMetadata(shortMetadata: WrappedShortFunctionDescription(data.0)),
-            responseParser: { response in
+            parse: { response in
                 if let result = data.2.parse(Buffer(data: response)) {
                     return BoxedMessage(result)
                 }
                 return nil
+            },
+            options: NetworkEngineRequestOptions(),
+            shouldContinueAfterError: { _ in
+                return false
+            },
+            dependsOn: nil,
+            acknowledged: nil,
+            progress: nil,
+            completed: { result in
+                switch result {
+                case let .failure(failure):
+                    let error = failure.error
+                    Logger.shared.log("NagramMigration", "self-user verification failed: \(error.errorCode) \(error.errorDescription ?? "nil")")
+                    subscriber.putNext(.failure(errorCode: error.errorCode, errorDescription: error.errorDescription))
+                case let .success(response):
+                    if let users = (response.result as? BoxedMessage)?.body as? [Api.User], let apiUser = users.first {
+                        switch apiUser {
+                        case let .user(userData):
+                            guard (userData.flags & (1 << 14)) == 0 else {
+                                subscriber.putNext(.failure(errorCode: 400, errorDescription: "BOT_SESSION_UNSUPPORTED"))
+                                subscriber.putCompletion()
+                                return
+                            }
+                            Logger.shared.log("NagramMigration", "authenticated self user is \(userData.id)")
+                            subscriber.putNext(.userId(userData.id))
+                        case .userEmpty:
+                            // userEmpty is a placeholder the server returns when it
+                            // cannot produce the user. It carries an id but proves
+                            // nothing about who the key authenticates as, which is the
+                            // only thing this probe exists to establish. Treat it as a
+                            // failed verification rather than a confirmed identity.
+                            Logger.shared.log("NagramMigration", "self-user verification returned userEmpty")
+                            subscriber.putNext(.failure(errorCode: 500, errorDescription: "SELF_USER_EMPTY"))
+                        }
+                    } else {
+                        Logger.shared.log("NagramMigration", "self-user verification returned no parseable user")
+                        subscriber.putNext(.failure(errorCode: 500, errorDescription: "SELF_USER_NOT_RETURNED"))
+                    }
+                }
+                subscriber.putCompletion()
             }
         )
-        request.dependsOnPasswordEntry = false
-        request.shouldContinueExecutionWithErrorContext = { _ in
-            return false
-        }
-        request.completed = { (boxedResponse, _, error) -> Void in
-            if let error {
-                Logger.shared.log("NagramMigration", "self-user verification failed: \(error.errorCode) \(error.errorDescription ?? "nil")")
-                subscriber.putNext(.failure(errorCode: error.errorCode, errorDescription: error.errorDescription))
-            } else if let users = (boxedResponse as? BoxedMessage)?.body as? [Api.User], let apiUser = users.first {
-                switch apiUser {
-                case let .user(userData):
-                    guard (userData.flags & (1 << 14)) == 0 else {
-                        subscriber.putNext(.failure(errorCode: 400, errorDescription: "BOT_SESSION_UNSUPPORTED"))
-                        subscriber.putCompletion()
-                        return
-                    }
-                    Logger.shared.log("NagramMigration", "authenticated self user is \(userData.id)")
-                    subscriber.putNext(.userId(userData.id))
-                case .userEmpty:
-                    // userEmpty is a placeholder the server returns when it
-                    // cannot produce the user. It carries an id but proves
-                    // nothing about who the key authenticates as, which is the
-                    // only thing this probe exists to establish. Treat it as a
-                    // failed verification rather than a confirmed identity.
-                    Logger.shared.log("NagramMigration", "self-user verification returned userEmpty")
-                    subscriber.putNext(.failure(errorCode: 500, errorDescription: "SELF_USER_EMPTY"))
-                }
-            } else {
-                Logger.shared.log("NagramMigration", "self-user verification returned no parseable user")
-                subscriber.putNext(.failure(errorCode: 500, errorDescription: "SELF_USER_NOT_RETURNED"))
-            }
-            subscriber.putCompletion()
-        }
-        let internalId: Any! = request.internalId
-        requestService.add(request)
-        return ActionDisposable { [weak requestService] in
-            requestService?.removeRequest(byInternalId: internalId)
-        }
+        return requestService.add(request)
     }
 }
 

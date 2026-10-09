@@ -1,5 +1,5 @@
 filegroup(
     name = "AppLifecycle",
-    srcs = ["SceneDelegate.swift"],
+    srcs = ["NagramSceneDelegate.swift"],
     visibility = ["//submodules/TelegramUI:__pkg__"],
 )

@@ -194,6 +194,7 @@ public class ContactsController: ViewController {
         }).strict()
         
         if #available(iOSApplicationExtension 10.0, iOS 10.0, *) {
+            // MARK: NAGRAM
             let permissionWarningSuppressedAndSortOrder: Signal<(Bool, ContactsSortOrder), NoError> = combineLatest(context.sharedContext.accountManager.noticeEntry(key: ApplicationSpecificNotice.permissionWarningKey(permission: .contacts)!), context.engine.data.subscribe(TelegramEngine.EngineData.Item.Configuration.ApplicationSpecificPreference(key: PreferencesKeys.contactsSettings)), context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.contactSynchronizationSettings]))
             |> map { noticeView, preferences, sharedData -> (Bool, ContactsSortOrder) in
                 let settings: ContactsSettings = preferences?.get(ContactsSettings.self) ?? ContactsSettings.defaultSettings
@@ -219,7 +220,7 @@ public class ContactsController: ViewController {
             |> deliverOnMainQueue).start(next: { [weak self] status, suppressedAndSortOrder, hidePermissionWarnings in
                 if let strongSelf = self {
                     let (suppressed, sortOrder) = suppressedAndSortOrder
-                    strongSelf.tabBarItem.badgeValue = status != .allowed && !suppressed && !hidePermissionWarnings ? "!" : nil
+                    strongSelf.tabBarItem.badgeValue = ![.allowed, .limited].contains(status) && !suppressed && !hidePermissionWarnings ? "!" : nil
                     strongSelf.sortOrderPromise.set(.single(sortOrder))
                 }
             }).strict()
@@ -232,7 +233,7 @@ public class ContactsController: ViewController {
         }
         
         self.sortButton.addTarget(self, action: #selector(self.sortPressed), forControlEvents: .touchUpInside)
-
+        // MARK: NAGRAM
         self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .immediate)
     }
     
@@ -348,7 +349,7 @@ public class ContactsController: ViewController {
         }
         
         self.contactsNode.contactListNode.activateSearch = { [weak self] in
-            self?.activateSearch(isFromTabBar: false)
+            self?.activateSearch()
         }
         
         self.contactsNode.contactListNode.openPeer = { [weak self] peer, _, _, _ in
@@ -549,24 +550,28 @@ public class ContactsController: ViewController {
         self.sortButton.contextAction?(self.sortButton.containerNode, nil)
     }
     
-    private func activateSearch(isFromTabBar: Bool) {
-        let placeholderNode = isFromTabBar ? nil : self.searchContentNode()?.placeholderNode
-        self.contactsNode.activateSearch(placeholderNode: placeholderNode)
-        if placeholderNode != nil {
-            (self.parent as? TabBarController)?.updateIsTabBarHidden(true, transition: .animated(duration: 0.5, curve: .spring))
-        } else {
+    private func activateSearch(nagramFromTabBar: Bool = false) { // MARK: NAGRAM
+        // MARK: NAGRAM
+        if (nagramFromTabBar || self.searchContentNode() == nil) && self.nagramCanActivateTabBarSearch?() == true {
+            self.contactsNode.activateSearch(placeholderNode: nil)
             self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: true), transition: .animated(duration: 0.5, curve: .spring))
             if let searchBarNode = self.currentTabBarSearchNode?() as? SearchBarNode {
                 self.contactsNode.searchDisplayController?.setSearchBar(searchBarNode)
                 searchBarNode.activate()
             }
+            self.requestLayout(transition: .animated(duration: 0.5, curve: .spring))
+            return
+        } else if self.searchContentNode() == nil {
+            return
         }
+        self.contactsNode.activateSearch(placeholderNode: self.searchContentNode()?.placeholderNode)
+        (self.parent as? TabBarController)?.updateIsTabBarHidden(true, transition: .animated(duration: 0.5, curve: .spring))
         self.requestLayout(transition: .animated(duration: 0.5, curve: .spring))
     }
     
     private func deactivateSearch(animated: Bool) {
         self.contactsNode.deactivateSearch(placeholderNode: self.searchContentNode()?.placeholderNode, animated: animated)
-        self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .animated(duration: 0.5, curve: .spring))
+        self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .animated(duration: 0.5, curve: .spring)) // MARK: NAGRAM
         (self.parent as? TabBarController)?.updateIsTabBarHidden(false, transition: .animated(duration: 0.5, curve: .spring))
         self.requestLayout(transition: .animated(duration: 0.5, curve: .spring))
     }
@@ -783,7 +788,7 @@ public class ContactsController: ViewController {
     }
     
     override public func tabBarActivateSearch() {
-        self.activateSearch(isFromTabBar: true)
+        self.activateSearch(nagramFromTabBar: true) // MARK: NAGRAM
     }
 
     override public func tabBarDeactivateSearch() {

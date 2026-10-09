@@ -796,11 +796,7 @@ final class ChatPinnedMessageTitlePanelNode: ChatTitleAccessoryPanelNode {
             }
         } else {
             let textColor = message.media.isEmpty || message.media.first is TelegramMediaWebpage ? theme.chat.inputPanel.primaryTextColor : theme.chat.inputPanel.secondaryTextColor
-            let mutableTextString = NSMutableAttributedString(attributedString: foldLineBreaks(textString))
-            mutableTextString.addAttributes([
-                .font: textFont,
-                .foregroundColor: textColor
-            ], range: NSRange(location: 0, length: mutableTextString.length))
+            let mutableTextString = styleInstantPagePreview(foldLineBreaks(textString), font: textFont, italicFont: Font.italic(textFont.pointSize), textColor: textColor)
             messageText = renderInstantPagePreviewIcons(mutableTextString, font: textFont, textColor: textColor)
         }
         
@@ -1010,7 +1006,7 @@ final class ChatPinnedMessageTitlePanelNode: ChatTitleAccessoryPanelNode {
                         controllerInteraction.openCheckoutOrReceipt(message.id, nil)
                         return
                     case let .urlAuth(url, buttonId):
-                        controllerInteraction.requestMessageActionUrlAuth(url, .message(id: message.id, buttonId: buttonId))
+                        controllerInteraction.requestMessageActionUrlAuth(url, .message(id: message.callbackTargetMessageId, buttonId: buttonId))
                         return
                     case .setupPoll:
                         break
@@ -1023,15 +1019,20 @@ final class ChatPinnedMessageTitlePanelNode: ChatTitleAccessoryPanelNode {
                         })
                         return
                     case let .openWebView(url, simple):
-                        controllerInteraction.openWebView(button.title, url, simple, .generic)
+                        // nil: this panel's buttons have no inline loading state, so the
+                        // `.requestInProgress` title panel stays their progress indicator.
+                        controllerInteraction.openWebView(button.title, url, simple, .generic, nil)
                         return
                     case .requestPeer:
                         break
                     case let .copyText(payload):
                         controllerInteraction.copyText(payload)
                         return
+                    case .disabled:
+                        // A forward stripped this button's behaviour; tapping does nothing.
+                        return
                     }
-                    
+
                     break
                 }
             }

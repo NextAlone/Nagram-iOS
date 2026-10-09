@@ -107,7 +107,6 @@ public final class DrawingTextEntityView: DrawingEntityView, UITextViewDelegate 
         var animatedImageData: Data?
         for item in pasteboard.items {
             print(item.keys)
-            // MARK: NAGRAM
             if let data = item["public.heics"] as? Data, let image = item[UTType.png.identifier] as? UIImage {
                 animatedImageData = data
                 images.append(image)

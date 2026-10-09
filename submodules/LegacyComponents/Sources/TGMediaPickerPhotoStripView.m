@@ -118,28 +118,36 @@
     [self setNeedsLayout];
 }
 
-// MARK: NAGRAM
-// The collection view's cached item count can be stale relative to the model
-// (selection changes delivered while the strip was hidden or re-entrantly).
-// A single-item batch update then violates UICollectionView's count invariant
-// and aborts. Validate the counts first and fall back to reloadData.
-- (bool)validateBatchUpdateFromCount:(NSInteger)expectedCurrentCount toIndex:(NSInteger)index maxIndex:(NSInteger)maxIndex
-{
-    NSInteger currentCount = [_collectionView numberOfItemsInSection:0];
-    if (currentCount != expectedCurrentCount || index < 0 || index > maxIndex)
-    {
-        [self reloadData];
-        return false;
-    }
-    return true;
-}
-
 - (void)insertItemAtIndex:(NSInteger)index
 {
-    // MARK: NAGRAM
-    NSInteger modelCount = [self collectionView:_collectionView numberOfItemsInSection:0];
-    if (![self validateBatchUpdateFromCount:modelCount - 1 toIndex:index maxIndex:modelCount - 1])
+    void (^updateLayout)(void) = ^
+    {
+        [UIView animateWithDuration:0.3f
+                         animations:^
+        {
+            [self _layoutCollectionViewForOrientation:self.interfaceOrientation];
+        }];
+
+        if (_collectionViewLayout.scrollDirection == UICollectionViewScrollDirectionHorizontal)
+        {
+            [_collectionView setContentOffset:CGPointMake(_collectionView.contentSize.width - _collectionView.frame.size.width + _collectionView.contentInset.left, _collectionView.contentOffset.y) animated:true];
+        }
+        else
+        {
+            [_collectionView setContentOffset:CGPointMake(_collectionView.contentOffset.x, _collectionView.contentSize.height - _collectionView.frame.size.height + _collectionView.contentInset.top) animated:true];
+        }
+    };
+
+    NSInteger collectionItemsCount = [_collectionView numberOfItemsInSection:0];
+    NSInteger modelItemsCount = self.selectedItemsModel.totalCount;
+    bool validBatchUpdate = modelItemsCount == collectionItemsCount + 1 && index >= 0 && index < modelItemsCount;
+    if (!validBatchUpdate)
+    {
+        [self reloadData];
+        [_collectionView layoutIfNeeded];
+        updateLayout();
         return;
+    }
 
     NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:0];
 
@@ -150,35 +158,28 @@
             [_collectionView insertItemsAtIndexPaths:@[ indexPath ]];
         } completion:^(__unused BOOL finished)
         {
-            [UIView animateWithDuration:0.3f
-                             animations:^
-            {
-                [self _layoutCollectionViewForOrientation:self.interfaceOrientation];
-            }];
-            
-            if (_collectionViewLayout.scrollDirection == UICollectionViewScrollDirectionHorizontal)
-            {
-                [_collectionView setContentOffset:CGPointMake(_collectionView.contentSize.width - _collectionView.frame.size.width + _collectionView.contentInset.left, _collectionView.contentOffset.y) animated:true];
-            }
-            else
-            {
-                [_collectionView setContentOffset:CGPointMake(_collectionView.contentOffset.x, _collectionView.contentSize.height - _collectionView.frame.size.height + _collectionView.contentInset.top) animated:true];
-            }
+            updateLayout();
         }];
     }];
 }
 
 - (void)deleteItemAtIndex:(NSInteger)index
 {
-    // MARK: NAGRAM
-    NSInteger modelCount = [self collectionView:_collectionView numberOfItemsInSection:0];
-    if (![self validateBatchUpdateFromCount:modelCount + 1 toIndex:index maxIndex:modelCount])
-        return;
-
-    [_collectionView performBatchUpdates:^
+    NSInteger collectionItemsCount = [_collectionView numberOfItemsInSection:0];
+    NSInteger modelItemsCount = self.selectedItemsModel.totalCount;
+    bool validBatchUpdate = modelItemsCount == collectionItemsCount - 1 && index >= 0 && index < collectionItemsCount;
+    if (validBatchUpdate)
     {
-        [_collectionView deleteItemsAtIndexPaths:@[ [NSIndexPath indexPathForRow:index inSection:0] ]];
-    } completion:nil];
+        [_collectionView performBatchUpdates:^
+        {
+            [_collectionView deleteItemsAtIndexPaths:@[ [NSIndexPath indexPathForRow:index inSection:0] ]];
+        } completion:nil];
+    }
+    else
+    {
+        [self reloadData];
+        [_collectionView layoutIfNeeded];
+    }
     
     [UIView animateWithDuration:0.3f
                      animations:^

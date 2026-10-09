@@ -1,4 +1,5 @@
 import Foundation
+import LottieSettings
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -193,7 +194,7 @@ final class PeerSelectionControllerNode: ASDisplayNode {
         self.emptyTextNode.isHidden = true
         self.emptyTextNode.lineSpacing = 0.25
 
-        self.emptyAnimationNode = DefaultAnimatedStickerNodeImpl()
+        self.emptyAnimationNode = DefaultAnimatedStickerNodeImpl(lottieSettings: self.context.lottieRenderingSettings)
         self.emptyAnimationNode.setup(source: AnimatedStickerNodeLocalFileSource(name: "ChatListNoResults"), width: 256, height: 256, playbackMode: .once, mode: .direct(cachePathPrefix: nil))
         self.emptyAnimationNode.isHidden = true
         self.emptyAnimationSize = CGSize(width: 120.0, height: 120.0)
@@ -473,7 +474,7 @@ final class PeerSelectionControllerNode: ASDisplayNode {
 
             let accountPeerId = strongSelf.context.account.peerId
             let items = combineLatest(forwardOptions, strongSelf.context.account.postbox.messagesAtIds(messageIds), messagesCount)
-            |> map { forwardOptions, messages, messagesCount -> [ContextMenuItem] in
+            |> map { [chatController] forwardOptions, messages, messagesCount -> [ContextMenuItem] in
                 var items: [ContextMenuItem] = []
 
                 var hasCaptions = false
@@ -677,6 +678,7 @@ final class PeerSelectionControllerNode: ASDisplayNode {
         }, beginMediaRecording: { _ in
         }, finishMediaRecording: { _ in
         }, stopMediaRecording: {
+        }, stopIncomingStreamingMessage: {
         }, lockMediaRecording: {
         }, resumeMediaRecording: {
         }, deleteRecordedMedia: {
@@ -765,7 +767,7 @@ final class PeerSelectionControllerNode: ASDisplayNode {
             }
 
             let _ = (ChatSendMessageContextScreen.initialData(context: strongSelf.context, currentMessageEffectId: nil)
-            |> deliverOnMainQueue).start(next: { initialData in
+            |> deliverOnMainQueue).start(next: { [controller] initialData in
                 guard let strongSelf = self, let textInputPanelNode = strongSelf.textInputPanelNode else {
                     return
                 }
@@ -1338,7 +1340,7 @@ final class PeerSelectionControllerNode: ASDisplayNode {
             contactListNode.bounds = CGRect(x: 0.0, y: 0.0, width: layout.size.width, height: layout.size.height)
             contactListNode.position = CGPoint(x: layout.size.width / 2.0, y: layout.size.height / 2.0)
 
-            contactListNode.containerLayoutUpdated(ContainerViewLayout(size: layout.size, metrics: layout.metrics, deviceMetrics: layout.deviceMetrics, intrinsicInsets: insets, safeInsets: layout.safeInsets, additionalInsets: layout.additionalInsets, statusBarHeight: layout.statusBarHeight, inputHeight: layout.inputHeight, inputHeightIsInteractivellyChanging: layout.inputHeightIsInteractivellyChanging, inVoiceOver: layout.inVoiceOver), headerInsets: headerInsets, storiesInset: 0.0, transition: transition)
+            contactListNode.containerLayoutUpdated(ContainerViewLayout(size: layout.size, metrics: layout.metrics, deviceMetrics: layout.deviceMetrics, intrinsicInsets: insets, safeInsets: layout.safeInsets, additionalInsets: layout.additionalInsets, statusBarHeight: layout.statusBarHeight, inputHeight: layout.inputHeight, inputHeightIsInteractivellyChanging: layout.inputHeightIsInteractivellyChanging, inVoiceOver: layout.inVoiceOver, presentedInFormSheet: layout.presentedInFormSheet), headerInsets: headerInsets, storiesInset: 0.0, transition: transition)
         }
 
         if let searchDisplayController = self.searchDisplayController {

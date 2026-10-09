@@ -7,8 +7,8 @@ open class HighlightableButton: HighlightTrackingButton {
     override public init(frame: CGRect) {
         super.init(frame: frame)
         
-        // MARK: NAGRAM — Preserve the original image behavior through a narrowly suppressed ObjC helper.
-        disableAutomaticButtonImageAdjustment(self)
+        self.legacyAdjustsImageWhenHighlighted = false
+        self.legacyAdjustsImageWhenDisabled = false
         self.internalHighligthedChanged = { [weak self] highlighted in
             if let strongSelf = self {
                 if highlighted {

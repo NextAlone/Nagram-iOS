@@ -286,6 +286,10 @@ public final class AsyncListComponent: Component {
     }
     
     private final class ListItemImpl: ListViewItem {
+        var neighborDescriptor: AnyEquatable {
+            return AnyEquatable.noNeighborInfluence
+        }
+
         weak var parentView: AsyncListComponent.View?
         let contents: AnyComponentWithIdentity<Empty>
         let direction: Direction
@@ -302,8 +306,7 @@ public final class AsyncListComponent: Component {
             async: @escaping (@escaping () -> Void) -> Void,
             params: ListViewItemLayoutParams,
             synchronousLoads: Bool,
-            previousItem: ListViewItem?,
-            nextItem: ListViewItem?,
+            neighbors: ListViewItemNeighbors,
             completion: @escaping (ListViewItemNode, @escaping () -> (Signal<Void, NoError>?, (ListViewItemApply) -> Void)) -> Void
         ) {
             async {
@@ -333,7 +336,7 @@ public final class AsyncListComponent: Component {
             }
         }
         
-        public func updateNode(async: @escaping (@escaping () -> Void) -> Void, node: @escaping () -> ListViewItemNode, params: ListViewItemLayoutParams, previousItem: ListViewItem?, nextItem: ListViewItem?, animation: ListViewItemUpdateAnimation, completion: @escaping (ListViewItemNodeLayout, @escaping (ListViewItemApply) -> Void) -> Void) {
+        public func updateNode(async: @escaping (@escaping () -> Void) -> Void, node: @escaping () -> ListViewItemNode, params: ListViewItemLayoutParams, neighbors: ListViewItemNeighbors, animation: ListViewItemUpdateAnimation, completion: @escaping (ListViewItemNodeLayout, @escaping (ListViewItemApply) -> Void) -> Void) {
             Queue.mainQueue().async {
                 assert(node() is ListItemNodeImpl)
                 if let nodeValue = node() as? ListItemNodeImpl {

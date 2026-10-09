@@ -6,6 +6,7 @@ import LegacyComponents
 import TelegramCore
 import LottieAnimationComponent
 import MediaEditor
+import UIKitRuntimeUtils
 
 enum DrawingTextStyle: Equatable {
     case regular
@@ -254,8 +255,7 @@ final class TextFontComponent: Component {
             self.button.clipsToBounds = true
             self.button.setTitle(value.title, for: .normal)
             self.button.titleLabel?.font = value.uiFont(size: 13.0)
-            // MARK: NAGRAM
-            self.button.titleLabel?.transform = CGAffineTransform(translationX: -10.0, y: 0.0)
+            self.button.legacyContentEdgeInsets = UIEdgeInsets(top: 0.0, left: 0.0, bottom: 0.0, right: 20.0)
             var buttonSize = self.button.sizeThatFits(availableSize)
             buttonSize.width += 20.0
             buttonSize.height = 30.0

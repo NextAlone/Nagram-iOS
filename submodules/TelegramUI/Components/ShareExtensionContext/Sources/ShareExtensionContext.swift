@@ -2,6 +2,7 @@ import UIKit
 import AsyncDisplayKit
 import Display
 import TelegramCore
+import PasscodeCore
 import SwiftSignalKit
 import Postbox
 import TelegramPresentationData
@@ -13,10 +14,11 @@ import PeerInfoUI
 import ShareItems
 import ShareItemsImpl
 import SettingsUI
+import PasscodeUI
 import OpenSSLEncryptionProvider
 import AppLock
 import Intents
-import MobileCoreServices
+import UniformTypeIdentifiers
 import OverlayStatusController
 import PresentationDataUtils
 import ChatImportUI
@@ -217,8 +219,10 @@ public class ShareRootControllerImpl {
     private var mainWindow: Window1?
     private var currentShareController: ShareController?
     private var currentPasscodeController: ViewController?
+    private var isDismissed = false
     
     private let disposable = MetaDisposable()
+    private let passcodeDisposable = MetaDisposable()
     private var observer1: AnyObject?
     private var observer2: AnyObject?
     
@@ -249,6 +253,7 @@ public class ShareRootControllerImpl {
     
     deinit {
         self.disposable.dispose()
+        self.passcodeDisposable.dispose()
         if let observer = self.observer1 {
             NotificationCenter.default.removeObserver(observer)
         }
@@ -265,7 +270,11 @@ public class ShareRootControllerImpl {
     }
     
     public func viewWillDisappear() {
+        self.isDismissed = true
         self.disposable.dispose()
+        self.passcodeDisposable.dispose()
+        self.currentPasscodeController?.dismiss()
+        self.currentPasscodeController = nil
     }
     
     public func viewDidLayoutSubviews(view: UIView, traitCollection: UITraitCollection) {
@@ -320,7 +329,7 @@ public class ShareRootControllerImpl {
             }, forceOrientation: { _ in
             })
             
-            let accountManager = AccountManager<TelegramAccountManagerTypes>(basePath: rootPath + "/accounts-metadata", isTemporary: true, isReadOnly: false, useCaches: false, removeDatabaseOnError: false)
+            let accountManager: AccountManager<TelegramAccountManagerTypes> = setupAccountManager(basePath: rootPath + "/accounts-metadata", isTemporary: true, isReadOnly: false, useCaches: false, removeDatabaseOnError: false)
             initializeAccountManagement()
             
             do {
@@ -652,9 +661,9 @@ public class ShareRootControllerImpl {
                         var canSendInHighQuality = false
                         if let inputItems = self?.getExtensionContext()?.inputItems, inputItems.count == 1, let item = inputItems[0] as? NSExtensionItem, let attachments = item.attachments {
                             for attachment in attachments {
-                                if attachment.hasItemConformingToTypeIdentifier(kUTTypeImage as String) {
+                                if attachment.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
                                     canSendInHighQuality = true
-                                } else if attachment.hasItemConformingToTypeIdentifier(kUTTypeMovie as String) {
+                                } else if attachment.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
                                 } else {
                                     canShareToStory = false
                                 }
@@ -678,9 +687,9 @@ public class ShareRootControllerImpl {
                                     
                                     for attachment in attachments {
                                         let fileIndex = index
-                                        if attachment.hasItemConformingToTypeIdentifier(kUTTypeImage as String) {
+                                        if attachment.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
                                             dispatchGroup.enter()
-                                            attachment.loadFileRepresentation(forTypeIdentifier: kUTTypeImage as String, completionHandler: { url, _ in
+                                            attachment.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier, completionHandler: { url, _ in
                                                 if let url, let imageData = try? Data(contentsOf: url) {
                                                     let filePath = storiesPath + "/\(fileIndex).jpg"
                                                     try? FileManager.default.removeItem(atPath: filePath)
@@ -693,9 +702,9 @@ public class ShareRootControllerImpl {
                                                 }
                                                 dispatchGroup.leave()
                                             })
-                                        } else if attachment.hasItemConformingToTypeIdentifier(kUTTypeMovie as String) {
+                                        } else if attachment.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
                                             dispatchGroup.enter()
-                                            attachment.loadFileRepresentation(forTypeIdentifier: kUTTypeMovie as String, completionHandler: { url, _ in
+                                            attachment.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier, completionHandler: { url, _ in
                                                 if let url {
                                                     let filePath = storiesPath + "/\(fileIndex).mp4"
                                                     try? FileManager.default.removeItem(atPath: filePath)
@@ -730,7 +739,8 @@ public class ShareRootControllerImpl {
                         }*/
                         
                         cancelImpl = { [weak shareController] in
-                            shareController?.dismiss(completion: { [weak self] in
+                            let controller: ViewController? = shareController
+                            controller?.dismiss(completion: { [weak self] in
                                 //inForeground.set(false)
                                 self?.getExtensionContext()?.completeRequest(returningItems: nil, completionHandler: nil)
                             })
@@ -750,8 +760,8 @@ public class ShareRootControllerImpl {
                     
                     if let strongSelf = self, let inputItems = strongSelf.getExtensionContext()?.inputItems, inputItems.count == 1, let item = inputItems[0] as? NSExtensionItem, let attachments = item.attachments {
                         for attachment in attachments {
-                            if attachment.hasItemConformingToTypeIdentifier(kUTTypeFileURL as String) {
-                                attachment.loadItem(forTypeIdentifier: kUTTypeFileURL as String, completionHandler: { result, error in
+                            if attachment.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                                attachment.loadItem(forTypeIdentifier: UTType.fileURL.identifier, completionHandler: { result, error in
                                     Queue.mainQueue().async {
                                         guard let url = result as? URL, url.isFileURL else {
                                             beginShare()
@@ -948,7 +958,7 @@ public class ShareRootControllerImpl {
                     modalPresentation = false
                 }
                 
-                let _ = passcodeEntryController(
+                self?.passcodeDisposable.set(passcodeEntryController(
                     accountManager: accountManager,
                     applicationBindings: applicationBindings,
                     presentationData: environment.presentationData,
@@ -957,18 +967,19 @@ public class ShareRootControllerImpl {
                     appLockContext: appLockContext,
                     animateIn: true,
                     modalPresentation: modalPresentation,
-                    completion: { value in
+                    completion: { [weak self] value in
+                        guard let self, !self.isDismissed else { return }
                         if value {
                             displayShare()
                         } else {
-                            Queue.mainQueue().after(0.5, {
+                            Queue.mainQueue().after(0.5, { [weak self] in
                                 //inForeground.set(false)
                                 self?.getExtensionContext()?.completeRequest(returningItems: nil, completionHandler: nil)
                             })
                         }
                     }
                 ).start(next: { controller in
-                    guard let strongSelf = self, let controller = controller else {
+                    guard let strongSelf = self, !strongSelf.isDismissed, let controller = controller else {
                         return
                     }
                     
@@ -977,7 +988,7 @@ public class ShareRootControllerImpl {
                     }
                     strongSelf.currentPasscodeController = controller
                     strongSelf.mainWindow?.present(controller, on: .root)
-                })
+                }))
             }
             
             self.disposable.set(applicationInterface.start(next: { _, _, _, _ in }, error: { [weak self] error in
@@ -1020,7 +1031,7 @@ private func attemptChatImport(
         initialPresentationDataAndSettings,
         networkInitializationArguments
     )
-    |> deliverOnMainQueue).start(next: { context in
+    |> deliverOnMainQueue).start(next: { [mainWindow] context in
         context.account.resetStateManagement()
         context.account.shouldBeServiceTaskMaster.set(.single(.now))
         

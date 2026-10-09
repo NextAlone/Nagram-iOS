@@ -292,6 +292,7 @@ open class TabBarControllerImpl: ViewController, TabBarController {
             currentController.willMove(toParent: nil)
             currentController.tabBarSearchStateUpdated = nil
             currentController.currentTabBarSearchNode = nil
+            currentController.nagramCanActivateTabBarSearch = nil // MARK: NAGRAM
             
             if animated {
                 currentController.view.layer.animateScale(from: 1.0, to: transitionScale, duration: 0.12, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false, completion: { completed in
@@ -346,6 +347,14 @@ open class TabBarControllerImpl: ViewController, TabBarController {
                     return nil
                 }
                 return self.tabBarControllerNode.currentSearchNode
+            }
+
+            // MARK: NAGRAM
+            currentController.nagramCanActivateTabBarSearch = { [weak self] in
+                guard let self else {
+                    return false
+                }
+                return self.validLayout != nil && self.tabBarControllerNode.nagramCanActivateSearch
             }
         }
         

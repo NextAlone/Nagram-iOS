@@ -14,7 +14,7 @@
 
 ## UIScene 生命周期
 
-Nagram 的单窗口 scene 入口位于 `Nagram/AppLifecycle/SceneDelegate.swift`，通过 filegroup 编入 `TelegramUI`。`Telegram/BUILD` 和两个应用 plist 都声明了 `NagramSceneDelegate`。
+Nagram 的单窗口 scene 入口位于 `Nagram/AppLifecycle/NagramSceneDelegate.swift`，通过 filegroup 编入 `TelegramUI`。`Telegram/BUILD` 和两个应用 plist 都声明了 `NagramSceneDelegate`。
 
 - `AppDelegate` 在进程启动时初始化账户、推送和后台任务，以及不依赖 `UIWindow` 的展示宿主；后台唤醒不需要先连接 scene。
 - scene 连接时创建 `UIWindow(windowScene:)`；断开时释放窗口，保留账户和展示状态供重连复用。

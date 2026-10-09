@@ -11,7 +11,6 @@ public final class LocationManager: NSObject, CLLocationManagerDelegate {
     }
     
     func requestWhenInUseAuthorization(completion: @escaping (CLAuthorizationStatus) -> Void) {
-        // MARK: NAGRAM — Use the instance property required by modern CoreLocation.
         let status = self.manager.authorizationStatus
         if status == .notDetermined {
             self.manager.requestWhenInUseAuthorization()
@@ -22,7 +21,6 @@ public final class LocationManager: NSObject, CLLocationManagerDelegate {
     }
     
     func requestAlwaysAuthorization(completion: @escaping (CLAuthorizationStatus) -> Void) {
-        // MARK: NAGRAM — Use the instance property required by modern CoreLocation.
         let status = self.manager.authorizationStatus
         if status == .notDetermined {
             self.manager.requestWhenInUseAuthorization()

@@ -13,6 +13,7 @@ swift_library(
         # MARK: NAGRAM — Share failure guidance.
         "//Nagram/Strings:NagramStrings",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
+        "//submodules/LottieSettings:LottieSettings",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/Postbox:Postbox",
         "//submodules/TelegramCore:TelegramCore",

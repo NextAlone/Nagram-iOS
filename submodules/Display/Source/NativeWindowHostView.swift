@@ -87,13 +87,13 @@ private final class WindowRootViewControllerView: UIView {
     }
 }
 
-// MARK: NAGRAM — the scene delegate owns lifecycle; the controller owns presentation.
 private final class WindowRootViewController: UIViewController {
     private var voiceOverStatusObserver: AnyObject?
     private var registeredForPreviewing = false
     
     var presentController: ((UIViewController, PresentationSurfaceLevel, Bool, (() -> Void)?) -> Void)?
     var transitionToSize: ((CGSize, Double, UIInterfaceOrientation) -> Void)?
+    var safeAreaInsetsChanged: (() -> Void)?
     
     private var _systemUserInterfaceStyle = ValuePromise<WindowUserInterfaceStyle>(ignoreRepeated: true)
     var systemUserInterfaceStyle: Signal<WindowUserInterfaceStyle, NoError> {
@@ -196,7 +196,6 @@ private final class WindowRootViewController: UIViewController {
         } else {
             self._systemUserInterfaceStyle.set(.light)
         }
-        // MARK: NAGRAM — do not replace UIKit's configured scene delegate here.
     }
     
     required init?(coder aDecoder: NSCoder) {
@@ -215,6 +214,12 @@ private final class WindowRootViewController: UIViewController {
     
     override var prefersHomeIndicatorAutoHidden: Bool {
         return self.prefersOnScreenNavigationHidden
+    }
+    
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        
+        self.safeAreaInsetsChanged?()
     }
     
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
@@ -249,10 +254,12 @@ private final class NativeWindowEventView: UIView, WindowHost {
     var addGlobalPortalHostViewImpl: ((PortalSourceView) -> Void)?
     var hitTestImpl: ((CGPoint, UIEvent?) -> UIView?)?
     var presentNativeImpl: ((UIViewController) -> Void)?
+    var motionShakeImpl: (() -> Void)?
     var invalidateDeferScreenEdgeGestureImpl: (() -> Void)?
     var invalidatePrefersOnScreenNavigationHiddenImpl: (() -> Void)?
     var invalidateSupportedOrientationsImpl: (() -> Void)?
     var cancelInteractiveKeyboardGesturesImpl: (() -> Void)?
+    var dismissedKeyboardByCurrentGestureImpl: (() -> Bool)?
     var forEachControllerImpl: (((ContainableController) -> Void) -> Void)?
     var getAccessibilityElementsImpl: (() -> [Any]?)?
     
@@ -321,7 +328,7 @@ private final class NativeWindowEventView: UIView, WindowHost {
         }
         self.layoutSubviewsEvent?()
     }
-    
+
     func present(_ controller: ContainableController, on level: PresentationSurfaceLevel, blockInteraction: Bool, completion: @escaping () -> Void) {
         self.presentController?(controller, level, blockInteraction, completion)
     }
@@ -356,6 +363,10 @@ private final class NativeWindowEventView: UIView, WindowHost {
     
     func cancelInteractiveKeyboardGestures() {
         self.cancelInteractiveKeyboardGesturesImpl?()
+    }
+
+    var dismissedKeyboardByCurrentGesture: Bool {
+        return self.dismissedKeyboardByCurrentGestureImpl?() ?? false
     }
     
     func forEachController(_ f: (ContainableController) -> Void) {
@@ -401,6 +412,10 @@ public func nativeWindowHostController() -> (UIViewController, WindowHostView) {
         hostView?.isUpdatingOrientationLayout = false
     }
     
+    rootViewController.safeAreaInsetsChanged = { [weak hostView] in
+        hostView?.updateSystemInsets?()
+    }
+    
     window.updateSize = { [weak hostView, weak window] size in
         guard let window = window else {
             return
@@ -431,7 +446,11 @@ public func nativeWindowHostController() -> (UIViewController, WindowHostView) {
     window.presentNativeImpl = { [weak hostView] controller in
         hostView?.presentNative?(controller)
     }
-    
+
+    window.motionShakeImpl = { [weak hostView] in
+        hostView?.motionShake?()
+    }
+
     hostView.nativeController = { [weak rootViewController] in
         return rootViewController
     }
@@ -454,6 +473,10 @@ public func nativeWindowHostController() -> (UIViewController, WindowHostView) {
     
     window.cancelInteractiveKeyboardGesturesImpl = { [weak hostView] in
         hostView?.cancelInteractiveKeyboardGestures?()
+    }
+
+    window.dismissedKeyboardByCurrentGestureImpl = { [weak hostView] in
+        return hostView?.dismissedKeyboardByCurrentGesture?() ?? false
     }
     
     window.forEachControllerImpl = { [weak hostView] f in
@@ -490,6 +513,16 @@ private final class NativeSceneWindow: UIWindow, WindowHost {
     func invalidatePrefersOnScreenNavigationHidden() { self.host.invalidatePrefersOnScreenNavigationHidden() }
     func invalidateSupportedOrientations() { self.host.invalidateSupportedOrientations() }
     func cancelInteractiveKeyboardGestures() { self.host.cancelInteractiveKeyboardGestures() }
+    var dismissedKeyboardByCurrentGesture: Bool { return self.host.dismissedKeyboardByCurrentGesture }
+
+    // MARK: NAGRAM — the scene window is the UIWindow responder; forward shakes to the event host.
+    override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+        super.motionEnded(motion, with: event)
+
+        if motion == .motionShake {
+            (self.rootViewController?.view as? NativeWindowEventView)?.motionShakeImpl?()
+        }
+    }
 }
 
 public func nativeWindow(scene: UIWindowScene, rootController: UIViewController) -> UIWindow & WindowHost {

@@ -54,6 +54,18 @@ public enum LegacyICloudFilePickerMode {
     case `default`
     case `import`
     case `export`
+    
+    /// iOS 14 replaced `UIDocumentPickerMode` with an `asCopy` flag on the opening/exporting
+    /// initializers: the old `.open` is `asCopy: false`, while `.import` and `.exportToService`
+    /// are both `asCopy: true`.
+    var asCopy: Bool {
+        switch self {
+        case .default:
+            return false
+        case .import, .export:
+            return true
+        }
+    }
 }
 
 public func legacyICloudFilePicker(theme: PresentationTheme, mode: LegacyICloudFilePickerMode = .default, hasMultiselection: Bool = false, url: URL? = nil, documentTypes: [String] = ["public.item"], forceDarkTheme: Bool = false, dismissed: @escaping () -> Void = {}, completion: @escaping ([URL]) -> Void) -> ViewController {
@@ -65,12 +77,15 @@ public func legacyICloudFilePicker(theme: PresentationTheme, mode: LegacyICloudF
     legacyController.statusBar.statusBarStyle = .Black
     
     let controller: DocumentPickerViewController
-    // MARK: NAGRAM
     if case .export = mode, let url {
         controller = DocumentPickerViewController(forExporting: [url], asCopy: true)
     } else {
-        let contentTypes = documentTypes.compactMap(UTType.init)
-        controller = DocumentPickerViewController(forOpeningContentTypes: contentTypes.isEmpty ? [.item] : contentTypes, asCopy: mode == .import)
+        // The old `documentTypes:` initializer took raw UTI strings, so identifiers the system does
+        // not know (e.g. "org.xiph.flac", which the app does not declare) must not be dropped --
+        // dropping them would silently make those files unselectable, and dropping all of them would
+        // silently widen the picker to every file.
+        let contentTypes = documentTypes.map { UTType($0) ?? UTType(importedAs: $0) }
+        controller = DocumentPickerViewController(forOpeningContentTypes: contentTypes, asCopy: mode.asCopy)
     }
     controller.forceDarkTheme = forceDarkTheme || theme.overallDarkAppearance
     controller.didDisappear = {

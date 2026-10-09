@@ -731,10 +731,8 @@ public final class MediaStreamVideoComponent: Component {
                 videoBlurView?.alpha = 0
             }
             // TODO: assure player window
-            // MARK: NAGRAM
-            let pipWindow = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows).first
-            pipWindow?.layer.cornerRadius = 10.0
-            pipWindow?.layer.masksToBounds = true
+            UIApplication.shared.allWindowSceneWindows.first?.layer.cornerRadius = 10.0
+            UIApplication.shared.allWindowSceneWindows.first?.layer.masksToBounds = true
             
             self.pipTrackDisplayLink?.invalidate()
             self.pipTrackDisplayLink = CADisplayLink(target: self, selector: #selector(observePiPWindow))
@@ -742,9 +740,7 @@ public final class MediaStreamVideoComponent: Component {
         }
         
         @objc func observePiPWindow() {
-            // MARK: NAGRAM
-            let pipWindow = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows).first
-            let pipViewDidBecomeVisible = (pipWindow?.layer.animationKeys()?.count ?? 0) > 0
+            let pipViewDidBecomeVisible = (UIApplication.shared.allWindowSceneWindows.first?.layer.animationKeys()?.count ?? 0) > 0
             if pipViewDidBecomeVisible {
                 lastPresentation?.removeFromSuperview()
                 lastPresentation = nil

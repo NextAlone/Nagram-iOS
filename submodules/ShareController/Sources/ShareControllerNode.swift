@@ -1,4 +1,5 @@
 import Foundation
+import LottieSettings
 // MARK: NAGRAM
 import NagramStrings
 import UIKit
@@ -277,8 +278,9 @@ private final class ShareContentInfoView: UIView {
         let iconSize = self.icon.update(
             transition: .immediate,
             component: AnyComponent(LottieComponent(
-                content: LottieComponent.AppBundleContent(name: "ToastCollectibleUsernameEmoji"),
-                loop: false
+                content: LottieComponent.AppBundleContent(name: "anim_collectible_username"),
+                loop: false,
+                lottieSettings: .noAccountFallback
             )),
             environment: {},
             containerSize: CGSize(width: 30.0, height: 30.0)
@@ -1193,7 +1195,7 @@ final class ShareControllerNode: ViewControllerTracingNode, ASScrollViewDelegate
         }
         
         if let topicsContentNode = self.topicsContentNode {
-            let topicsTitleAreaHeight: CGFloat = 64.0
+            let topicsTitleAreaHeight: CGFloat = 64.0 // MARK: NAGRAM
             let topicsContentSize = CGSize(width: contentFrame.size.width, height: max(32.0, contentFrame.size.height - topicsTitleAreaHeight))
             transition.updateFrame(node: topicsContentNode, frame: CGRect(origin: CGPoint(x: floor((contentContainerFrame.size.width - contentFrame.size.width) / 2.0), y: topicsTitleAreaHeight), size: topicsContentSize))
             
@@ -1211,7 +1213,8 @@ final class ShareControllerNode: ViewControllerTracingNode, ASScrollViewDelegate
                 statusBarHeight: nil,
                 inputHeight: nil,
                 inputHeightIsInteractivellyChanging: false,
-                inVoiceOver: false
+                inVoiceOver: false,
+                presentedInFormSheet: false
             )
             controller.presentationContext.containerLayoutUpdated(subLayout, transition: transition)
         }

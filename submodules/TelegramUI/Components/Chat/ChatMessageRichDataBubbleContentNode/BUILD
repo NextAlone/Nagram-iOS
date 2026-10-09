@@ -10,11 +10,15 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//Nagram/Settings:NagramSettings", # MARK: NAGRAM
         "//submodules/AsyncDisplayKit",
+        "//submodules/LottieSettings:LottieSettings",
         "//submodules/Display",
         "//submodules/TelegramCore",
+        "//submodules/TelegramPresentationData",
         "//submodules/SSignalKit/SwiftSignalKit",
         "//submodules/AccountContext",
+        "//submodules/WalletContext",
         "//submodules/InstantPageUI",
         "//submodules/TextFormat:TextFormat",
         "//submodules/TelegramUI/Components/Chat/ChatMessageBubbleContentNode",

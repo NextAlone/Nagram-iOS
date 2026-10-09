@@ -87,22 +87,6 @@
     }
 }
 
-// MARK: NAGRAM
-// _disposable is written under _lock by _assignDisposable: and _markTerminatedWithoutDisposal, but putError:,
-// putCompletion and dispose used to message and clear the ivar without it. A producer thread finishing while the
-// consumer disposes the subscription then messaged a disposable the other thread had just released (and both
-// stored into the ivar), which crashed in objc_release / objc_loadWeakRetained inside the dispose chain.
-// Detach the disposable atomically; the returned strong reference keeps it alive while it is disposed.
-- (id<SDisposable>)_takeDisposable
-{
-    id<SDisposable> disposable = nil;
-    os_unfair_lock_lock(&_lock);
-    disposable = _disposable;
-    _disposable = nil;
-    os_unfair_lock_unlock(&_lock);
-    return disposable;
-}
-
 - (void)putNext:(id)next
 {
     SSubscriberBlocks *blocks = nil;
@@ -120,7 +104,7 @@
 
 - (void)putError:(id)error
 {
-    bool shouldDispose = false;
+    id<SDisposable> disposable = nil;
     SSubscriberBlocks *blocks = nil;
     
     os_unfair_lock_lock(&_lock);
@@ -129,7 +113,8 @@
         blocks = _blocks;
         _blocks = nil;
         
-        shouldDispose = true;
+        disposable = _disposable;
+        _disposable = nil;
         _terminated = true;
     }
     os_unfair_lock_unlock(&_lock);
@@ -138,14 +123,12 @@
         blocks->_error(error);
     }
     
-    if (shouldDispose) {
-        [[self _takeDisposable] dispose];
-    }
+    [disposable dispose];
 }
 
 - (void)putCompletion
 {
-    bool shouldDispose = false;
+    id<SDisposable> disposable = nil;
     SSubscriberBlocks *blocks = nil;
     
     os_unfair_lock_lock(&_lock);
@@ -154,7 +137,8 @@
         blocks = _blocks;
         _blocks = nil;
         
-        shouldDispose = true;
+        disposable = _disposable;
+        _disposable = nil;
         _terminated = true;
     }
     os_unfair_lock_unlock(&_lock);
@@ -162,14 +146,18 @@
     if (blocks && blocks->_completed)
         blocks->_completed();
     
-    if (shouldDispose) {
-        [[self _takeDisposable] dispose];
-    }
+    [disposable dispose];
 }
 
 - (void)dispose
 {
-    [[self _takeDisposable] dispose];
+    id<SDisposable> disposable = nil;
+    os_unfair_lock_lock(&_lock);
+    disposable = _disposable;
+    _disposable = nil;
+    os_unfair_lock_unlock(&_lock);
+
+    [disposable dispose];
 }
 
 @end

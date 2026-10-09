@@ -12,7 +12,9 @@ swift_library(
     deps = [
         # MARK: NAGRAM
         "//Nagram/Settings:NagramSettings",
+        "//submodules/UrlWhitelist",
         "//submodules/Display",
+        "//submodules/LottieSettings:LottieSettings",
         "//submodules/AsyncDisplayKit",
         "//submodules/ComponentFlow",
         "//submodules/Components/ViewControllerComponent",
