@@ -1,6 +1,10 @@
 name: TestFlight (Nagram)
 
-# Signed release_arm64 build; manual runs publish only when requested.
+# Signed release_arm64 build. A push to release publishes it, a manual run
+# publishes only when requested. A push to main is a test of the same build:
+# nothing is published, the run keeps the IPA, without its signature, as the
+# artifact Nagram-unsigned-<build number> and posts it to the assets channel
+# with the commits of the push.
 # Runs on GitHub-hosted xcode-27 (Apple Silicon, macOS 27, iOS 27 SDK).
 #
 # Required repository secrets:
@@ -10,6 +14,15 @@ name: TestFlight (Nagram)
 #   ASC_KEY_P8_BASE64                   - base64 of AuthKey_<ASC_KEY_ID>.p8
 #   DIST_CERT_P12_BASE64                - base64 of the Apple Distribution (Kitta) cert+key .p12
 #   DIST_CERT_PASSWORD                  - password for that .p12
+#
+# A build that goes to TestFlight is also published as the GitHub release
+# v<app version>-<build number> and posted to the Telegram channels, with the
+# notes in docs/nagram/releases/<app version>.md. The post needs the secret
+# NAGRAM_CHANNEL_BOT_TOKEN and the variables NAGRAM_CHANNEL_ASSETS_CHAT_ID
+# (gets the files), NAGRAM_CHANNEL_CHAT_ID (gets a copy of the post); nothing
+# is posted while they are missing. Its Bot API server runs with
+# TELEGRAM_API_ID and TELEGRAM_API_HASH, which the build needs anyway. The variable
+# NAGRAM_TESTFLIGHT_URL, the public TestFlight link, adds a button to the post.
 #
 # Make the cert .p12:  security export is not enough — export from Keychain Access
 # (Apple Distribution: Kitta Ltd, "Export... .p12"), then: base64 -i dist.p12 | pbcopy
@@ -22,16 +35,21 @@ on:
         type: boolean
         default: false
   push:
-    branches: [ "release" ]
+    branches: [ "release", "main" ]
 
 concurrency:
   group: testflight-${{ github.ref }}
-  cancel-in-progress: false
+  # A newer push to main replaces the test of the older one; a release is never cancelled.
+  cancel-in-progress: ${{ github.ref == 'refs/heads/main' }}
 
 jobs:
   build-upload:
     runs-on: xcode-27
     timeout-minutes: 180
+    outputs:
+      version: ${{ steps.channel.outputs.version }}
+      build: ${{ steps.channel.outputs.build }}
+      min_os: ${{ steps.channel.outputs.min_os }}
     env:
       LANG: en_US.UTF-8
       LC_ALL: en_US.UTF-8
@@ -50,6 +68,24 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      # The channel post of a release needs its notes; a release without them
+      # stops here instead of after the build.
+      - name: Check the release notes
+        run: |
+          set -euo pipefail
+          APP_VERSION="$(python3 -c 'import json; print(json.load(open("versions.json"))["app"])')"
+          echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
+          if [ "$PUBLISH" != "true" ]; then
+            exit 0
+          fi
+          NOTES="docs/nagram/releases/$APP_VERSION.md"
+          if [ ! -f "$NOTES" ]; then
+            echo "::error::$NOTES is missing, write the notes of $APP_VERSION before releasing it."
+            exit 1
+          fi
+        env:
+          PUBLISH: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/release') || inputs.publish }}
 
       - name: Select pinned Xcode
         id: xcode
@@ -242,6 +278,8 @@ jobs:
           RC
 
       - name: Generate App Store provisioning profiles
+        env:
+          TEST_BUILD: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -254,10 +292,17 @@ jobs:
           chmod 600 /tmp/asc_key.json
           mkdir -p build-input/codesigning/profiles
 
+          # A test build of main takes the profiles as they are: renewing them
+          # on every push could replace a profile under a release that is building.
+          FORCE="--force"
+          if [ "$TEST_BUILD" = "true" ]; then
+            FORCE=""
+          fi
           while IFS=: read -r suffix filename; do
             identifier="${BUNDLE_ID}${suffix}"
+            # shellcheck disable=SC2086
             fastlane sigh --api_key_path /tmp/asc_key.json --app_identifier "$identifier" \
-              --platform ios --force \
+              --platform ios $FORCE \
               --output_path build-input/codesigning/profiles --filename "$filename"
           done <<'PROFILES'
           :Telegram.mobileprovision
@@ -290,6 +335,7 @@ jobs:
 
       # Uploaded before the TestFlight step so the IPA and dSYMs survive an upload failure.
       - name: Upload IPA and dSYMs
+        if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
         uses: actions/upload-artifact@v4
         with:
           name: Nagram-${{ env.BUILD_NUMBER }}
@@ -299,6 +345,7 @@ jobs:
           if-no-files-found: error
 
       - name: Save signed IPA
+        if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
         uses: actions/upload-artifact@v4
         with:
           name: Nagram-${{ env.BUILD_NUMBER }}-Xcode-27
@@ -307,7 +354,7 @@ jobs:
           retention-days: 7
 
       - name: Upload to TestFlight
-        if: github.event_name == 'push' || inputs.publish
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/release') || inputs.publish
         env:
           USES_NON_EXEMPT_ENCRYPTION: ${{ vars.USES_NON_EXEMPT_ENCRYPTION || 'false' }}
         run: |
@@ -332,8 +379,47 @@ jobs:
             --uses_non_exempt_encryption "$USES_NON_EXEMPT_ENCRYPTION"
           rm -f /tmp/asc_key.json
 
+      # The IPA is handed on without the App Store signature, which is of no
+      # use outside TestFlight: whoever installs it signs it anew. A release
+      # posts it to the channel, a test of main keeps it as an artifact.
+      - name: Remove the signature
+        id: channel
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/channel"
+          MIN_OS="$(scripts/ci-unsigned-ipa.sh bazel-bin/Telegram/Telegram.ipa \
+            "$RUNNER_TEMP/channel/Nagram-$APP_VERSION-$BUILD_NUMBER.ipa")"
+          ls -l "$RUNNER_TEMP/channel"
+          # The dSYMs go to the GitHub release only, so they are kept apart
+          # from the directory that is posted to the channel.
+          mkdir -p "$RUNNER_TEMP/dsyms"
+          cp build/artifacts/Telegram.DSYMs.zip \
+            "$RUNNER_TEMP/dsyms/Nagram-$APP_VERSION-$BUILD_NUMBER.DSYMs.zip"
+          {
+            echo "version=$APP_VERSION"
+            echo "build=$BUILD_NUMBER"
+            echo "min_os=$MIN_OS"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Save the unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nagram-unsigned-${{ env.BUILD_NUMBER }}
+          path: ${{ runner.temp }}/channel/*.ipa
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Save the dSYMs for the release
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/release') || inputs.publish
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nagram-dsyms-${{ env.BUILD_NUMBER }}
+          path: ${{ runner.temp }}/dsyms/*.zip
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Distribute to external TestFlight group
-        if: github.event_name == 'push' || inputs.publish
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/release') || inputs.publish
         env:
           # Repository VARIABLES (Settings -> Secrets and variables -> Actions -> Variables):
           #   TESTFLIGHT_GROUPS  - optional name of the EXTERNAL group in App Store Connect
@@ -416,3 +502,225 @@ jobs:
           else:
               print(f"ERROR distributing: {s} {r.get('_body','')}", file=sys.stderr); sys.exit(1)
           PY
+
+  release:
+    name: GitHub Release
+    needs: build-upload
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/release') || inputs.publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.build-upload.outputs.version }}
+      BUILD: ${{ needs.build-upload.outputs.build }}
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          sparse-checkout: docs/nagram/releases
+
+      - name: Download the IPA
+        uses: actions/download-artifact@v4
+        with:
+          name: Nagram-unsigned-${{ env.BUILD }}
+          path: ${{ runner.temp }}/release
+
+      - name: Download the dSYMs
+        uses: actions/download-artifact@v4
+        with:
+          name: Nagram-dsyms-${{ env.BUILD }}
+          path: ${{ runner.temp }}/release
+
+      - name: Publish
+        run: |
+          set -euo pipefail
+          TAG="v$VERSION-$BUILD"
+          IPA="$RUNNER_TEMP/release/Nagram-$VERSION-$BUILD.ipa"
+          DSYMS="$RUNNER_TEMP/release/Nagram-$VERSION-$BUILD.DSYMs.zip"
+          test -f "$IPA"
+          test -f "$DSYMS"
+          NOTES="docs/nagram/releases/$VERSION.md"
+          test -f "$NOTES"
+          # A run that is started again finds its release and replaces the files.
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$TAG" "$IPA" "$DSYMS" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "$IPA" "$DSYMS" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "Nagram iOS $VERSION ($BUILD)" \
+              --notes-file "$NOTES"
+          fi
+
+  # The Bot API server of the action runs on ubuntu-24.04 only, so the IPA
+  # comes here as an artifact of the macOS job.
+  channel:
+    name: Channel
+    needs: [build-upload, release]
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/release') || inputs.publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      BOT_TOKEN: ${{ secrets.NAGRAM_CHANNEL_BOT_TOKEN }}
+      ASSETS_CHAT_ID: ${{ vars.NAGRAM_CHANNEL_ASSETS_CHAT_ID }}
+      OFFICIAL_CHAT_ID: ${{ vars.NAGRAM_CHANNEL_CHAT_ID }}
+      TESTFLIGHT_URL: ${{ vars.NAGRAM_TESTFLIGHT_URL }}
+      VERSION: ${{ needs.build-upload.outputs.version }}
+      BUILD: ${{ needs.build-upload.outputs.build }}
+
+    steps:
+      - name: Check the configuration
+        id: configuration
+        run: |
+          if [ -z "$BOT_TOKEN" ] || [ -z "$ASSETS_CHAT_ID$OFFICIAL_CHAT_ID" ]; then
+            echo "::notice::NAGRAM_CHANNEL_BOT_TOKEN or both channels are not set, nothing is posted."
+            exit 0
+          fi
+          # The files are sent to the assets channel and the official one
+          # gets a copy of the post; with one channel set, it gets the post.
+          CHAT_ID="${ASSETS_CHAT_ID:-$OFFICIAL_CHAT_ID}"
+          COPY_TO=""
+          if [ -n "$ASSETS_CHAT_ID" ] && [ "$OFFICIAL_CHAT_ID" != "$ASSETS_CHAT_ID" ]; then
+            COPY_TO="$OFFICIAL_CHAT_ID"
+          fi
+          {
+            echo "chat=$CHAT_ID"
+            echo "copy=$COPY_TO"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Clone
+        if: steps.configuration.outputs.chat != ''
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          sparse-checkout: docs/nagram/releases
+
+      - name: Download the IPA
+        if: steps.configuration.outputs.chat != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: Nagram-unsigned-${{ env.BUILD }}
+          path: ${{ runner.temp }}/channel
+
+      - name: Describe the post
+        id: post
+        if: steps.configuration.outputs.chat != ''
+        run: |
+          set -euo pipefail
+          ls -l "$RUNNER_TEMP/channel"
+          test -f "$RUNNER_TEMP/channel/Nagram-$VERSION-$BUILD.ipa"
+          NOTES="docs/nagram/releases/$VERSION.md"
+          test -f "$NOTES"
+          # English notes are optional and are folded under the others.
+          NOTES_EN="docs/nagram/releases/$VERSION.en.md"
+          if [ ! -f "$NOTES_EN" ]; then
+            NOTES_EN=""
+          fi
+          {
+            echo "notes=$NOTES"
+            echo "notes_en=$NOTES_EN"
+            echo "buttons<<BUTTONS"
+            RELEASE="GitHub Release=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/v$VERSION-$BUILD"
+            if [ -n "$TESTFLIGHT_URL" ]; then
+              echo "*TestFlight=$TESTFLIGHT_URL | $RELEASE"
+            else
+              echo "*$RELEASE"
+            fi
+            echo "问题反馈=https://t.me/OrIssuesBot | Assets={post}"
+            echo "BUTTONS"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post to the channels
+        if: steps.configuration.outputs.chat != ''
+        uses: NextAlone/NagramActionRelated/channel-publish@2b74e4cd4e3c89fcc9d50095c039e467c674661f
+        with:
+          bot-token: ${{ secrets.NAGRAM_CHANNEL_BOT_TOKEN }}
+          api-id: ${{ secrets.TELEGRAM_API_ID }}
+          api-hash: ${{ secrets.TELEGRAM_API_HASH }}
+          chat-id: ${{ steps.configuration.outputs.chat }}
+          copy-to: ${{ steps.configuration.outputs.copy }}
+          directory: ${{ runner.temp }}/channel
+          title: Nagram iOS
+          version: ${{ env.VERSION }}
+          build: ${{ env.BUILD }}
+          hashtags: ios release
+          notes-file: ${{ steps.post.outputs.notes }}
+          notes-en-file: ${{ steps.post.outputs.notes_en }}
+          # The notes name these sections the same way in every release.
+          fold-sections: |
+            上游
+            安装
+          files-title: 下载
+          files: |
+            *.ipa | 未签名 IPA · iOS ${{ needs.build-upload.outputs.min_os }} 及以上
+          buttons: ${{ steps.post.outputs.buttons }}
+
+  # A test build of main goes to the assets channel only, with the commits of
+  # the push instead of release notes.
+  channel-test:
+    name: Channel (test build)
+    needs: build-upload
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      BOT_TOKEN: ${{ secrets.NAGRAM_CHANNEL_BOT_TOKEN }}
+      CHAT_ID: ${{ vars.NAGRAM_CHANNEL_ASSETS_CHAT_ID }}
+      VERSION: ${{ needs.build-upload.outputs.version }}
+      BUILD: ${{ needs.build-upload.outputs.build }}
+
+    steps:
+      - name: Check the configuration
+        id: configuration
+        run: |
+          if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then
+            echo "::notice::NAGRAM_CHANNEL_BOT_TOKEN or NAGRAM_CHANNEL_ASSETS_CHAT_ID is not set, nothing is posted to the channel."
+            exit 0
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Download the IPA
+        if: steps.configuration.outputs.ready == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: Nagram-unsigned-${{ env.BUILD }}
+          path: ${{ runner.temp }}/channel
+
+      - name: Describe the post
+        id: post
+        if: steps.configuration.outputs.ready == 'true'
+        env:
+          COMMITS: ${{ toJSON(github.event.commits) }}
+        run: |
+          set -euo pipefail
+          # Test builds of one release share a build number, the commit tells them apart.
+          COMMIT="${GITHUB_SHA::7}"
+          mv "$RUNNER_TEMP/channel/Nagram-$VERSION-$BUILD.ipa" \
+            "$RUNNER_TEMP/channel/Nagram-$VERSION-$BUILD-$COMMIT.ipa"
+          ls -l "$RUNNER_TEMP/channel"
+          # The commits of the push, shown grouped by their kind.
+          printf '%s\n' "$COMMITS" > "$RUNNER_TEMP/channel-commits.json"
+
+      - name: Post to the channel
+        if: steps.configuration.outputs.ready == 'true'
+        uses: NextAlone/NagramActionRelated/channel-publish@2b74e4cd4e3c89fcc9d50095c039e467c674661f
+        with:
+          bot-token: ${{ secrets.NAGRAM_CHANNEL_BOT_TOKEN }}
+          api-id: ${{ secrets.TELEGRAM_API_ID }}
+          api-hash: ${{ secrets.TELEGRAM_API_HASH }}
+          chat-id: ${{ env.CHAT_ID }}
+          directory: ${{ runner.temp }}/channel
+          kind: test
+          title: Nagram iOS
+          version: ${{ env.VERSION }}
+          build: ${{ env.BUILD }}
+          hashtags: ios test
+          commits-file: ${{ runner.temp }}/channel-commits.json
+          files: |
+            *.ipa | 未签名 IPA · iOS ${{ needs.build-upload.outputs.min_os }} 及以上
+          buttons: Commit=${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
