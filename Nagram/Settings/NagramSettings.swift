@@ -562,6 +562,11 @@ public final class NagramSettings {
     @NagramDefault("nagram.fixLinkPreviews", false)
     public var fixLinkPreviews: Bool
 
+    /// 注册 Telegram 链接（tg:// / telegram://）。iOS 无法在运行时取消 scheme 注册，
+    /// 关闭后链接仍会先打开 Nagram，再转交给官方 Telegram；未安装官方 Telegram 时由 Nagram 自己处理。
+    @NagramDefault("nagram.registerTelegramLinks", true)
+    public var registerTelegramLinks: Bool
+
     @NagramDefault("nagram.autoInlineBotEnabled", false)
     public var autoInlineBotEnabled: Bool
 
