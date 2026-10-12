@@ -990,6 +990,32 @@
     _highQualityPhotoPipe.sink(@(highQualityPhoto));
 }
 
+// MARK: NAGRAM — The share extension follows this choice, and it cannot read the app's standard defaults.
++ (NSUserDefaults *)highQualityPhotoDefaults
+{
+    NSBundle *bundle = [NSBundle mainBundle];
+    NSString *bundleIdentifier = bundle.bundleIdentifier;
+    if (bundleIdentifier == nil)
+        return nil;
+    if ([bundle.bundlePath.pathExtension isEqualToString:@"appex"])
+    {
+        NSRange range = [bundleIdentifier rangeOfString:@"." options:NSBackwardsSearch];
+        if (range.location != NSNotFound)
+            bundleIdentifier = [bundleIdentifier substringToIndex:range.location];
+    }
+    return [[NSUserDefaults alloc] initWithSuiteName:[@"group." stringByAppendingString:bundleIdentifier]];
+}
+
++ (bool)savedHighQualityPhoto
+{
+    return [[self highQualityPhotoDefaults] boolForKey:@"TG_photoHighQuality_v0"];
+}
+
++ (void)setSavedHighQualityPhoto:(bool)highQualityPhoto
+{
+    [[self highQualityPhotoDefaults] setBool:highQualityPhoto forKey:@"TG_photoHighQuality_v0"];
+}
+
 - (bool)isForceLivePhotoEnabled {
     return _forceLivePhotoEnabled;
 }

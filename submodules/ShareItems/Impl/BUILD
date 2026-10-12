@@ -19,6 +19,7 @@ objc_library(
         "//submodules/MtProtoKit:MtProtoKit",
         "//submodules/PhoneNumberFormat:PhoneNumberFormat",
         "//submodules/MimeTypes:MimeTypes",
+        "//submodules/LegacyComponents:LegacyComponents",
     ],
     sdk_frameworks = [
         "Foundation",

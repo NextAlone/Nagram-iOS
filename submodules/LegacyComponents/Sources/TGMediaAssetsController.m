@@ -991,7 +991,8 @@ static TGVideoEditAdjustments *TGMediaAssetsPatchedLivePhotoAdjustments(PGPhotoE
         [selectedItems addObject:currentItem];
     
     if (intent == TGMediaAssetsControllerSendMediaIntent)
-        [[NSUserDefaults standardUserDefaults] setObject:@(editingContext.isHighQualityPhoto) forKey:@"TG_photoHighQuality_v0"];
+        // MARK: NAGRAM
+        [TGMediaEditingContext setSavedHighQualityPhoto:editingContext.isHighQualityPhoto];
     
     if (saveEditedPhotos && storeAssets && editingContext != nil)
     {

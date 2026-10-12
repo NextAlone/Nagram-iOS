@@ -2397,7 +2397,8 @@ public final class MediaPickerScreenImpl: ViewController, MediaPickerScreen, Att
         }
         self.interaction?.displayLivePhotoIcon = displayLivePhotoIcon
         
-        let highQualityPhoto = UserDefaults.standard.bool(forKey: "TG_photoHighQuality_v0")
+        // MARK: NAGRAM
+        let highQualityPhoto = TGMediaEditingContext.savedHighQualityPhoto()
         if highQualityPhoto {
             self.interaction?.editingState.setHighQualityPhoto(highQualityPhoto)
         }

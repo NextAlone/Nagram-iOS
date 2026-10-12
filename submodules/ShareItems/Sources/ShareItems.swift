@@ -49,6 +49,12 @@ private func scalePhotoImage(_ image: UIImage, dimensions: CGSize) -> UIImage? {
     }
 }
 
+// MARK: NAGRAM — Shared photos follow the HD choice made in the attachment picker.
+private func sharedPhotoMaxSize() -> CGSize {
+    let side: CGFloat = TGMediaEditingContext.savedHighQualityPhoto() ? 2560.0 : 1280.0
+    return CGSize(width: side, height: side)
+}
+
 public enum PreparedShareItemError {
     case generic
     case fileTooBig(Int64)
@@ -76,7 +82,7 @@ private func preparedShareItem(postbox: Postbox, network: Network, to peerId: Pe
         )
     } else if let image = value["image"] as? UIImage {
         let nativeImageSize = CGSize(width: image.size.width * image.scale, height: image.size.height * image.scale)
-        let dimensions = nativeImageSize.fitted(CGSize(width: 1280.0, height: 1280.0))
+        let dimensions = nativeImageSize.fitted(sharedPhotoMaxSize())
         if let scaledImage = scalePhotoImage(image, dimensions: dimensions), let imageData = scaledImage.jpegData(compressionQuality: 0.52) {
             return .single(.preparing(false))
             |> then(
@@ -269,7 +275,7 @@ private func preparedShareItem(postbox: Postbox, network: Network, to peerId: Pe
                 )
             } else {
                 // MARK: NAGRAM
-                guard let scaledImage = scalePhotoImage(image, dimensions: CGSize(width: image.size.width * image.scale, height: image.size.height * image.scale).fitted(CGSize(width: 1280.0, height: 1280.0))), let imageData = scaledImage.jpegData(compressionQuality: 0.54) else {
+                guard let scaledImage = scalePhotoImage(image, dimensions: CGSize(width: image.size.width * image.scale, height: image.size.height * image.scale).fitted(sharedPhotoMaxSize())), let imageData = scaledImage.jpegData(compressionQuality: 0.54) else {
                     return .fail(.preparationFailed("image-encoding"))
                 }
                 return .single(.preparing(false))
