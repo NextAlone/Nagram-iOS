@@ -8,6 +8,8 @@
 "Nagram.MediaMetadata.Footer" = "在图片和视频查看器菜单中显示媒体分辨率、大小、时长、帧率、码率和编码等信息。";
 "Nagram.FixLinkPreviews" = "修复链接预览";
 "Nagram.FixLinkPreviews.Footer" = "会将移除查询参数和片段后的链接发送至经校验的 Nagram metadata 规则所指定的第三方预览服务；消息仍使用原始链接。";
+"Nagram.RegisterTelegramLinks" = "注册 Telegram 链接";
+"Nagram.RegisterTelegramLinks.Footer" = "iOS 在安装时决定 tg:// 和 telegram:// 链接由谁打开，关闭本项后链接仍会先打开 Nagram，再由 Nagram 转交给官方 Telegram；若未安装官方 Telegram，则仍由 Nagram 自己打开。na:// 和 nagram:// 链接不受影响。";
 "Nagram.Section.AutoInlineBot" = "自动使用链接查询 Inline 机器人";
 "Nagram.AutoInlineBot.Enabled" = "启用";
 "Nagram.AutoInlineBot.Footer" = "实验性功能。输入匹配规则的链接时，自动显示对应 Inline 机器人的查询结果。";

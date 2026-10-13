@@ -8,6 +8,8 @@
 "Nagram.MediaMetadata.Footer" = "Shows resolution, size, duration, frame rate, bitrate, codec, and related details in image and video viewer menus.";
 "Nagram.FixLinkPreviews" = "Fix Link Previews";
 "Nagram.FixLinkPreviews.Footer" = "Sends sanitized links without query parameters or fragments to third-party preview services selected by validated Nagram metadata rules. Messages continue to use the original link.";
+"Nagram.RegisterTelegramLinks" = "Register Telegram Links";
+"Nagram.RegisterTelegramLinks.Footer" = "iOS decides which app opens tg:// and telegram:// links when the app is installed, so turning this off still opens Nagram first. Nagram then hands the link to the official Telegram app, or opens it itself if Telegram is not installed. na:// and nagram:// links are not affected.";
 "Nagram.Section.AutoInlineBot" = "Automatic Inline Bot Link Queries";
 "Nagram.AutoInlineBot.Enabled" = "Enabled";
 "Nagram.AutoInlineBot.Footer" = "Experimental. Automatically shows results from the matching inline bot when a recognized link is entered.";

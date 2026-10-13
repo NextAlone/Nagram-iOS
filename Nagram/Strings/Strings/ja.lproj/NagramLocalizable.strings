@@ -8,6 +8,8 @@
 "Nagram.MediaMetadata.Footer" = "画像・動画ビューアのメニューに解像度、サイズ、再生時間、フレームレート、ビットレート、コーデックなどを表示します。";
 "Nagram.FixLinkPreviews" = "リンクプレビューを修正";
 "Nagram.FixLinkPreviews.Footer" = "クエリとフラグメントを除去したリンクを、検証済みの Nagram metadata ルールが選ぶ外部プレビューサービスへ送信します。メッセージには元のリンクを使用します。";
+"Nagram.RegisterTelegramLinks" = "Telegramリンクを登録";
+"Nagram.RegisterTelegramLinks.Footer" = "tg:// と telegram:// を開くアプリはインストール時に iOS が決めるため、オフでもまず Nagram が開きます。Nagram はそのリンクを公式 Telegram アプリに渡し、公式 Telegram がインストールされていない場合は Nagram 自身で開きます。na:// と nagram:// は影響を受けません。";
 "Nagram.Section.AutoInlineBot" = "リンクを Inline Bot で自動検索";
 "Nagram.AutoInlineBot.Enabled" = "有効";
 "Nagram.AutoInlineBot.Footer" = "実験的機能です。対応リンクの入力時に Inline Bot の検索結果を自動表示します。";
