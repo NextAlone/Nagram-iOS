@@ -10,7 +10,7 @@
 "Nagram.FixLinkPreviews" = "Fix Link Previews";
 "Nagram.FixLinkPreviews.Footer" = "Sends sanitized links without query parameters or fragments to third-party preview services selected by validated Nagram metadata rules. Messages continue to use the original link.";
 "Nagram.RegisterTelegramLinks" = "Register Telegram Links";
-"Nagram.RegisterTelegramLinks.Footer" = "iOS decides which app opens tg:// and telegram:// links when the app is installed, so turning this off still opens Nagram first. Nagram then rewrites links that have a t.me equivalent (usernames, invite links, sticker sets, chat folders, language packs, share links) to https://t.me and hands them to the official Telegram app; links without one (like tg://settings) open in Nagram itself, as they do when the official app is not installed. na:// and nagram:// links are not affected.";
+"Nagram.RegisterTelegramLinks.Footer" =  "iOS decides which app opens tg:// and telegram:// links when the app is installed, so turning this off still opens Nagram first. Nagram rewrites links that have a complete https://t.me equivalent (usernames, invite links, sticker sets, chat folders, language packs, share links, and tg://resolve links with start parameters or message paths) and hands them to the official Telegram app; links whose parameters would be lost (like tg://settings or passport authorization), and any link when the official app is not installed, open in Nagram itself. na:// and nagram:// links are not affected.";
 "Nagram.Section.AutoInlineBot" = "Automatic Inline Bot Link Queries";
 "Nagram.AutoInlineBot.Enabled" = "Enabled";
 "Nagram.AutoInlineBot.Footer" = "Experimental. Automatically shows results from the matching inline bot when a recognized link is entered.";

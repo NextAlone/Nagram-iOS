@@ -10,7 +10,7 @@
 "Nagram.FixLinkPreviews" = "修复链接预览";
 "Nagram.FixLinkPreviews.Footer" = "会将移除查询参数和片段后的链接发送至经校验的 Nagram metadata 规则所指定的第三方预览服务；消息仍使用原始链接。";
 "Nagram.RegisterTelegramLinks" = "注册 Telegram 链接";
-"Nagram.RegisterTelegramLinks.Footer" = "iOS 在安装时决定 tg:// 和 telegram:// 链接由谁打开，关闭本项后链接仍会先打开 Nagram。有 t.me 对应形式的链接（用户名、邀请链接、贴纸包、文件夹、语言包、分享链接）会被改写成 https://t.me 转交给官方 Telegram；没有对应形式的（如 tg://settings）以及未安装官方 Telegram 时由 Nagram 自己打开。na:// 和 nagram:// 链接不受影响。";
+"Nagram.RegisterTelegramLinks.Footer" =  "iOS 在安装时决定 tg:// 和 telegram:// 链接由谁打开，关闭本项后链接仍会先打开 Nagram。能完整改写成 https://t.me 形式的链接（用户名、邀请链接、贴纸包、文件夹、语言包、分享链接，以及带启动参数或帖子定位的 tg://resolve）会转交给官方 Telegram；改写会丢参数的（如 tg://settings、passport 授权链接）以及未安装官方 Telegram 时由 Nagram 自己打开。na:// 和 nagram:// 链接不受影响。";
 "Nagram.Section.AutoInlineBot" = "自动使用链接查询 Inline 机器人";
 "Nagram.AutoInlineBot.Enabled" = "启用";
 "Nagram.AutoInlineBot.Footer" = "实验性功能。输入匹配规则的链接时，自动显示对应 Inline 机器人的查询结果。";
