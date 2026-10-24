@@ -990,6 +990,42 @@
     _highQualityPhotoPipe.sink(@(highQualityPhoto));
 }
 
+// MARK: NAGRAM — The share extension follows this choice, and it cannot read the app's standard defaults.
++ (NSUserDefaults *)highQualityPhotoDefaults
+{
+    NSBundle *bundle = [NSBundle mainBundle];
+    NSString *bundleIdentifier = bundle.bundleIdentifier;
+    if (bundleIdentifier == nil)
+        return nil;
+    if ([bundle.bundlePath.pathExtension isEqualToString:@"appex"])
+    {
+        NSRange range = [bundleIdentifier rangeOfString:@"." options:NSBackwardsSearch];
+        if (range.location != NSNotFound)
+            bundleIdentifier = [bundleIdentifier substringToIndex:range.location];
+    }
+    return [[NSUserDefaults alloc] initWithSuiteName:[@"group." stringByAppendingString:bundleIdentifier]];
+}
+
++ (bool)savedHighQualityPhoto
+{
+    NSUserDefaults *defaults = [self highQualityPhotoDefaults];
+    if ([defaults objectForKey:@"TG_photoHighQuality_v0"] == nil)
+    {
+        // Earlier builds kept the choice in the app's standard defaults; carry it over once.
+        NSNumber *legacyValue = [[NSUserDefaults standardUserDefaults] objectForKey:@"TG_photoHighQuality_v0"];
+        if (legacyValue == nil)
+            return false;
+        [defaults setBool:legacyValue.boolValue forKey:@"TG_photoHighQuality_v0"];
+        return legacyValue.boolValue;
+    }
+    return [defaults boolForKey:@"TG_photoHighQuality_v0"];
+}
+
++ (void)setSavedHighQualityPhoto:(bool)highQualityPhoto
+{
+    [[self highQualityPhotoDefaults] setBool:highQualityPhoto forKey:@"TG_photoHighQuality_v0"];
+}
+
 - (bool)isForceLivePhotoEnabled {
     return _forceLivePhotoEnabled;
 }

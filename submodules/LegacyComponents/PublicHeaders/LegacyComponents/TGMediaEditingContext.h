@@ -132,6 +132,10 @@ typedef NS_ENUM(NSUInteger, TGMediaLivePhotoMode)
 - (SSignal *)highQualityPhoto;
 - (void)setHighQualityPhoto:(bool)highQualityPhoto;
 
+// MARK: NAGRAM
++ (bool)savedHighQualityPhoto;
++ (void)setSavedHighQualityPhoto:(bool)highQualityPhoto;
+
 - (bool)isForceLivePhotoEnabled;
 - (SSignal *)forceLivePhotoEnabled;
 - (void)setForceLivePhotoEnabled:(bool)forceLivePhotoEnabled;

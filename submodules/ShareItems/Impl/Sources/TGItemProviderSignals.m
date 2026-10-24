@@ -9,6 +9,8 @@
 #import <PassKit/PassKit.h>
 
 #import <MimeTypes/MimeTypes.h>
+// MARK: NAGRAM — Not the umbrella header: TGImageUtils.h declares the helpers this file defines as static.
+#import <LegacyComponents/TGMediaEditingContext.h>
 
 @implementation TGItemProviderSignals
 
@@ -174,8 +176,9 @@ __unused static CGSize TGFitSize(CGSize size, CGSize maxSize) {
 {
     return [[MTSignal alloc] initWithGenerator:^id<MTDisposable>(MTSubscriber *subscriber)
     {
+        CGFloat maxPixelSize = [TGMediaEditingContext savedHighQualityPhoto] ? 2560.0 : 1280.0;
         NSDictionary *imageOptions = @{
-            NSItemProviderPreferredImageSizeKey: [NSValue valueWithCGSize:CGSizeMake(1280.0, 1280.0)]
+            NSItemProviderPreferredImageSizeKey: [NSValue valueWithCGSize:CGSizeMake(maxPixelSize, maxPixelSize)]
         };
         void (^consumeImage)(id<NSSecureCoding>, NSError *) = ^(id<NSSecureCoding> item, NSError *error) {
             MTLog(@"[SharePreparation] image callback class=%@ errorDomain=%@ errorCode=%ld", item == nil ? @"nil" : NSStringFromClass([(NSObject *)item class]), error.domain, (long)error.code);
@@ -203,7 +206,7 @@ __unused static CGSize TGFitSize(CGSize size, CGSize maxSize) {
             NSDictionary *options = @{
                 (id)kCGImageSourceCreateThumbnailWithTransform: @YES,
                 (id)kCGImageSourceCreateThumbnailFromImageAlways: @YES,
-                (id)kCGImageSourceThumbnailMaxPixelSize: @1280
+                (id)kCGImageSourceThumbnailMaxPixelSize: @(maxPixelSize)
             };
             CGImageRef image = CGImageSourceCreateThumbnailAtIndex(source, 0, (__bridge CFDictionaryRef)options);
             CFRelease(source);
