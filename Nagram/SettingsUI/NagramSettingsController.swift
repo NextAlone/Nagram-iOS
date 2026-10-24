@@ -556,6 +556,11 @@ private func nagramGroups(
             .navigation(titleKey: "Nagram.RegexFilters", action: regexFiltersAction),
         ]),
         // 其他
+        NagramGroup(tab: .other, headerKey: "Nagram.Section.Experimental", footerKeys: ["Nagram.MediaMetadata.Footer", "Nagram.FixLinkPreviews.Footer", "Nagram.RegisterTelegramLinks.Footer"], rows: [
+            .toggle(titleKey: "Nagram.MediaMetadata", get: { NagramSettings.shared.mediaMetadataEnabled }, set: { NagramSettings.shared.mediaMetadataEnabled = $0 }),
+            .toggle(titleKey: "Nagram.FixLinkPreviews", get: { NagramSettings.shared.fixLinkPreviews }, set: { NagramSettings.shared.fixLinkPreviews = $0 }),
+            .toggle(titleKey: "Nagram.RegisterTelegramLinks", get: { NagramSettings.shared.registerTelegramLinks }, set: { NagramSettings.shared.registerTelegramLinks = $0 }),
+        ]),
         NagramGroup(tab: .other, headerKey: "Nagram.Section.Profile", footerKeys: [], rows: [
             .toggle(titleKey: "Nagram.ShowProfileId", get: { NagramSettings.shared.showProfileId }, set: { NagramSettings.shared.showProfileId = $0 }),
             .toggle(titleKey: "Nagram.ShowDC", get: { NagramSettings.shared.showDC }, set: { NagramSettings.shared.showDC = $0 }),

@@ -56,7 +56,14 @@ final class NagramSceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
         for context in URLContexts {
-            self.appDelegate.handleOpenURL(context.url)
+            let url = context.url
+            // MARK: NAGRAM — 「注册 Telegram 链接」关闭时，外部 tg:// / telegram:// 先交给官方 Telegram；
+            // 没装官方 Telegram 时回落到 Nagram 自己处理。
+            if !nagramForwardTelegramSchemeUrl(url, fallback: { [weak self] in
+                self?.appDelegate.handleOpenURL(url)
+            }) {
+                self.appDelegate.handleOpenURL(url)
+            }
         }
     }
 
