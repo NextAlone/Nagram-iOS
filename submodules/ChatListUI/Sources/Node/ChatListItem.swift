@@ -2788,6 +2788,8 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     } else if messages.last?.id.peerId.namespace != Namespaces.Peer.CloudUser && messages.last?.id.peerId.namespace != Namespaces.Peer.SecretChat {
                         inlineAuthorPrefix = EnginePeer.user(author).compactDisplayTitle
                     }
+                } else if nagramTwoLineMessagePreview, let message = messages.last, let author = message.author, author.id != message.id.peerId { // MARK: NAGRAM — 以频道身份发言的作者
+                    inlineAuthorPrefix = author.compactDisplayTitle
                 }
             }
             if nagramTwoLineMessagePreview, case let .peer(peerData) = item.content, let message = messages.last, let sourcePeer = communitySourcePeer(peerData: peerData, message: message) { // MARK: NAGRAM — 聚合会话两行布局内联来源会话
