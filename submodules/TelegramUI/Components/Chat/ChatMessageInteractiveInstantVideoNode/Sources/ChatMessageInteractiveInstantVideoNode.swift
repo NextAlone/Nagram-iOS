@@ -3,7 +3,6 @@ import UIKit
 import AsyncDisplayKit
 import Display
 import SwiftSignalKit
-import Postbox
 import TelegramCore
 import UniversalMediaPlayer
 import TelegramPresentationData
@@ -352,11 +351,11 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
             var inlineBotNameString: String?
             
             if !ignoreHeaders {
-                var replyMessage: Message?
+                var replyMessage: EngineMessage?
                 var replyForward: QuotedReplyMessageAttribute?
                 var replyQuote: (quote: EngineMessageReplyQuote, isQuote: Bool)?
                 var replyInnerSubject: EngineMessageReplyInnerSubject?
-                var replyStory: StoryId?
+                var replyStory: EngineStoryId?
                 for attribute in item.message.attributes {
                     if let attribute = attribute as? InlineBotMessageAttribute {
                         if let peerId = attribute.peerId, let bot = item.message.peers[peerId] as? TelegramUser {
@@ -383,7 +382,7 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
                     if let replyAttribute = attribute as? ReplyMessageAttribute {
                         if case let .replyThread(replyThreadMessage) = item.chatLocation, Int32(clamping: replyThreadMessage.threadId) == replyAttribute.messageId.id {
                         } else {
-                            replyMessage = item.message.associatedMessages[replyAttribute.messageId]
+                            replyMessage = item.message.associatedMessages[replyAttribute.messageId].flatMap(EngineMessage.init)
                         }
                         replyQuote = replyAttribute.quote.flatMap { ($0, replyAttribute.isQuote) }
                         replyInnerSubject = replyAttribute.innerSubject
@@ -402,7 +401,7 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
                             strings: item.presentationData.strings,
                             context: item.context,
                             type: .standalone,
-                            message: replyMessage,
+                            message: replyMessage?._asMessage(),
                             replyForward: replyForward,
                             quote: replyQuote,
                             innerSubject: replyInnerSubject,
@@ -432,7 +431,7 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
                 }
             }
                         
-            var forwardSource: Peer?
+            var forwardSource: EnginePeer?
             var forwardAuthorSignature: String?
             
             var forwardInfoSizeApply: (CGSize, (CGFloat) -> ChatMessageForwardInfoNode)?
@@ -441,13 +440,13 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
                 let forwardPsaType = forwardInfo.psaType
                 
                 let resolvedForwardInfo = chatMessageForwardInfoDisplay(forwardInfo: forwardInfo, messageId: item.message.id, previouslyApplied: currentForwardInfo, peerDisplayTitle: { peer in
-                    return EnginePeer(peer).displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder)
+                    return peer.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder)
                 })
                 forwardSource = resolvedForwardInfo.source
                 forwardAuthorSignature = resolvedForwardInfo.authorSignature
                 let availableWidth: CGFloat = max(60.0, availableContentWidth - 220.0 + 6.0)
                 // MARK: NAGRAM — Include the original timestamp in the shared forward header.
-                forwardInfoSizeApply = makeForwardInfoLayout(item.context, item.presentationData, item.presentationData.strings, .standalone, forwardSource.flatMap(EnginePeer.init), forwardAuthorSignature, forwardPsaType == nil ? inlineBotNameString : nil, forwardPsaType, nil, forwardInfo.date, CGSize(width: availableWidth, height: CGFloat.greatestFiniteMagnitude))
+                forwardInfoSizeApply = makeForwardInfoLayout(item.context, item.presentationData, item.presentationData.strings, .standalone, forwardSource, forwardAuthorSignature, forwardPsaType == nil ? inlineBotNameString : nil, forwardPsaType, nil, forwardInfo.date, CGSize(width: availableWidth, height: CGFloat.greatestFiniteMagnitude))
             }
             
             var notConsumed = false
@@ -2275,7 +2274,7 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
         self.canAttachContent = false
     }
     
-    public func targetForStoryTransition(id: StoryId) -> UIView? {
+    public func targetForStoryTransition(id: EngineStoryId) -> UIView? {
         guard let item = self.item else {
             return nil
         }

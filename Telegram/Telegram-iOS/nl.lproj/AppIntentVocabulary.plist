@@ -25,7 +25,7 @@
 			<string>INSearchForMessagesIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Zoek Telegram-berichten van Maartje</string>
+				<string>Lees mijn ongelezen berichten in Telegram voor</string>
 			</array>
 		</dict>
 		<dict>
@@ -33,7 +33,7 @@
 			<string>INSetMessageAttributeIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Markeer mijn Telegram-berichten als gelezen</string>
+				<string>Markeer mijn berichten in Telegram als gelezen</string>
 			</array>
 		</dict>
 		<dict>
@@ -41,7 +41,7 @@
 			<string>INSearchCallHistoryIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Toon mijn Telegram-oproepgeschiedenis</string>
+				<string>Toon mijn gemiste oproepen in Telegram</string>
 			</array>
 		</dict>
 	</array>

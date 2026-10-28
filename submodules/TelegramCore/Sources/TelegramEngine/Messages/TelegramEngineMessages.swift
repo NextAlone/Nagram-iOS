@@ -1,7 +1,7 @@
 import Foundation
 import SwiftSignalKit
 import Postbox
-import TelegramApi
+internal import TelegramApi
 
 public enum EngineOutgoingMessageContent {
     case text(String, [MessageTextEntity])
@@ -522,6 +522,41 @@ public extension TelegramEngine {
             }
         }
 
+        public func chatListPeers(group: EngineChatList.Group, filterPredicate: ChatListFilterPredicate?, count: Int) -> Signal<([EnginePeer], Bool), NoError> {
+            return self.account.viewTracker.tailChatListView(groupId: group._asGroup(), filterPredicate: filterPredicate, count: count)
+            |> map { view, _ in
+                let peers = view.entries.reversed().compactMap { entry -> EnginePeer? in
+                    if case let .MessageEntry(data) = entry {
+                        return data.renderedPeer.peer.flatMap(EnginePeer.init)
+                    }
+                    return nil
+                }
+                return (peers, view.earlierIndex != nil)
+            }
+        }
+
+        public func peerThreads(peerId: EnginePeer.Id, isMonoforum: Bool) -> Signal<([(id: Int64, peer: EnginePeer?, data: MessageHistoryThreadData?)], Bool), NoError> {
+            let key: PostboxViewKey = isMonoforum ? .savedMessagesIndex(peerId: peerId) : .messageHistoryThreadIndex(id: peerId, summaryComponents: ChatListEntrySummaryComponents(components: [:]))
+            return self.account.postbox.combinedView(keys: [key])
+            |> map { views -> ([(id: Int64, peer: EnginePeer?, data: MessageHistoryThreadData?)], Bool) in
+                if let view = views.views[key] as? MessageHistoryThreadIndexView {
+                    let items = view.items.compactMap { item -> (id: Int64, peer: EnginePeer?, data: MessageHistoryThreadData?)? in
+                        guard let data = item.info.get(MessageHistoryThreadData.self) else { return nil }
+                        return (item.id, nil, data)
+                    }
+                    return (items, view.isLoading)
+                } else if let view = views.views[key] as? MessageHistorySavedMessagesIndexView {
+                    let items = view.items.reversed().compactMap { item -> (id: Int64, peer: EnginePeer?, data: MessageHistoryThreadData?)? in
+                        guard let peer = item.peer else { return nil }
+                        return (item.id, EnginePeer(peer), nil)
+                    }
+                    return (items, view.isLoading)
+                } else {
+                    return ([], true)
+                }
+            }
+        }
+
         public func callList(scope: EngineCallList.Scope, index: EngineMessage.Index, itemCount: Int) -> Signal<EngineCallList, NoError> {
             return self.account.viewTracker.callListView(
                 type: scope == .all ? .all : .missed,
@@ -796,6 +831,30 @@ public extension TelegramEngine {
                 })
             }
             |> ignoreValues
+        }
+
+        // MARK: NAGRAM — The author's locally stored messages in a chat or topic, for "select all by author".
+        public func nagramLocalMessageIds(peerId: EnginePeer.Id, authorId: EnginePeer.Id, threadId: Int64?, limit: Int) -> Signal<[EngineMessage.Id], NoError> {
+            return self.account.postbox.transaction { transaction -> [EngineMessage.Id] in
+                var ids: [EngineMessage.Id] = []
+                transaction.withAllMessages(peerId: peerId, { message in
+                    if ids.count >= limit {
+                        return false
+                    }
+                    guard message.author?.id == authorId else {
+                        return true
+                    }
+                    if let threadId, message.threadId != threadId {
+                        return true
+                    }
+                    if message.media.contains(where: { $0 is TelegramMediaAction }) {
+                        return true
+                    }
+                    ids.append(message.id)
+                    return true
+                })
+                return ids
+            }
         }
 
         // MARK: NAGRAM — Register an external request before downloading or uploading its audio.

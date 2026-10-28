@@ -13,7 +13,6 @@ swift_library(
         "//Nagram/Settings:NagramSettings", # MARK: NAGRAM
         "//submodules/AsyncDisplayKit",
         "//submodules/LottieSettings:LottieSettings",
-        "//submodules/Postbox",
         "//submodules/SSignalKit/SwiftSignalKit",
         "//submodules/Display",
         "//submodules/ComponentFlow",

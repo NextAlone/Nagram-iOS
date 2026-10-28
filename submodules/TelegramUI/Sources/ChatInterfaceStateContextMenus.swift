@@ -1347,7 +1347,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                }
                return false
            }) {
-            actions.append(.action(ContextMenuActionItem(text: "Send Money", icon: { theme in
+            actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Wallet_SendMoney, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Ton"), color: theme.actionSheet.primaryTextColor)
             }, action: { _, f in
                 f(.dismissWithoutContent)
@@ -2356,27 +2356,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                         searchThreadId = nil
                     }
                     
-                    let _ = (context.account.postbox.transaction { transaction -> [EngineMessage.Id] in
-                        let limit = 500
-                        var ids: [EngineMessage.Id] = []
-                        transaction.withAllMessages(peerId: message.id.peerId, { searchMessage in
-                            if ids.count >= limit {
-                                return false
-                            }
-                            guard searchMessage.author?.id == author.id else {
-                                return true
-                            }
-                            if let searchThreadId, searchMessage.threadId != searchThreadId {
-                                return true
-                            }
-                            if searchMessage.media.contains(where: { $0 is TelegramMediaAction }) {
-                                return true
-                            }
-                            ids.append(searchMessage.id)
-                            return true
-                        })
-                        return ids
-                    }
+                    let _ = (context.engine.messages.nagramLocalMessageIds(peerId: message.id.peerId, authorId: author.id, threadId: searchThreadId, limit: 500)
                     |> deliverOnMainQueue).startStandalone(next: { ids in
                         if ids.isEmpty {
                             f(.default)

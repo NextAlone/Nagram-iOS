@@ -17,7 +17,7 @@
 			<string>INStartAudioCallIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Rufe Lisa über Telegram an</string>
+				<string>Ruf Lisa über Telegram an</string>
 			</array>
 		</dict>
 		<dict>
@@ -25,7 +25,7 @@
 			<string>INSearchForMessagesIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Suche Telegram-Nachrichten von Lisa</string>
+				<string>Lies meine ungelesenen Nachrichten in Telegram vor</string>
 			</array>
 		</dict>
 		<dict>
@@ -33,7 +33,7 @@
 			<string>INSetMessageAttributeIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Markiere meine Telegram-Nachrichten als gelesen</string>
+				<string>Markiere meine Nachrichten in Telegram als gelesen</string>
 			</array>
 		</dict>
 		<dict>
@@ -41,7 +41,7 @@
 			<string>INSearchCallHistoryIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Zeige meinen Telegram-Anrufverlauf</string>
+				<string>Zeige meine verpassten Anrufe in Telegram</string>
 			</array>
 		</dict>
 	</array>

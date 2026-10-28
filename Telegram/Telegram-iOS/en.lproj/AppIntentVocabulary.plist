@@ -17,7 +17,7 @@
 			<string>INStartAudioCallIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Call Alex on Telegram</string>
+				<string>Call Alice on Telegram</string>
 			</array>
 		</dict>
 		<dict>
@@ -25,7 +25,7 @@
 			<string>INSearchForMessagesIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Search for messages from Alex on Telegram</string>
+				<string>Read my unread messages in Telegram</string>
 			</array>
 		</dict>
 		<dict>
@@ -33,7 +33,7 @@
 			<string>INSetMessageAttributeIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Mark my Telegram messages as read</string>
+				<string>Mark my messages in Telegram as read</string>
 			</array>
 		</dict>
 		<dict>
@@ -41,7 +41,7 @@
 			<string>INSearchCallHistoryIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Show my Telegram call history</string>
+				<string>Show my missed calls in Telegram</string>
 			</array>
 		</dict>
 	</array>

@@ -176,8 +176,9 @@ private final class PeerInfoScreenDisclosureItemNode: PeerInfoScreenItemNode {
         self.longPressGestureRecognizer?.isEnabled = item.longPressAction != nil
         
         let sideInset: CGFloat = 16.0 + safeInsets.left
+        let sideInsetRight: CGFloat = 16.0 + safeInsets.right
         let leftInset = (item.icon == nil && item.iconSignal == nil ? sideInset : sideInset + 29.0 + 16.0)
-        let rightInset = sideInset + (item.hasArrow ? 18.0 : 0.0)
+        let rightInset = sideInsetRight + (item.hasArrow ? 18.0 : 0.0)
         let separatorInset = item.icon == nil && item.iconSignal == nil ? sideInset : leftInset - 1.0
         let titleFont = Font.regular(presentationData.listsFontSize.itemListBaseFontSize)
         

@@ -4,7 +4,6 @@ import Intents
 import TelegramPresentationData
 import TelegramUIPreferences
 import SwiftSignalKit
-import Postbox
 import TelegramCore
 import Display
 import LegacyComponents
@@ -33,77 +32,9 @@ import PhoneNumberFormat
 import AttachmentUI
 import MinimizedContainer
 import BrowserUI
+import NewsFeedSupport
 import NagramSettings
 import NagramSettingsSignal
-
-// MARK: NAGRAM — 从桌面角标中扣除被消息屏蔽规则隐藏的未读消息。
-private func nagramFilteredUnreadBadgeAdjustment(transaction: Transaction, accountPeerId: PeerId, seedConfiguration: SeedConfiguration, inAppSettings: InAppNotificationSettings) -> Int32 {
-    var unreadPeerIds = Set(transaction.getUnreadChatListPeerIds(groupId: .root, filterPredicate: nil, additionalFilter: nil, stopOnFirstMatch: false))
-    unreadPeerIds.formUnion(transaction.getUnreadChatListPeerIds(groupId: Namespaces.PeerGroup.archive, filterPredicate: nil, additionalFilter: nil, stopOnFirstMatch: false))
-    
-    let globalNotificationSettings = transaction.getGlobalNotificationSettings()
-    var hiddenMessageCount: Int32 = 0
-    var hiddenChatCount: Int32 = 0
-    
-    for peerId in unreadPeerIds {
-        guard let readState = transaction.getCombinedPeerReadState(peerId), readState.count > 0 else {
-            continue
-        }
-        guard let peer = transaction.getPeer(peerId) else {
-            continue
-        }
-        
-        let peerTags = seedConfiguration.peerSummaryCounterTags(peer, transaction.isPeerContact(peerId: peerId))
-        guard !peerTags.isDisjoint(with: inAppSettings.totalUnreadCountIncludeTags) else {
-            continue
-        }
-        
-        let notificationPeerId: PeerId
-        if let associatedPeerId = peer.associatedPeerId, peer.associatedPeerOverridesIdentity {
-            notificationPeerId = associatedPeerId
-        } else {
-            notificationPeerId = peerId
-        }
-        guard !resolvedIsRemovedFromTotalUnreadCount(globalSettings: globalNotificationSettings, peer: peer, peerSettings: transaction.getPeerNotificationSettings(id: notificationPeerId)) else {
-            continue
-        }
-        guard let matcher = NagramSettings.shared.regexFilterMatcher(peerId: peerId.toInt64(), isOutgoing: false) else {
-            continue
-        }
-        
-        let historyView = transaction.getMessagesHistoryViewState(
-            input: .single(peerId: peerId, threadId: nil),
-            ignoreMessagesInTimestampRange: nil,
-            ignoreMessageIds: Set(),
-            count: Int(readState.count) + 10,
-            clipHoles: true,
-            anchor: .upperBound,
-            namespaces: .not(Namespaces.Message.allNonRegular)
-        )
-        var peerHiddenMessageCount: Int32 = 0
-        for entry in historyView.entries {
-            let message = entry.message
-            guard !entry.isRead, message.id.peerId == peerId, message.effectivelyIncoming(accountPeerId) else {
-                continue
-            }
-            if matcher.isHidden(text: message.text, authorPeerId: message.author?.id.id._internalGetInt64Value()) {
-                peerHiddenMessageCount += 1
-            }
-        }
-        
-        hiddenMessageCount += peerHiddenMessageCount
-        if peerHiddenMessageCount >= readState.count {
-            hiddenChatCount += 1
-        }
-    }
-    
-    switch inAppSettings.totalUnreadCountDisplayCategory {
-    case .messages:
-        return hiddenMessageCount
-    case .chats:
-        return hiddenChatCount
-    }
-}
 
 final class UnauthorizedApplicationContext {
     let sharedContext: SharedAccountContextImpl
@@ -216,13 +147,9 @@ final class AuthorizedApplicationContext {
         )
         |> mapToSignal { [context = self.context] renderedCount, sharedData, _ -> Signal<Int32, NoError> in
             let inAppSettings = sharedData.entries[ApplicationSpecificSharedDataKeys.inAppNotificationSettings]?.get(InAppNotificationSettings.self) ?? .defaultSettings
-            return context.account.postbox.transaction { transaction -> Int32 in
-                let adjustment = nagramFilteredUnreadBadgeAdjustment(
-                    transaction: transaction,
-                    accountPeerId: context.account.peerId,
-                    seedConfiguration: context.account.postbox.seedConfiguration,
-                    inAppSettings: inAppSettings
-                )
+            // MARK: NAGRAM — 从桌面角标中扣除被消息屏蔽规则隐藏的未读消息。
+            return context.engine.messages.nagramFilteredUnreadBadgeAdjustment(includeTags: inAppSettings.totalUnreadCountIncludeTags, countsChats: inAppSettings.totalUnreadCountDisplayCategory == .chats)
+            |> map { adjustment -> Int32 in
                 return max(0, renderedCount.0 - adjustment)
             }
         }
@@ -239,6 +166,8 @@ final class AuthorizedApplicationContext {
     
     private var showCallsTab: Bool
     private var showCallsTabDisposable: Disposable?
+    private var showNewsTab: Bool
+    private var showNewsTabDisposable: Disposable?
     private var enablePostboxTransactionsDiposable: Disposable?
     
     init(sharedApplicationContext: SharedApplicationContext, mainWindow: Window1, context: AccountContextImpl, accountManager: AccountManager<TelegramAccountManagerTypes>, showCallsTab: Bool, reinitializedNotificationSettings: @escaping () -> Void) {
@@ -253,6 +182,7 @@ final class AuthorizedApplicationContext {
         self.context = context
         
         self.showCallsTab = showCallsTab
+        self.showNewsTab = isNewsFeedEnabled(appConfiguration: context.currentAppConfiguration.with { $0 })
         
         self.notificationController = NotificationContainerController(context: context)
         
@@ -335,7 +265,7 @@ final class AuthorizedApplicationContext {
         }
         
         if self.rootController.rootTabController == nil {
-            self.rootController.addRootControllers(showCallsTab: self.showCallsTab)
+            self.rootController.addRootControllers(showCallsTab: self.showCallsTab, showNewsTab: self.showNewsTab)
         }
         if let tabsController = self.rootController.viewControllers.first as? TabBarController, !tabsController.controllers.isEmpty, tabsController.selectedIndex >= 0 {
             let controller = tabsController.controllers[tabsController.selectedIndex]
@@ -378,7 +308,7 @@ final class AuthorizedApplicationContext {
 
         let engine = context.engine
         self.notificationMessagesDisposable.set((context.account.stateManager.notificationMessages
-        |> mapToSignal { messageList -> Signal<[([Message], PeerGroupId, Bool, MessageHistoryThreadData?)], NoError> in
+        |> mapToSignal { messageList in
             return engine.data.get(EngineDataMap(
                 messageList.compactMap { item -> TelegramEngine.EngineData.Item.Messages.ChatListIndex? in
                     if let message = item.0.first {
@@ -388,7 +318,7 @@ final class AuthorizedApplicationContext {
                     }
                 }
             ))
-            |> map { chatListIndexMap -> [([Message], PeerGroupId, Bool, MessageHistoryThreadData?)] in
+            |> map { chatListIndexMap in
                 return messageList.filter { item in
                     guard let message = item.0.first else {
                         return false
@@ -900,9 +830,22 @@ final class AuthorizedApplicationContext {
             if let strongSelf = self {
                 if strongSelf.showCallsTab != value {
                     strongSelf.showCallsTab = value
-                    strongSelf.rootController.updateRootControllers(showCallsTab: value)
+                    strongSelf.rootController.updateRootControllers(showCallsTab: value, showNewsTab: strongSelf.showNewsTab)
                 }
             }
+        })
+
+        self.showNewsTabDisposable = (context.appConfiguration
+        |> map { appConfiguration -> Bool in
+            return isNewsFeedEnabled(appConfiguration: appConfiguration)
+        }
+        |> distinctUntilChanged
+        |> deliverOnMainQueue).start(next: { [weak self] value in
+            guard let self, self.showNewsTab != value else {
+                return
+            }
+            self.showNewsTab = value
+            self.rootController.updateRootControllers(showCallsTab: self.showCallsTab, showNewsTab: value)
         })
         
         self.rootController.setForceInCallStatusBar((self.context.sharedContext as! SharedAccountContextImpl).currentCallStatusBarNode)
@@ -916,6 +859,7 @@ final class AuthorizedApplicationContext {
     
     deinit {
         self.context.account.postbox.clearCaches()
+        self.showNewsTabDisposable?.dispose()
         self.context.account.shouldKeepOnlinePresence.set(.single(false))
         self.context.account.shouldBeServiceTaskMaster.set(.single(.never))
         self.loggedOutDisposable.dispose()
@@ -938,7 +882,7 @@ final class AuthorizedApplicationContext {
         self.rootController.pushViewController(notificationsAndSoundsController(context: self.context, exceptionsList: nil))
     }
     
-    func startCall(peerId: PeerId, isVideo: Bool) {
+    func startCall(peerId: EnginePeer.Id, isVideo: Bool) {
         guard let appLockContext = self.context.sharedContext.appLockContext as? AppLockContextImpl else {
             return
         }
@@ -955,7 +899,7 @@ final class AuthorizedApplicationContext {
         }))
     }
     
-    func openChatWithPeerId(peerId: PeerId, threadId: Int64?, messageId: MessageId? = nil, activateInput: Bool = false, storyId: StoryId?, openAppIfAny: Bool = false, alwaysKeepMessageId: Bool = false) {
+    func openChatWithPeerId(peerId: EnginePeer.Id, threadId: Int64?, messageId: EngineMessage.Id? = nil, activateInput: Bool = false, storyId: EngineStoryId?, openAppIfAny: Bool = false, alwaysKeepMessageId: Bool = false) {
         if let storyId {
             var controllers = self.rootController.viewControllers
             controllers = controllers.filter { c in
@@ -968,7 +912,7 @@ final class AuthorizedApplicationContext {
             
             self.rootController.chatListController?.openStoriesFromNotification(peerId: storyId.peerId, storyId: storyId.id)
         } else {
-            var visiblePeerId: PeerId?
+            var visiblePeerId: EnginePeer.Id?
             if let controller = self.rootController.topViewController as? ChatControllerImpl, controller.chatLocation.peerId == peerId, controller.chatLocation.threadId == threadId {
                 visiblePeerId = peerId
             }

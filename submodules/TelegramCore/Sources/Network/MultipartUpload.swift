@@ -1,6 +1,6 @@
 import Foundation
 import Postbox
-import TelegramApi
+internal import TelegramApi
 import SwiftSignalKit
 import MtProtoKit
 import CryptoUtils
@@ -11,7 +11,7 @@ import NagramSettings
 private typealias SignalKitTimer = SwiftSignalKit.Timer
 
 
-private struct UploadPart {
+struct UploadPart {
     let fileId: Int64
     let index: Int
     let data: Data
@@ -26,7 +26,7 @@ private func md5(_ data: Data) -> Data {
     }
 }
 
-private final class MultipartUploadState {
+final class MultipartUploadState {
     let aesKey: Data
     var aesIv: Data
     var effectiveSize: Int64 = 0
@@ -81,7 +81,7 @@ private final class MultipartUploadState {
     }
 }
 
-private struct MultipartIntermediateResult {
+struct MultipartIntermediateResult {
     let id: Int64
     let partCount: Int32
     let md5Digest: String
@@ -89,7 +89,7 @@ private struct MultipartIntermediateResult {
     let bigTotalParts: Int?
 }
 
-private enum MultipartUploadData {
+enum MultipartUploadData {
     case resourceData(MediaResourceData)
     case data(Data)
     
@@ -111,13 +111,13 @@ private enum MultipartUploadData {
     }
 }
 
-private enum HeaderPartState {
+enum HeaderPartState {
     case notStarted
     case uploading
     case ready
 }
 
-private final class MultipartUploadManager {
+final class MultipartUploadManager {
     let parallelParts: Int
     var defaultPartSize: Int64
     var bigTotalParts: Int?
@@ -280,7 +280,7 @@ private final class MultipartUploadManager {
                         case let .data(data):
                             fileData = data
                     }
-                    if let fileData = fileData {
+                    if let fileData = fileData, fileData.count >= Int(partOffset + partSize) {
                         let partData = self.state.transformHeader(data: fileData.subdata(in: Int(partOffset) ..< Int(partOffset + partSize)))
                         var currentBigTotalParts: Int? = nil
                         if self.bigParts {
@@ -299,6 +299,8 @@ private final class MultipartUploadManager {
                                 strongSelf.checkState()
                             }
                         }))
+                    } else {
+                        self.completed(nil)
                     }
                 case .uploading:
                     break

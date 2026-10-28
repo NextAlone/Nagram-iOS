@@ -2,7 +2,7 @@ import Foundation
 import NagramSettings // MARK: NAGRAM — 可在本机禁用 Community 会话聚合
 import Postbox
 import SwiftSignalKit
-import TelegramApi // MARK: NAGRAM — 恢复隐藏会话时查询服务端的文件夹归属。
+internal import TelegramApi // MARK: NAGRAM — 恢复隐藏会话时查询服务端的文件夹归属。
 
 public struct CommunityChatListItemSummary: Equatable {
     public let topMessage: EngineMessage?

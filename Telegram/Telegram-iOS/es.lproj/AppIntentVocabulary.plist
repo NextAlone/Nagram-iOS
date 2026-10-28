@@ -25,7 +25,7 @@
 			<string>INSearchForMessagesIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Busca mensajes de Alicia en Telegram</string>
+				<string>Lee mis mensajes no leídos en Telegram</string>
 			</array>
 		</dict>
 		<dict>
@@ -41,7 +41,7 @@
 			<string>INSearchCallHistoryIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Muestra mi historial de llamadas de Telegram</string>
+				<string>Muestra mis llamadas perdidas en Telegram</string>
 			</array>
 		</dict>
 	</array>

@@ -2,7 +2,7 @@ import Foundation
 import MtProtoKit
 import Postbox
 import SwiftSignalKit
-import TelegramApi
+internal import TelegramApi
 
 // MARK: NAGRAM — Credentials used for verification never enter Postbox or the account manager.
 private final class NagramSessionImportKeychain: NSObject, MTKeychain {
@@ -52,7 +52,7 @@ public func nagramWithSessionImportNetwork<T, E: Error>(accountManager: AccountM
         keychain.setObject([
             backupData.masterDatacenterId as NSNumber: MTDatacenterAuthInfo(authKey: backupData.masterDatacenterKey, authKeyId: backupData.masterDatacenterKeyId, validUntilTimestamp: Int32.max, saltSet: [], authKeyAttributes: [:])!
         ], forKey: "datacenterAuthInfoById", group: "persistent")
-        return initializedNetwork(accountId: generateAccountRecordId(), arguments: networkArguments, supplementary: true, datacenterId: Int(backupData.masterDatacenterId), keychain: keychain, basePath: "", testingEnvironment: testingEnvironment, languageCode: nil, proxySettings: proxySettings, networkSettings: nil, networkEngineSettings: NetworkEngineSettings(engine: .mtProtoKit), phoneNumber: nil, useRequestTimeoutTimers: true, appConfiguration: .defaultValue, trackNetworkUsage: false)
+        return initializedNetwork(accountId: generateAccountRecordId(), arguments: networkArguments, supplementary: true, datacenterId: Int(backupData.masterDatacenterId), keychain: keychain, basePath: "", testingEnvironment: testingEnvironment, languageCode: nil, proxySettings: proxySettings, networkSettings: nil, networkEngine: nagramMtProtoKitNetworkEngineInputs(), phoneNumber: nil, useRequestTimeoutTimers: true, appConfiguration: .defaultValue, trackNetworkUsage: false)
         |> castError(E.self)
         |> mapToSignal { network -> Signal<T, E> in
             assert(network.engineKind == .mtProtoKit)

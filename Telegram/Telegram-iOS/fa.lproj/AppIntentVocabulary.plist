@@ -17,7 +17,7 @@
 			<string>INStartAudioCallIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Call Alex on Telegram</string>
+				<string>از طریق تلگرام (Telegram) به علی زنگ بزن</string>
 			</array>
 		</dict>
 		<dict>
@@ -25,7 +25,7 @@
 			<string>INSearchForMessagesIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Search for messages from Alex on Telegram</string>
+				<string>پیام‌های خوانده‌نشدهٔ من در تلگرام (Telegram) را بخوان</string>
 			</array>
 		</dict>
 		<dict>
@@ -33,7 +33,7 @@
 			<string>INSetMessageAttributeIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Mark my Telegram messages as read</string>
+				<string>پیام‌های من در تلگرام (Telegram) را به‌عنوان خوانده‌شده علامت بزن</string>
 			</array>
 		</dict>
 		<dict>
@@ -41,7 +41,7 @@
 			<string>INSearchCallHistoryIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Show my Telegram call history</string>
+				<string>تماس‌های ازدست‌رفتهٔ من در تلگرام (Telegram) را نشان بده</string>
 			</array>
 		</dict>
 	</array>

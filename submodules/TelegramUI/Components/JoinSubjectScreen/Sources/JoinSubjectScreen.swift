@@ -231,7 +231,11 @@ private final class JoinSubjectSheetContentComponent: Component {
             let environment = environment[ViewControllerComponentContainer.Environment.self].value
             let themeUpdated = self.environment?.theme !== environment.theme
 
+            // iPhone Duo: one side's safe inset is the side strip; the right margin is its own and centered
+            // content is centered in the band between the insets. With equal insets these are the old values.
             let sideInset: CGFloat = 16.0 + environment.safeInsets.left
+            let rightSideInset: CGFloat = 16.0 + environment.safeInsets.right
+            let bandCenterX: CGFloat = environment.safeInsets.left + (availableSize.width - environment.safeInsets.left - environment.safeInsets.right) / 2.0
 
             if self.component == nil {
                 switch component.mode {
@@ -338,7 +342,7 @@ private final class JoinSubjectSheetContentComponent: Component {
                     environment: {},
                     containerSize: CGSize(width: 90.0, height: 90.0)
                 )
-                let peerAvatarFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - peerAvatarSize.width) * 0.5), y: contentHeight), size: peerAvatarSize)
+                let peerAvatarFrame = CGRect(origin: CGPoint(x: floor(bandCenterX - peerAvatarSize.width * 0.5), y: contentHeight), size: peerAvatarSize)
                 if let peerAvatarView = self.peerAvatar.view {
                     if peerAvatarView.superview == nil {
                         self.addSubview(peerAvatarView)
@@ -368,7 +372,7 @@ private final class JoinSubjectSheetContentComponent: Component {
                     environment: {},
                     containerSize: CGSize(width: 90.0, height: 90.0)
                 )
-                let callIconBackgroundFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - callIconBackgroundSize.width) * 0.5), y: contentHeight), size: callIconBackgroundSize)
+                let callIconBackgroundFrame = CGRect(origin: CGPoint(x: floor(bandCenterX - callIconBackgroundSize.width * 0.5), y: contentHeight), size: callIconBackgroundSize)
                 if let callIconBackgroundView = self.callIconBackground.view {
                     if callIconBackgroundView.superview == nil {
                         self.addSubview(callIconBackgroundView)
@@ -438,10 +442,10 @@ private final class JoinSubjectSheetContentComponent: Component {
                     text: .plain(NSAttributedString(string: titleString, font: Font.bold(24.0), textColor: environment.theme.list.itemPrimaryTextColor))
                 )),
                 environment: {},
-                containerSize: CGSize(width: max(1.0, availableSize.width - sideInset * 2.0 - titleIconWidth), height: 100.0)
+                containerSize: CGSize(width: max(1.0, availableSize.width - sideInset - rightSideInset - titleIconWidth), height: 100.0)
             )
             let titleTotalWidth = titleSize.width + titleIconWidth
-            let titleFrame = CGRect(origin: CGPoint(x: floorToScreenPixels((availableSize.width - titleTotalWidth) * 0.5), y: contentHeight), size: titleSize)
+            let titleFrame = CGRect(origin: CGPoint(x: floorToScreenPixels(bandCenterX - titleTotalWidth * 0.5), y: contentHeight), size: titleSize)
             if let titleView = title.view {
                 if titleView.superview == nil {
                     self.addSubview(titleView)
@@ -484,9 +488,9 @@ private final class JoinSubjectSheetContentComponent: Component {
                         lineSpacing: 0.2
                     )),
                     environment: {},
-                    containerSize: CGSize(width: availableSize.width - sideInset * 2.0, height: 10000.0)
+                    containerSize: CGSize(width: availableSize.width - sideInset - rightSideInset, height: 10000.0)
                 )
-                let subtitleFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - subtitleSize.width) * 0.5), y: contentHeight), size: subtitleSize)
+                let subtitleFrame = CGRect(origin: CGPoint(x: floor(bandCenterX - subtitleSize.width * 0.5), y: contentHeight), size: subtitleSize)
                 if let subtitleView = subtitle.view {
                     if subtitleView.superview == nil {
                         self.addSubview(subtitleView)
@@ -529,9 +533,9 @@ private final class JoinSubjectSheetContentComponent: Component {
                         lineSpacing: 0.2
                     )),
                     environment: {},
-                    containerSize: CGSize(width: availableSize.width - sideInset * 2.0, height: 10000.0)
+                    containerSize: CGSize(width: availableSize.width - sideInset - rightSideInset, height: 10000.0)
                 )
-                let descriptionTextFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - descriptionTextSize.width) * 0.5), y: contentHeight), size: descriptionTextSize)
+                let descriptionTextFrame = CGRect(origin: CGPoint(x: floor(bandCenterX - descriptionTextSize.width * 0.5), y: contentHeight), size: descriptionTextSize)
                 if let descriptionTextView = descriptionText.view {
                     if descriptionTextView.superview == nil {
                         self.addSubview(descriptionTextView)
@@ -622,7 +626,7 @@ private final class JoinSubjectSheetContentComponent: Component {
                 }
 
                 contentHeight += 8.0
-                transition.setFrame(layer: contentSeparator, frame: CGRect(origin: CGPoint(x: sideInset, y: contentHeight), size: CGSize(width: availableSize.width - sideInset * 2.0, height: UIScreenPixel)))
+                transition.setFrame(layer: contentSeparator, frame: CGRect(origin: CGPoint(x: sideInset, y: contentHeight), size: CGSize(width: availableSize.width - sideInset - rightSideInset, height: UIScreenPixel)))
                 contentHeight += 10.0
 
                 let previewPeersAvatarsNode: AnimatedAvatarSetNode
@@ -648,7 +652,7 @@ private final class JoinSubjectSheetContentComponent: Component {
                     synchronousLoad: true
                 )
                 contentHeight += 8.0
-                let previewPeersAvatarsFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - avatarsSize.width) * 0.5), y: contentHeight), size: avatarsSize)
+                let previewPeersAvatarsFrame = CGRect(origin: CGPoint(x: floor(bandCenterX - avatarsSize.width * 0.5), y: contentHeight), size: avatarsSize)
                 if previewPeersAvatarsNode.view.superview == nil {
                     self.addSubview(previewPeersAvatarsNode.view)
                 }
@@ -682,9 +686,9 @@ private final class JoinSubjectSheetContentComponent: Component {
                     lineSpacing: 0.2
                     )),
                     environment: {},
-                    containerSize: CGSize(width: availableSize.width - sideInset * 2.0, height: 10000.0)
+                    containerSize: CGSize(width: availableSize.width - sideInset - rightSideInset, height: 10000.0)
                 )
-                let previewPeersTextFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - previewPeersTextSize.width) * 0.5), y: contentHeight), size: previewPeersTextSize)
+                let previewPeersTextFrame = CGRect(origin: CGPoint(x: floor(bandCenterX - previewPeersTextSize.width * 0.5), y: contentHeight), size: previewPeersTextSize)
                 if let previewPeersTextView = previewPeersText.view {
                     if previewPeersTextView.superview == nil {
                         self.addSubview(previewPeersTextView)
@@ -767,9 +771,9 @@ private final class JoinSubjectSheetContentComponent: Component {
                     )),
                     environment: {
                     },
-                    containerSize: CGSize(width: availableSize.width - sideInset * 2.0, height: 1000.0)
+                    containerSize: CGSize(width: availableSize.width - sideInset - rightSideInset, height: 1000.0)
                 )
-                let callMicrophoneOptionFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - callMicrophoneOptionSize.width) * 0.5), y: contentHeight), size: callMicrophoneOptionSize)
+                let callMicrophoneOptionFrame = CGRect(origin: CGPoint(x: floor(bandCenterX - callMicrophoneOptionSize.width * 0.5), y: contentHeight), size: callMicrophoneOptionSize)
                 if let callMicrophoneOptionView = callMicrophoneOption.view {
                     if callMicrophoneOptionView.superview == nil {
                         self.addSubview(callMicrophoneOptionView)
@@ -866,7 +870,7 @@ private final class JoinSubjectSheetContentComponent: Component {
                     environment: {},
                     containerSize: CGSize(width: availableSize.width - buttonInsets.left - buttonInsets.right, height: 100.0)
                 )
-                let requestDescriptionTextFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - requestDescriptionTextSize.width) * 0.5), y: contentHeight), size: requestDescriptionTextSize)
+                let requestDescriptionTextFrame = CGRect(origin: CGPoint(x: floor(bandCenterX - requestDescriptionTextSize.width * 0.5), y: contentHeight), size: requestDescriptionTextSize)
                 if let requestDescriptionTextView = requestDescriptionText.view {
                     if requestDescriptionTextView.superview == nil {
                         self.addSubview(requestDescriptionTextView)
@@ -953,7 +957,7 @@ private final class JoinSubjectScreenComponent: Component {
                 metrics: environment.metrics,
                 deviceMetrics: environment.deviceMetrics,
                 isDisplaying: environment.isVisible,
-                isCentered: environment.metrics.widthClass == .regular,
+                isCentered: environment.presentsFloatingPanels,
                 hasInputHeight: !environment.inputHeight.isZero,
                 regularMetricsSize: CGSize(width: 430.0, height: 900.0),
                 dismiss: { [weak self] _ in

@@ -112,6 +112,7 @@ import ChatMessageItemView
 import ChatMessageItemCommon
 import ChatMessageAnimatedStickerItemNode
 import ChatMessageBubbleItemNode
+import ChatMessageBubbleContentNode
 import ChatNavigationButton
 import WebsiteType
 import PeerInfoScreen
@@ -251,7 +252,8 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     let currentChatListFilter: Int32?
     let chatNavigationStack: [ChatNavigationStackItem]
     let customChatNavigationStack: [EnginePeer.Id]?
-    
+    let showsUnreadChatsBackBadge: Bool
+
     var didSetupDropToPaste: Bool = false
     
     let context: AccountContext
@@ -301,6 +303,13 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     let chatWallpaperPromise = Promise<TelegramWallpaper?>()
     
     var chatTitleView: ChatNavigationBarTitleView?
+    /// Set by a tap on the header's title pill or avatar, just before the `.openChatInfo` it sends, which takes it at once.
+    var openChatInfoFromHeader = false
+    /// The profile `.openChatInfo` pushed for a header tap: only its push expands (the push waits for the profile to be
+    /// ready, and one the profile declines never asks the chat, so nothing else could clear a flag).
+    weak var expansionProfileToPush: ViewController?
+    /// The profile an expansion opened: its pop expands back.
+    private weak var expandedProfile: ViewController?
     var leftNavigationButton: ChatNavigationButton?
     var rightNavigationButton: ChatNavigationButton?
     var secondaryRightNavigationButton: ChatNavigationButton?
@@ -554,7 +563,9 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     var chatLocationContextHolder: Atomic<ChatLocationContextHolder?>
     
     var walletTransferAnimation: ChatWalletTransferAnimation?
+    var walletTransferAnimationsVisible = false
     weak var attachmentController: AttachmentController?
+    weak var shareSheetController: UIViewController?
     
     weak var currentImportMessageTooltip: UndoOverlayController?
     
@@ -736,6 +747,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         chatListFilter: Int32? = nil,
         chatNavigationStack: [ChatNavigationStackItem] = [],
         customChatNavigationStack: [EnginePeer.Id]? = nil,
+        showsUnreadChatsBackBadge: Bool = true,
         initialTextInputState: ChatTextInputState? = nil,
         params: ChatControllerParams? = nil
     ) {
@@ -758,10 +770,11 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         self.currentChatListFilter = chatListFilter
         self.chatNavigationStack = chatNavigationStack
         self.customChatNavigationStack = customChatNavigationStack
+        self.showsUnreadChatsBackBadge = showsUnreadChatsBackBadge
         if let peerId = chatLocation.peerId { // MARK: NAGRAM — 记录进入的会话
             NagramSettings.shared.addRecentChatId(peerId.toInt64(), accountPeerId: context.account.peerId.toInt64())
         }
-        
+
         self.forcedTheme = params?.forcedTheme
         self.forcedNavigationBarTheme = params?.forcedNavigationBarTheme
         self.forcedWallpaper = params?.forcedWallpaper
@@ -815,7 +828,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         case .inline, .standard(.embedded):
             navigationBarPresentationData = nil
         default:
-            navigationBarPresentationData = NavigationBarPresentationData(presentationData: self.presentationData, hideBackground: false, hideBadge: false, style: .glass, glassStyle: .default)
+            navigationBarPresentationData = NavigationBarPresentationData(presentationData: self.presentationData, hideBackground: false, hideBadge: false, glassStyle: .default)
         }
         
         self.moreBarButton = MoreHeaderButton(color: self.presentationData.theme.chat.inputPanel.panelControlColor)
@@ -951,7 +964,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 return false
             }
             
-            if let request = walletTonConnectRequestRoute(message: message, accountPeerId: self.context.account.peerId) {
+            if let request = walletTonConnectRequestRoute(message: EngineMessage(message), accountPeerId: self.context.account.peerId) {
                 guard WalletConfiguration.with(appConfiguration: self.context.currentAppConfiguration.with { $0 }).isAvailable else {
                     self.present(UndoOverlayController(presentationData: self.presentationData, content: .info(title: nil, text: self.presentationData.strings.Wallet_Unavailable, timeout: nil, customUndoText: nil), action: { _ in return false }), in: .window(.root))
                     return true
@@ -3638,7 +3651,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 strongSelf.sendMessages([.message(text: command, attributes: attributes, inlineStickers: [:], mediaReference: nil, threadId: strongSelf.chatLocation.threadId, replyToMessageId: replyToMessageId, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])])
             }
         }, openInstantPage: { [weak self] message, associatedData in
-            if let strongSelf = self, strongSelf.isNodeLoaded, let navigationController = strongSelf.effectiveNavigationController, let message = strongSelf.chatDisplayNode.historyNode.messageInCurrentHistoryView(message.id)?._asMessage() {
+            if let strongSelf = self, strongSelf.isNodeLoaded, let navigationController = strongSelf.effectiveNavigationController, let message = strongSelf.chatDisplayNode.historyNode.messageInCurrentHistoryView(message.id) {
                 let _ = strongSelf.presentVoiceMessageDiscardAlert(action: {
                     strongSelf.chatDisplayNode.dismissInput()
                     if let controller = strongSelf.context.sharedContext.makeInstantPageController(context: strongSelf.context, message: message, sourcePeerType: associatedData?.automaticDownloadPeerType) {
@@ -3650,7 +3663,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 })
             }
         }, openWallpaper: { [weak self] message in
-            if let strongSelf = self, strongSelf.isNodeLoaded, let message = strongSelf.chatDisplayNode.historyNode.messageInCurrentHistoryView(message.id)?._asMessage() {
+            if let strongSelf = self, strongSelf.isNodeLoaded, let message = strongSelf.chatDisplayNode.historyNode.messageInCurrentHistoryView(message.id) {
                 let _ = strongSelf.presentVoiceMessageDiscardAlert(action: {
                     strongSelf.chatDisplayNode.dismissInput()
                     strongSelf.context.sharedContext.openChatWallpaper(context: strongSelf.context, message: message, present: { [weak self] c, a in
@@ -3659,7 +3672,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 })
             }
         }, openTheme: { [weak self] message in
-            if let strongSelf = self, strongSelf.isNodeLoaded, let message = strongSelf.chatDisplayNode.historyNode.messageInCurrentHistoryView(message.id)?._asMessage() {
+            if let strongSelf = self, strongSelf.isNodeLoaded, let message = strongSelf.chatDisplayNode.historyNode.messageInCurrentHistoryView(message.id) {
                 let _ = strongSelf.presentVoiceMessageDiscardAlert(action: {
                     strongSelf.chatDisplayNode.dismissInput()
                     openChatTheme(context: strongSelf.context, message: message, pushController: { [weak self] c in
@@ -4535,7 +4548,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     guard let self else {
                         return
                     }
-                    let shareController = self.context.sharedContext.makeShareController(context: self.context, params: ShareControllerParams(subject: .text(text.string), externalShare: true, immediateExternalShare: false, updatedPresentationData: self.updatedPresentationData))
+                    let shareController = self.context.sharedContext.makeShareScreen(context: self.context, params: ShareControllerParams(subject: .text(text.string), externalShare: true, immediateExternalShare: false, updatedPresentationData: self.updatedPresentationData))
                     self.chatDisplayNode.dismissInput()
                     self.present(shareController, in: .window(.root))
                 }
@@ -4581,24 +4594,38 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 }
                 if let messageId = message?.id, let message = self.chatDisplayNode.historyNode.messageInCurrentHistoryView(messageId)?._asMessage() ?? message {
                     var quoteData: EngineMessageReplyQuote?
-                    
-                    // MARK: NAGRAM — The selected text can outlive an edit to the message.
-                    let messageText = message.text as NSString
-                    guard range.lowerBound >= 0, range.upperBound <= messageText.length else {
-                        completion(nil)
-                        let strings = self.presentationData.strings
-                        let authorName = message.author.flatMap(EnginePeer.init)?.compactDisplayTitle ?? ""
-                        self.present(textAlertController(context: self.context, title: strings.Chat_ErrorQuoteOutdatedTitle, text: strings.Chat_ErrorQuoteOutdatedText(authorName).string, actions: [
-                            TextAlertAction(type: .defaultAction, title: strings.Common_OK, action: {})
-                        ], parseMarkdown: true), in: .window(.root))
-                        return
-                    }
-                    let nsRange = NSRange(location: range.lowerBound, length: range.upperBound - range.lowerBound)
-                    let quoteText = messageText.substring(with: nsRange)
-                    
-                    let trimmedText = trimStringWithEntities(string: quoteText, entities: messageTextEntitiesInRange(entities: message.textEntitiesAttribute?.entities ?? [], range: nsRange, onlyQuoteable: true), maxLength: quoteMaxLength(appConfig: self.context.currentAppConfiguration.with({ $0 })))
-                    if !trimmedText.string.isEmpty {
-                        quoteData = EngineMessageReplyQuote(text: trimmedText.string, offset: nsRange.location, entities: trimmedText.entities, media: nil)
+
+                    if message.richText != nil {
+                        // A rich message's selection lives in its bubble's combined page text, not in
+                        // `message.text` (which is empty): the bubble cuts the quote from its page. Its
+                        // selection is still live, since the menu action runs before the menu closes.
+                        var quoteContentNode: ChatMessageQuoteSourceContentNode?
+                        self.chatDisplayNode.historyNode.enumerateItemNodes { itemNode in
+                            if let itemNode = itemNode as? ChatMessageBubbleItemNode, itemNode.item?.message.id == message.id {
+                                quoteContentNode = itemNode.contentNodes.first(where: { $0 is ChatMessageQuoteSourceContentNode }) as? ChatMessageQuoteSourceContentNode
+                            }
+                            return quoteContentNode == nil
+                        }
+                        quoteData = quoteContentNode?.currentReplyQuote(maxLength: quoteMaxLength(appConfig: self.context.currentAppConfiguration.with({ $0 })))
+                    } else {
+                        // MARK: NAGRAM — The selected text can outlive an edit to the message.
+                        let messageText = message.text as NSString
+                        guard range.lowerBound >= 0, range.upperBound <= messageText.length else {
+                            completion(nil)
+                            let strings = self.presentationData.strings
+                            let authorName = message.author.flatMap(EnginePeer.init)?.compactDisplayTitle ?? ""
+                            self.present(textAlertController(context: self.context, title: strings.Chat_ErrorQuoteOutdatedTitle, text: strings.Chat_ErrorQuoteOutdatedText(authorName).string, actions: [
+                                TextAlertAction(type: .defaultAction, title: strings.Common_OK, action: {})
+                            ], parseMarkdown: true), in: .window(.root))
+                            return
+                        }
+                        let nsRange = NSRange(location: range.lowerBound, length: range.upperBound - range.lowerBound)
+                        let quoteText = messageText.substring(with: nsRange)
+
+                        let trimmedText = trimStringWithEntities(string: quoteText, entities: messageTextEntitiesInRange(entities: message.textEntitiesAttribute?.entities ?? [], range: nsRange, onlyQuoteable: true), maxLength: quoteMaxLength(appConfig: self.context.currentAppConfiguration.with({ $0 })))
+                        if !trimmedText.string.isEmpty {
+                            quoteData = EngineMessageReplyQuote(text: trimmedText.string, offset: nsRange.location, entities: trimmedText.entities, media: nil)
+                        }
                     }
                     
                     let replySubject = ChatInterfaceState.ReplyMessageSubject(
@@ -4777,13 +4804,10 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                         }
                         
                         let _ = strongSelf.presentVoiceMessageDiscardAlert(action: {
-                            strongSelf.interfaceInteraction?.updateTextInputStateAndMode { current, inputMode in
-                                var inputMode = inputMode
-                                if inputMode == .none {
-                                    inputMode = .text
-                                }
-                                return (chatTextInputAddMentionAttribute(current, peer: peer), inputMode)
-                            }
+                            // Shared with the composer harness (`ChatComposerUserInserts.swift`): the
+                            // rich editor inserts at its own selection keeping every block; the legacy
+                            // node keeps `chatTextInputAddMentionAttribute`.
+                            chatComposerInsertMention(peer, richTextInputNode: strongSelf.chatDisplayNode.textInputPanelNode?.richTextInputNode, interfaceInteraction: strongSelf.interfaceInteraction)
                         }, delay: true)
                     })))
                 }
@@ -5007,11 +5031,12 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             guard let strongSelf = self else {
                 return
             }
-            let actionSheet = ActionSheetController(presentationData: strongSelf.presentationData)
-            actionSheet.setItemGroups([ActionSheetItemGroup(items: [
-                LargeEmojiActionSheetItem(context: strongSelf.context, text: strongSelf.presentationData.strings.Conversation_LargeEmojiDisabledInfo, fitz: fitz, file: file),
-                ActionSheetButtonItem(title: strongSelf.presentationData.strings.Conversation_LargeEmojiEnable, color: .accent, action: { [weak actionSheet, weak self] in
-                    actionSheet?.dismissAnimated()
+            let alertScreen = largeEmojiAlertScreen(
+                context: strongSelf.context,
+                updatedPresentationData: strongSelf.updatedPresentationData,
+                fitz: fitz,
+                file: file,
+                enable: { [weak self] in
                     guard let strongSelf = self else {
                         return
                     }
@@ -5020,14 +5045,10 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     }).startStandalone()
                     
                     strongSelf.present(UndoOverlayController(presentationData: strongSelf.presentationData, content: .emoji(name: "TwoFactorSetupRememberSuccess", text: strongSelf.presentationData.strings.Conversation_LargeEmojiEnabled), elevatedLayout: false, action: { _ in return false }), in: .current)
-                })
-            ]), ActionSheetItemGroup(items: [
-                ActionSheetButtonItem(title: strongSelf.presentationData.strings.Common_Cancel, color: .accent, font: .bold, action: { [weak actionSheet] in
-                    actionSheet?.dismissAnimated()
-                })
-            ])])
+                }
+            )
             strongSelf.chatDisplayNode.dismissInput()
-            strongSelf.present(actionSheet, in: .window(.root))
+            strongSelf.present(alertScreen, in: .window(.root))
         }, openJoinLink: { [weak self] joinHash in
             guard let strongSelf = self else {
                 return
@@ -6067,19 +6088,6 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             self?.walletTransferAnimation?.cancelArrival(id)
         }
         
-        self.navigationBar?.allowsCustomTransition = { [weak self] in
-            guard let strongSelf = self else {
-                return false
-            }
-            if strongSelf.navigationBar?.userInfo == nil {
-                return false
-            }
-            if strongSelf.navigationBar?.contentNode != nil {
-                return false
-            }
-            return true
-        }
-        
         self.chatTitleView = ChatNavigationBarTitleView(frame: CGRect())
         
         self.navigationItem.titleView = self.chatTitleView
@@ -6470,6 +6478,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         
         self.navigationItem.titleView = self.chatTitleView
         self.chatTitleView?.tapAction = { [weak self] in
+            self?.openChatInfoFromHeader = true
             self?.navigationButtonAction(.openChatInfo(expandAvatar: false, section: nil))
         }
         
@@ -7243,17 +7252,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             transition.updateCornerRadius(layer: self.view.layer, cornerRadius: 0.0)
         }
         
-        if let navigationBar = self.navigationBar {
-            let nodes = [
-                navigationBar.backButtonNode,
-                navigationBar.backButtonArrow,
-                navigationBar.badgeNode,
-                navigationBar.rightButtonNode
-            ]
-            for node in nodes {
-                node.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.3)
-            }
-        }
+        self.navigationBar?.animateButtonsIn(duration: 0.3)
         
         self.canReadHistory.set(true)
         
@@ -7330,15 +7329,29 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         let presentationTheme: PresentationTheme
         if let forcedNavigationBarTheme = self.forcedNavigationBarTheme {
             presentationTheme = forcedNavigationBarTheme
-            navigationBarTheme = NavigationBarTheme(rootControllerTheme: forcedNavigationBarTheme, hideBackground: false, hideBadge: true, edgeEffectColor: .clear, style: .glass, glassStyle: self.presentationInterfaceState.preferredGlassType == .clear ? .clear : .default)
+            navigationBarTheme = NavigationBarTheme(rootControllerTheme: forcedNavigationBarTheme, hideBadge: true, edgeEffectColor: .clear, glassStyle: self.presentationInterfaceState.preferredGlassType == .clear ? .clear : .default)
         } else {
             presentationTheme = self.presentationData.theme
-            navigationBarTheme = NavigationBarTheme(rootControllerTheme: self.presentationData.theme, hideBackground: false, hideBadge: false, edgeEffectColor: .clear, style: .glass, glassStyle: self.presentationInterfaceState.preferredGlassType == .clear ? .clear : .default)
+            navigationBarTheme = NavigationBarTheme(rootControllerTheme: self.presentationData.theme, hideBadge: false, edgeEffectColor: .clear, glassStyle: self.presentationInterfaceState.preferredGlassType == .clear ? .clear : .default)
         }
         
         self.navigationBar?.updatePresentationData(NavigationBarPresentationData(theme: navigationBarTheme, strings: NavigationBarStrings(presentationStrings: self.presentationData.strings)), transition: .immediate)
         
         self.moreBarButton.updateColor(color: presentationTheme.chat.inputPanel.panelControlColor)
+    }
+    
+    /// The chat's pinned list: `.unresolved` until it has answered, i.e. the history has loaded and the `.pinned`
+    /// tag view has entries or has finished loading with none.
+    enum TopPinnedMessageState: Equatable {
+        case unresolved
+        case resolved(ChatPinnedMessage?)
+        
+        var message: ChatPinnedMessage? {
+            if case let .resolved(message) = self {
+                return message
+            }
+            return nil
+        }
     }
     
     enum PinnedReferenceMessage {
@@ -7380,7 +7393,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         }
     }
     
-    static func topPinnedScrollMessage(context: AccountContext, chatLocation: ChatLocation, historyNode: ChatHistoryListNodeImpl, scrolledToMessageId: Signal<ScrolledToMessageId?, NoError>) -> Signal<ChatPinnedMessage?, NoError> {
+    static func topPinnedScrollMessageState(context: AccountContext, chatLocation: ChatLocation, historyNode: ChatHistoryListNodeImpl, scrolledToMessageId: Signal<ScrolledToMessageId?, NoError>) -> Signal<TopPinnedMessageState, NoError> {
         //TODO:release move to ContentData
         let loadState: Signal<Bool, NoError> = historyNode.historyState.get()
         |> map { state -> Bool in
@@ -7398,14 +7411,14 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         return loadState
         |> mapToSignal { loadState in
             if !loadState {
-                return .single(nil)
+                return .single(.unresolved)
             } else {
-                return ChatControllerImpl.topPinnedMessageSignal(context: context, chatLocation: chatLocation, referenceMessage: referenceMessage)
+                return ChatControllerImpl.topPinnedMessageState(context: context, chatLocation: chatLocation, referenceMessage: referenceMessage)
             }
         }
     }
     
-    static func topPinnedMessageSignal(context: AccountContext, chatLocation: ChatLocation, referenceMessage: Signal<PinnedReferenceMessage?, NoError>?) -> Signal<ChatPinnedMessage?, NoError> {
+    static func topPinnedMessageState(context: AccountContext, chatLocation: ChatLocation, referenceMessage: Signal<PinnedReferenceMessage?, NoError>?) -> Signal<TopPinnedMessageState, NoError> {
         var pinnedPeerId: EnginePeer.Id?
         let threadId = chatLocation.threadId
         
@@ -7421,7 +7434,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         }
         
         if let peerId = pinnedPeerId {
-            let topPinnedMessage: Signal<ChatPinnedMessage?, NoError>
+            let topPinnedMessage: Signal<TopPinnedMessageState, NoError>
             
             func pinnedHistorySignal(anchorMessageId: MessageId?, count: Int) -> Signal<ChatHistoryViewUpdate, NoError> {
                 let location: ChatHistoryLocation
@@ -7495,6 +7508,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 
                 var messages: [PinnedMessage]
                 var totalCount: Int
+                var isLoading: Bool
             }
             
             let adjustedReplyHistory: Signal<PinnedHistory, NoError>
@@ -7508,7 +7522,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                             return
                         }
                         guard case let .HistoryView(viewValue, _, _, _, _, _, _) = view else {
-                            subscriber.putNext(PinnedHistory(messages: [], totalCount: 0))
+                            subscriber.putNext(PinnedHistory(messages: [], totalCount: 0, isLoading: true))
                             return
                         }
                         
@@ -7519,7 +7533,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                                 index: i
                             ))
                         }
-                        let result = PinnedHistory(messages: messages, totalCount: messages.count)
+                        let result = PinnedHistory(messages: messages, totalCount: messages.count, isLoading: false)
                         
                         if case let .ready(loaded) = referenceMessageValue {
                             let referenceId = loaded.id
@@ -7587,7 +7601,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 |> map { view -> PinnedHistory in
                     switch view {
                     case .Loading:
-                        return PinnedHistory(messages: [], totalCount: 0)
+                        return PinnedHistory(messages: [], totalCount: 0, isLoading: true)
                     case let .HistoryView(viewValue, _, _, _, _, _, _):
                         var messages: [PinnedHistory.PinnedMessage] = []
                         var totalCount = viewValue.entries.count
@@ -7606,7 +7620,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                                 index: index
                             ))
                         }
-                        return PinnedHistory(messages: messages, totalCount: totalCount)
+                        return PinnedHistory(messages: messages, totalCount: totalCount, isLoading: false)
                     }
                 }
             }
@@ -7616,12 +7630,12 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 topMessage,
                 referenceMessage ?? .single(nil)
             )
-            |> map { pinnedMessages, topMessage, referenceMessage -> ChatPinnedMessage? in
+            |> map { pinnedMessages, topMessage, referenceMessage -> TopPinnedMessageState in
                 var message: ChatPinnedMessage?
                 
                 let topMessageId: MessageId
                 if pinnedMessages.messages.isEmpty {
-                    return nil
+                    return pinnedMessages.isLoading ? .unresolved : .resolved(nil)
                 }
                 topMessageId = topMessage?.message.id ?? pinnedMessages.messages[pinnedMessages.messages.count - 1].message.id
                 
@@ -7636,10 +7650,10 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     
                     if threadId != nil {
                         if referenceMessage.minId <= topMessage.message.id {
-                            return nil
+                            return .resolved(nil)
                         }
                     }
-                    return ChatPinnedMessage(message: topMessage.message, index: index, totalCount: pinnedMessages.totalCount, topMessageId: topMessageId)
+                    return .resolved(ChatPinnedMessage(message: topMessage.message, index: index, totalCount: pinnedMessages.totalCount, topMessageId: topMessageId))
                 }
                 
                 //print("reference: \(String(describing: referenceMessage?.id.id)) entries: \(view.entries.map(\.index.id.id))")
@@ -7671,14 +7685,22 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     }
                 }
 
-                return message
+                return .resolved(message)
             }
             |> distinctUntilChanged
             
             return topPinnedMessage
         } else {
-            return .single(nil)
+            return .single(.resolved(nil))
         }
+    }
+    
+    static func topPinnedMessageSignal(context: AccountContext, chatLocation: ChatLocation, referenceMessage: Signal<PinnedReferenceMessage?, NoError>?) -> Signal<ChatPinnedMessage?, NoError> {
+        return ChatControllerImpl.topPinnedMessageState(context: context, chatLocation: chatLocation, referenceMessage: referenceMessage)
+        |> map { state -> ChatPinnedMessage? in
+            return state.message
+        }
+        |> distinctUntilChanged
     }
 
     var storedAnimateFromSnapshotState: ChatControllerNode.SnapshotState?
@@ -7700,6 +7722,11 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     
     override public func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+
+        self.walletTransferAnimationsVisible = true
+        self.chatDisplayNode.historyNode.forEachVisibleMessageItemNode { itemNode in
+            itemNode.unreadMessageRangeUpdated()
+        }
                 
         if self.willAppear {
             self.chatDisplayNode.historyNode.refreshPollActionsForVisibleMessages()
@@ -7765,15 +7792,14 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         }
         
         let hasNagramRecentChats = NagramSettings.shared.recentChatsEnabled && !NagramSettings.shared.recentChatIds(accountPeerId: self.context.account.peerId.toInt64(), limit: 1).isEmpty // MARK: NAGRAM
-        if (!chatNavigationStack.isEmpty || hasNagramRecentChats), let backButtonNode = self.chatDisplayNode.navigationBar?.backButtonNode as? ContextControllerSourceNode {
-            backButtonNode.isGestureEnabled = true
-            backButtonNode.activated = { [weak self] gesture, _ in
-                guard let strongSelf = self, let backButtonNode = strongSelf.chatDisplayNode.navigationBar?.backButtonNode, let navigationController = strongSelf.effectiveNavigationController else {
+        if !chatNavigationStack.isEmpty || hasNagramRecentChats {
+            self.chatDisplayNode.navigationBar?.backButtonContextAction = { [weak self] sourceView, gesture in
+                guard let strongSelf = self, let navigationController = strongSelf.effectiveNavigationController else {
                     gesture.cancel()
                     return
                 }
                 let nextFolderId: Int32? = strongSelf.currentChatListFilter
-                let fallback = {
+                let fallback = { // MARK: NAGRAM
                     if chatNavigationStack.isEmpty {
                         gesture.cancel()
                     } else {
@@ -7782,7 +7808,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                             chatNavigationStack: chatNavigationStack,
                             nextFolderId: nextFolderId,
                             parentController: strongSelf,
-                            backButtonView: backButtonNode.view,
+                            backButtonView: sourceView,
                             navigationController: navigationController,
                             gesture: gesture
                         )
@@ -7791,7 +7817,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 PeerInfoScreenImpl.displayNagramRecentChatsMenu(
                     context: strongSelf.context,
                     parentController: strongSelf,
-                    sourceView: backButtonNode.view,
+                    sourceView: sourceView,
                     navigationController: navigationController,
                     gesture: gesture,
                     useBackAnimation: true,
@@ -8068,7 +8094,23 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             
             if case let .peer(peerId) = self.chatLocation {
                 let context = self.context
-                self.keepPeerInfoScreenDataHotDisposable.set(keepPeerInfoScreenDataHot(context: context, peerId: peerId, chatLocation: self.chatLocation, chatLocationContextHolder: self.chatLocationContextHolder).startStrict())
+                let chatLocation = self.chatLocation
+                let chatLocationContextHolder = self.chatLocationContextHolder
+                // The profile warmup subscribes to the shared-media panes, eight tag views whose
+                // fills would otherwise share the connection and the Postbox queue with the
+                // history's own fill. It starts once the history has loaded (spec 2026-10-13).
+                self.keepPeerInfoScreenDataHotDisposable.set((self.chatDisplayNode.historyNode.historyState.get()
+                |> filter { state -> Bool in
+                    if case .loaded = state {
+                        return true
+                    } else {
+                        return false
+                    }
+                }
+                |> take(1)
+                |> mapToSignal { _ -> Signal<Never, NoError> in
+                    return keepPeerInfoScreenDataHot(context: context, peerId: peerId, chatLocation: chatLocation, chatLocationContextHolder: chatLocationContextHolder)
+                }).startStrict())
                 
                 if peerId.namespace == Namespaces.Peer.CloudUser {
                     self.preloadAvatarDisposable.set((peerInfoProfilePhotosWithCache(context: context, peerId: peerId)
@@ -8326,6 +8368,8 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     
     override public func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+
+        self.walletTransferAnimationsVisible = false
         
         if #available(iOS 18.0, *) {
         } else {
@@ -8445,14 +8489,13 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     var suspendedNavigationBarLayout: ContainerViewLayout?
     var additionalNavigationBarBackgroundHeight: CGFloat = 0.0
     var additionalNavigationBarHitTestSlop: CGFloat = 0.0
-    var additionalNavigationBarCutout: CGSize?
 
     override public func updateNavigationBarLayout(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
         if self.suspendNavigationBarLayout {
             self.suspendedNavigationBarLayout = layout
             return
         }
-        self.applyNavigationBarLayout(layout, navigationLayout: self.navigationLayout(layout: layout), additionalBackgroundHeight: self.additionalNavigationBarBackgroundHeight, additionalCutout: self.additionalNavigationBarCutout, transition: transition)
+        self.applyNavigationBarLayout(layout, navigationLayout: self.navigationLayout(layout: layout), additionalBackgroundHeight: self.additionalNavigationBarBackgroundHeight, transition: transition)
     }
     
     override public func preferredContentSizeForLayout(_ layout: ContainerViewLayout) -> CGSize? {
@@ -8491,18 +8534,21 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         }
         
         var layout = layout
-        if case .compact = layout.metrics.widthClass, let attachmentController = self.attachmentController, attachmentController.window != nil {
+        // Wherever the attachment menu is a phone sheet over the chat (also on iPhone Duo's regular-width unfolded screen),
+        // its keyboard belongs to the sheet.
+        if !layout.presentsFloatingPanels, let attachmentController = self.attachmentController, attachmentController.window != nil {
+            layout = layout.withUpdatedInputHeight(nil)
+        } else if !layout.presentsFloatingPanels, let shareSheetController = self.shareSheetController, shareSheetController.view.window != nil {
             layout = layout.withUpdatedInputHeight(nil)
         }
                 
         var navigationBarTransition = transition
         self.chatDisplayNode.containerLayoutUpdated(layout, navigationBarHeight: self.navigationLayout(layout: layout).navigationFrame.maxY, transition: transition, listViewTransaction: { updateSizeAndInsets, additionalScrollDistance, scrollToTop, completion in
             self.chatDisplayNode.historyNode.updateLayout(transition: transition, updateSizeAndInsets: updateSizeAndInsets, additionalScrollDistance: additionalScrollDistance, scrollToTop: scrollToTop, completion: completion)
-        }, updateExtraNavigationBarBackgroundHeight: { value, hitTestSlop, cutout, extraNavigationTransition in
+        }, updateExtraNavigationBarBackgroundHeight: { value, hitTestSlop, extraNavigationTransition in
             navigationBarTransition = extraNavigationTransition
             self.additionalNavigationBarBackgroundHeight = value
             self.additionalNavigationBarHitTestSlop = hitTestSlop
-            self.additionalNavigationBarCutout = cutout
         })
         
         if case .compact = layout.metrics.widthClass {
@@ -8521,7 +8567,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         self.suspendNavigationBarLayout = false
         if let suspendedNavigationBarLayout = self.suspendedNavigationBarLayout {
             self.suspendedNavigationBarLayout = suspendedNavigationBarLayout
-            self.applyNavigationBarLayout(suspendedNavigationBarLayout, navigationLayout: self.navigationLayout(layout: layout), additionalBackgroundHeight: self.additionalNavigationBarBackgroundHeight, additionalCutout: self.additionalNavigationBarCutout, transition: navigationBarTransition)
+            self.applyNavigationBarLayout(suspendedNavigationBarLayout, navigationLayout: self.navigationLayout(layout: layout), additionalBackgroundHeight: self.additionalNavigationBarBackgroundHeight, transition: navigationBarTransition)
         }
         self.navigationBar?.additionalContentNode.hitTestSlop = UIEdgeInsets(top: 0.0, left: 0.0, bottom: self.additionalNavigationBarHitTestSlop, right: 0.0)
     }
@@ -8611,9 +8657,34 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             } else if case let .peer(peerId) = self.chatLocation, case .openChatInfo(expandAvatar: true, _) = button.action, let storyStats = self.contentData?.state.storyStats, storyStats.unseenCount != 0, let avatarNode = self.avatarNode {
                 self.openStories(peerId: peerId, avatarHeaderNode: nil, avatarNode: avatarNode.avatarNode)
             } else {
+                if case .openChatInfo = button.action {
+                    self.openChatInfoFromHeader = true
+                }
                 self.navigationButtonAction(button.action)
             }
         }
+    }
+
+    override public func navigationExpansionSource(above controller: ViewController, operation: NavigationExpansionOperation) -> NavigationExpansionSource? {
+        switch operation {
+        case .push:
+            guard let profile = self.expansionProfileToPush, profile === controller else {
+                return nil
+            }
+            self.expansionProfileToPush = nil
+        case .pop, .interactivePop:
+            guard let profile = self.expandedProfile, profile === controller else {
+                return nil
+            }
+        }
+        // Saved Messages, reply threads and monoforums keep the slide.
+        guard let titleView = self.chatTitleView, titleView.glassPillFrame != nil, case let .peer(peerId) = self.chatLocation, peerId != self.context.account.peerId, !self.presentationInterfaceState.isNotAccessible else {
+            return nil
+        }
+        if case .push = operation {
+            self.expandedProfile = controller
+        }
+        return ChatExpansionSource(titleView: titleView, avatarNode: self.avatarNode, avatarItem: self.chatInfoNavigationButton?.buttonItem, navigationBar: self.navigationBar, isDark: self.presentationData.theme.overallDarkAppearance, preferClearGlass: self.presentationInterfaceState.preferredGlassType == .clear)
     }
     
     @objc func secondaryRightNavigationButtonAction() {
@@ -9958,7 +10029,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 case let .chat(textInputState, subject, peekData):
                     dismissWebAppControllers()
                     if case .peer(peerId.id) = strongSelf.chatLocation {
-                        if let subject = subject, case let .message(messageSubject, highlight, timecode, _) = subject {
+                        if let subject = subject, case let .message(messageSubject, highlight, timecode, _, _) = subject {
                             if case let .id(messageId) = messageSubject {
                                 strongSelf.navigateToMessage(from: sourceMessageId, to: .id(messageId, NavigateToMessageParams(timestamp: timecode, quote: nil, subject: highlight?.subject)))
                             }
@@ -10086,7 +10157,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                         break
                     default:
                         progress?.set(.single(false))
-                        if let controller = self.context.sharedContext.makeInstantPageController(context: self.context, message: message, sourcePeerType: nil) {
+                        if let controller = self.context.sharedContext.makeInstantPageController(context: self.context, message: EngineMessage(message), sourcePeerType: nil) {
                             navigationController.pushViewController(controller)
                         }
                         return

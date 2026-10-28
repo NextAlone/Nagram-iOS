@@ -17,7 +17,7 @@
 			<string>INStartAudioCallIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Telegram에서 앨리스에게 전화해줘</string>
+				<string>Telegram으로 앨리스에게 전화해 줘</string>
 			</array>
 		</dict>
 		<dict>
@@ -25,7 +25,7 @@
 			<string>INSearchForMessagesIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Telegram에서 앨리스의 메시지를 검색해줘</string>
+				<string>Telegram에서 읽지 않은 내 메시지를 읽어 줘</string>
 			</array>
 		</dict>
 		<dict>
@@ -33,7 +33,7 @@
 			<string>INSetMessageAttributeIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Telegram 메시지를 읽음으로 표시해줘</string>
+				<string>Telegram에서 내 메시지를 읽음으로 표시해 줘</string>
 			</array>
 		</dict>
 		<dict>
@@ -41,7 +41,7 @@
 			<string>INSearchCallHistoryIntent</string>
 			<key>IntentExamples</key>
 			<array>
-				<string>Telegram 통화 기록을 보여줘</string>
+				<string>Telegram에서 내 부재중 전화를 보여 줘</string>
 			</array>
 		</dict>
 	</array>

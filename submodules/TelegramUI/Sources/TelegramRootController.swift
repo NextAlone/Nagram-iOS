@@ -30,6 +30,7 @@ import PeerInfoScreen
 import PeerInfoStoryGridScreen
 import ShareWithPeersScreen
 import ChatEmptyNode
+import NewsScreen
 // MARK: NAGRAM
 import NagramSettings
 import NagramSettingsSignal
@@ -92,6 +93,7 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
     public var callListController: CallListController?
     public var chatListController: ChatListController?
     public var accountSettingsController: PeerInfoScreen?
+    public var newsController: NewsScreen?
     
     private var permissionsDisposable: Disposable?
     private var presentationDataDisposable: Disposable?
@@ -101,6 +103,7 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
     private var presentationData: PresentationData
     // MARK: NAGRAM
     private var rootShowCallsTab: Bool = true
+    private var rootShowNewsTab: Bool = false
     
     private var detailsPlaceholderNode: DetailsChatPlaceholderNode?
     
@@ -144,7 +147,7 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
             guard let strongSelf = self else {
                 return
             }
-            strongSelf.updateRootControllers(showCallsTab: strongSelf.rootShowCallsTab)
+            strongSelf.updateRootControllers(showCallsTab: strongSelf.rootShowCallsTab, showNewsTab: strongSelf.rootShowNewsTab)
         })
         self.nagramGlassTransparencyDisposable = (nagramGlassTransparencySignal()
         |> deliverOnMainQueue).startStrict(next: { [weak self] _ in
@@ -234,7 +237,7 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
     }
     
     // MARK: NAGRAM
-    private func nagramRootControllers(showCallsTab: Bool) -> [ViewController] {
+    private func nagramRootControllers(showCallsTab: Bool, showNewsTab: Bool) -> [ViewController] {
         guard let contactsController = self.contactsController, let callListController = self.callListController, let chatListController = self.chatListController, let accountSettingsController = self.accountSettingsController else {
             return []
         }
@@ -250,6 +253,9 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         if !bottomBarSettings.isBottomBarVisible || bottomBarSettings.visibleNavigationItems.contains(.chats) || bottomBarSettings.isVisible(.search) {
             controllers.append(chatListController)
         }
+        if showNewsTab, let newsController = self.newsController {
+            controllers.append(newsController)
+        }
         if !bottomBarSettings.isBottomBarVisible || bottomBarSettings.visibleNavigationItems.contains(.settings) {
             controllers.append(accountSettingsController)
         }
@@ -259,9 +265,10 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         return controllers
     }
     
-    public func addRootControllers(showCallsTab: Bool) {
+    public func addRootControllers(showCallsTab: Bool, showNewsTab: Bool) {
         // MARK: NAGRAM
         self.rootShowCallsTab = showCallsTab
+        self.rootShowNewsTab = showNewsTab
         let tabBarController = TabBarControllerImpl(theme: self.presentationData.theme, strings: self.presentationData.strings)
         tabBarController.navigationPresentation = .master
         // MARK: NAGRAM — never expose Telegram's intentional chat-tab crash action.
@@ -270,6 +277,8 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
             chatListController.tabBarItem.badgeValue = sharedContext.switchingData.chatListBadge
         }
         let callListController = CallListController(context: self.context, mode: .tab)
+        // Created even when hidden, like the calls tab: `updateRootControllers` shows and hides it.
+        let newsController = NewsScreen(context: self.context)
         
         var controllers: [ViewController] = []
         
@@ -307,9 +316,10 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         
         self.contactsController = contactsController
         self.callListController = callListController
+        self.newsController = newsController
         self.chatListController = chatListController
         self.accountSettingsController = accountSettingsController
-        controllers = self.nagramRootControllers(showCallsTab: showCallsTab)
+        controllers = self.nagramRootControllers(showCallsTab: showCallsTab, showNewsTab: showNewsTab)
         let selectedIndex: Int
         if restoreSettignsController != nil, let settingsIndex = controllers.firstIndex(where: { $0 === accountSettingsController }) {
             selectedIndex = settingsIndex
@@ -325,15 +335,21 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         self.pushViewController(tabBarController, animated: false)
     }
         
-    public func updateRootControllers(showCallsTab: Bool) {
+    public func updateRootControllers(showCallsTab: Bool, showNewsTab: Bool) {
         // MARK: NAGRAM
         self.rootShowCallsTab = showCallsTab
+        self.rootShowNewsTab = showNewsTab
         guard let rootTabController = self.rootTabController as? TabBarControllerImpl else {
             return
         }
-        let controllers = self.nagramRootControllers(showCallsTab: showCallsTab)
+        let controllers = self.nagramRootControllers(showCallsTab: showCallsTab, showNewsTab: showNewsTab)
         
-        rootTabController.setControllers(controllers, selectedIndex: nil)
+        // A removed selected tab would otherwise fall back to index 0 (Contacts): select Chats instead.
+        var selectedIndex: Int?
+        if let currentController = rootTabController.currentController, !controllers.contains(where: { $0 === currentController }) {
+            selectedIndex = controllers.firstIndex(where: { $0 === self.chatListController })
+        }
+        rootTabController.setControllers(controllers, selectedIndex: selectedIndex)
         rootTabController.updateIsTabBarHidden(NagramSettings.shared.hideTabBar, transition: .animated(duration: 0.3, curve: .linear)) // MARK: NAGRAM
     }
     

@@ -527,6 +527,8 @@ private final class NativeSceneWindow: UIWindow, WindowHost {
 
 public func nativeWindow(scene: UIWindowScene, rootController: UIViewController) -> UIWindow & WindowHost {
     let window = NativeSceneWindow(windowScene: scene)
+    // MARK: NAGRAM — the scene window is the main window upstream registers for screen bounds.
+    registerMainWindowForScreenBounds(window)
     window.rootViewController = rootController
     return window
 }

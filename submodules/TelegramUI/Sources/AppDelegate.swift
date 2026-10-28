@@ -33,6 +33,7 @@ import AccountUtils
 import CoreSpotlight
 import TelegramAudio
 import DebugSettingsUI
+import CrashReporting
 import BackgroundTasks
 import UIKitRuntimeUtils
 import StoreKit
@@ -45,7 +46,9 @@ import TelegramUIDeclareEncodables
 import ContextMenuScreen
 import MetalEngine
 import RecaptchaEnterprise
-import NavigationBarImpl
+import NavigationBarNode
+import NavigationBarComponent
+import NavigationExpansionTransition
 import ContextUI
 import ContextControllerImpl
 import ProxyServerPreviewScreen
@@ -260,6 +263,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     private var dataImportSplash: LegacyDataImportSplash?
     private var memoryUsageOverlayView: UILabel?
     
+    private let crashReportPromptDisposable = MetaDisposable()
     private var buildConfig: BuildConfig?
     let episodeId = arc4random()
     
@@ -391,6 +395,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         precondition(!testIsLaunched)
         testIsLaunched = true
+        CrashReportCollector.shared.start()
         
         let _ = voipTokenPromise.get().start(next: { token in
             self.voipDeviceToken.set(.single(token))
@@ -402,7 +407,13 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         let launchStartTime = CFAbsoluteTimeGetCurrent()
         
         defaultNavigationBarImpl = { presentationData in
-            return NavigationBarImpl(presentationData: presentationData)
+            return NavigationBarNode(presentationData: presentationData)
+        }
+        defaultNavigationBarTransitionRenderer = { bottom, top in
+            return makeNavigationBarTransitionRenderer(bottom: bottom, top: top)
+        }
+        defaultNavigationExpansionRenderer = { source, destination, operation in
+            return NavigationExpansionRendererImpl.make(source: source, destination: destination, operation: operation)
         }
         makeContextControllerImpl = { context, presentationData, configuration, recognizer, gesture, workaroundUseLegacyImplementation, disableScreenshots, hideReactionPanelTail in
             return ContextControllerImpl(
@@ -861,7 +872,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }, currentHorizontalClassGetter: {
             return UIUserInterfaceSizeClass.compact
         }, documentsPath: legacyDocumentsPath(), currentApplicationBounds: {
-            return UIScreen.main.bounds
+            return mainWindowScreenBounds
         }, canOpenUrl: { url in
             return UIApplication.shared.canOpenURL(url)
         }, openUrl: { url in
@@ -1225,6 +1236,25 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     }
                 }
             }, appDelegate: self, testingEnvironment: isUITest || isDemo)
+            navigationBarOverflowMenuPresenter = { [weak sharedContext] sourceView, items in
+                guard let sharedContext, let mainWindow = sharedContext.mainWindow else {
+                    return
+                }
+                let presentationData = sharedContext.currentPresentationData.with { $0 }
+                let menuItems: [ContextMenuItem] = items.map { item in
+                    return .action(ContextMenuActionItem(text: item.title, icon: { theme in
+                        guard let image = item.image ?? item.iconName.flatMap({ UIImage(bundleImageName: $0) }) else {
+                            return nil
+                        }
+                        return generateScaledImage(image: generateTintedImage(image: image, color: theme.contextMenu.primaryColor), size: CGSize(width: 24.0, height: 24.0), opaque: false)
+                    }, action: { _, f in
+                        f(.default)
+                        item.action(sourceView)
+                    }))
+                }
+                let contextController = makeContextController(presentationData: presentationData, source: .reference(NavigationBarOverflowMenuReferenceSource(sourceView: sourceView)), items: .single(ContextController.Items(content: .list(menuItems))), gesture: nil)
+                mainWindow.presentInGlobalOverlay(contextController)
+            }
             
             presentationDataPromise.set(sharedContext.presentationData)
             #if targetEnvironment(simulator)
@@ -1476,6 +1506,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 contextValue.context.account.shouldExplicitelyKeepWorkerConnections.set(.single(false))
                 contextValue.context.account.shouldKeepBackgroundDownloadConnections.set(.single(false))
             }
+            self.crashReportPromptDisposable.set(nil)
             self.contextValue = context
             if let context = context {
                 setupLegacyComponents(context: context.context)
@@ -1511,6 +1542,10 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     self.registerForNotifications(context: context.context, authorize: authorizeNotifications)
                     
                     self.resetIntentsIfNeeded(context: context.context)
+                    self.crashReportPromptDisposable.set(setupCrashReportPrompt(context: context.context, isInternalBuild: buildConfig.isInternalBuild, navigationController: context.rootController, present: { [weak appDelegate = self, weak applicationContext = context] controller in
+                        guard let appDelegate, let applicationContext, appDelegate.contextValue === applicationContext else { return }
+                        appDelegate.mainWindow.present(controller, on: .root)
+                    }))
                 }))
             } else {
                 self.mainWindow.viewController = nil
@@ -3088,7 +3123,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         self.walletTonConnectNotificationDisposable.set(signal.start(next: { [weak self] context, message in
             guard let self else { return }
             let isWalletAvailable = WalletConfiguration.with(appConfiguration: context.context.currentAppConfiguration.with { $0 }).isAvailable
-            if isWalletAvailable, let message, let request = walletTonConnectRequestRoute(message: message._asMessage(), accountPeerId: context.context.account.peerId) {
+            if isWalletAvailable, let message, let request = walletTonConnectRequestRoute(message: message, accountPeerId: context.context.account.peerId) {
                 context.context.walletContext?.openTonConnectRequest(sessionId: request.sessionId, messageId: request.messageId)
             } else {
                 context.openChatWithPeerId(peerId: route.messageId.peerId, threadId: nil, messageId: route.messageId,
@@ -3630,5 +3665,17 @@ final class UpdateSettings: Codable, Equatable {
     
     static func ==(lhs: UpdateSettings, rhs: UpdateSettings) -> Bool {
         return lhs.url == rhs.url
+    }
+}
+
+private final class NavigationBarOverflowMenuReferenceSource: ContextReferenceContentSource {
+    private let sourceView: UIView
+
+    init(sourceView: UIView) {
+        self.sourceView = sourceView
+    }
+
+    func transitionInfo() -> ContextControllerReferenceViewInfo? {
+        return ContextControllerReferenceViewInfo(referenceView: self.sourceView, contentAreaInScreenSpace: mainWindowScreenBounds)
     }
 }

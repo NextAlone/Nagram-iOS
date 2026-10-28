@@ -32,6 +32,7 @@ import PeerSelectionScreen
 import DeviceModel
 // MARK: NAGRAM — Nagram 设置项加入设置搜索
 import NagramSettingsUI
+import DebugSettingsUI
 
 enum SettingsSearchableItemIcon {
     case profile
@@ -4398,6 +4399,16 @@ func settingsSearchableItems(
         let strings = context.sharedContext.currentPresentationData.with { $0 }.strings
         
         var allItems: [SettingsSearchableItem] = []
+
+        allItems.append(SettingsSearchableItem(
+            id: "debug/crash_reports",
+            title: "Crash Logs",
+            icon: .support,
+            breadcrumbs: ["Debug Settings"],
+            present: { context, _, present in
+                present(.push, crashReportsController(sharedContext: context.sharedContext, context: context))
+            }
+        ))
         
         let profileItems = profileSearchableItems(context: context, canAddAccount: canAddAccount)
         allItems.append(contentsOf: profileItems)
