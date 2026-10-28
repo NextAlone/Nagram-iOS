@@ -29,7 +29,7 @@ private let nagramTelegramMeSlugSet = CharacterSet(charactersIn: "abcdefghijklmn
 private let nagramResolveParameterNames: Set<String> = [
     "phone", "domain", "start", "startgroup", "startchannel", "admin", "game", "post",
     "voicechat", "videochat", "livestream", "attach", "startattach", "choose", "thread",
-    "appname", "startapp", "text", "ref", "album", "collection", "profile", "direct"
+    "appname", "startapp", "text", "ref", "album", "collection", "profile", "direct", "free"
 ]
 
 private func nagramIsValidPathSegment(_ value: String, allowed: CharacterSet) -> Bool {
@@ -67,7 +67,12 @@ private func nagramResolveToTelegramMe(_ items: [URLQueryItem]) -> URLComponents
         path = "/+\(phone)"
     } else if let domain = first("domain"), domain != "telegrampassport", nagramIsValidPathSegment(domain, allowed: nagramTelegramMeUsernameSet) {
         path = "/\(domain)"
-        if let appName = first("appname"), nagramIsValidPathSegment(appName, allowed: nagramTelegramMeUsernameSet) {
+        // appname 校验不过却仍然转交，t.me 链接就少了 App 名，打开的会是机器人本身
+        // 而不是它的 Mini App——和「映射不了的不转交」冲突，整条留下。
+        if let appName = first("appname") {
+            guard nagramIsValidPathSegment(appName, allowed: nagramTelegramMeUsernameSet) else {
+                return nil
+            }
             path += "/\(appName)"
         }
         if let threadValue = first("thread"), let threadId = Int64(threadValue) {
@@ -134,6 +139,10 @@ private func nagramResolveToTelegramMe(_ items: [URLQueryItem]) -> URLComponents
     }
     if valueless("direct") {
         queryItems.append(URLQueryItem(name: "direct", value: nil))
+    }
+    // 免付费私信 token（OpenUrl.swift 的 noPaidMessagesToken）：带值才映射，和官方一致。
+    if let freeToken = first("free"), !freeToken.isEmpty {
+        queryItems.append(URLQueryItem(name: "free", value: freeToken))
     }
 
     var components = URLComponents()
