@@ -11,6 +11,11 @@ public extension TelegramEngine {
             self.account = account
         }
 
+        // MARK: NAGRAM — 会话备份导出读取主数据中心授权密钥。
+        public func backupData() -> Signal<AccountBackupData?, NoError> {
+            return accountBackupData(postbox: self.account.postbox)
+        }
+
         public func acceptTermsOfService(id: String) -> Signal<Void, NoError> {
 		    return _internal_acceptTermsOfService(account: self.account, id: id)
 		}

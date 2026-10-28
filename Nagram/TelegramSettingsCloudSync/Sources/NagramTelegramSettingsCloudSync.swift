@@ -1,6 +1,5 @@
 import Foundation
 import NagramSettings
-import Postbox
 import SwiftSignalKit
 import TelegramCore
 import TelegramUIPreferences
@@ -10,7 +9,7 @@ public final class NagramTelegramSettingsCloudSync {
 
     private struct SyncedEntry {
         let name: String
-        let key: ValueBoxKey
+        let key: EngineDataBuffer
     }
 
     private static let cloudPrefix = "nagram.telegramSharedData."
@@ -130,7 +129,7 @@ public final class NagramTelegramSettingsCloudSync {
     }
 
     private func mergeInitialValues(accountManager: AccountManager<TelegramAccountManagerTypes>) {
-        let cloudValues = Self.syncedEntries.compactMap { entry -> (ValueBoxKey, Data)? in
+        let cloudValues = Self.syncedEntries.compactMap { entry -> (EngineDataBuffer, Data)? in
             guard let data = self.cloudData(forKey: Self.cloudKey(for: entry)) else {
                 return nil
             }
@@ -153,7 +152,7 @@ public final class NagramTelegramSettingsCloudSync {
         let _ = (accountManager.transaction { transaction -> Void in
             for (key, data) in cloudValues {
                 transaction.updateSharedData(key, { current in
-                    let updated = PreferencesEntry(data: data)
+                    let updated = EnginePreferencesEntry(data: data)
                     if let current, current == updated {
                         return current
                     }
@@ -195,7 +194,7 @@ public final class NagramTelegramSettingsCloudSync {
             return
         }
 
-        var changedValues: [(ValueBoxKey, Data?)] = []
+        var changedValues: [(EngineDataBuffer, Data?)] = []
         for cloudKey in changedCloudKeys {
             guard let entry = Self.syncedEntriesByCloudKey[cloudKey] else {
                 continue
@@ -213,7 +212,7 @@ public final class NagramTelegramSettingsCloudSync {
                     guard let data else {
                         return nil
                     }
-                    let updated = PreferencesEntry(data: data)
+                    let updated = EnginePreferencesEntry(data: data)
                     if let current, current == updated {
                         return current
                     }

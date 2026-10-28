@@ -3,7 +3,6 @@ import Foundation
 import MtProtoKit
 import NagramSessionBackup
 import NagramSettings
-import Postbox
 import SwiftSignalKit
 import TelegramCore
 
@@ -70,14 +69,15 @@ public func nagramAuthKeyId(authKey: Data) -> Int64 {
 
 public func nagramExportActiveSessionRecord(context: AccountContext, storage: NagramSessionBackupStorage = .synced) -> Signal<NagramSessionBackupRecord, NagramSessionBackupServiceError> {
     let account = context.account
-    let identity = account.postbox.transaction { transaction -> (String, String?) in
-        guard let user = transaction.getPeer(account.peerId) as? TelegramUser else {
+    let identity = context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: account.peerId))
+    |> map { peer -> (String, String?) in
+        guard case let .user(user) = peer else {
             return ("", nil)
         }
         return (user.debugDisplayTitle, user.phone)
     }
 
-    return combineLatest(accountBackupData(postbox: account.postbox), identity)
+    return combineLatest(context.engine.accountData.backupData(), identity)
     |> castError(NagramSessionBackupServiceError.self)
     |> mapToSignal { backupData, identity -> Signal<NagramSessionBackupRecord, NagramSessionBackupServiceError> in
         guard let backupData else {
@@ -135,7 +135,7 @@ public func nagramImportSessionString(sharedContext: SharedAccountContext, sessi
     }
 
     let accountManager = sharedContext.accountManager
-    let peerId = PeerId(namespace: Namespaces.Peer.CloudUser, id: PeerId.Id._internalFromInt64Value(session.userId))
+    let peerId = EnginePeer.Id(namespace: Namespaces.Peer.CloudUser, id: EnginePeer.Id.Id._internalFromInt64Value(session.userId))
     let backupData = AccountBackupData(
         masterDatacenterId: session.dcId,
         peerId: peerId.toInt64(),

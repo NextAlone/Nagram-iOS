@@ -3,7 +3,6 @@ import NagramStrings
 import AVFoundation
 import CoreMedia
 import Display
-import Postbox
 import TelegramCore
 import AccountContext
 import TelegramPresentationData
@@ -35,13 +34,13 @@ public enum NagramMediaMetadata {
 
     private static func buildText(context: AccountContext, mediaReference: AnyMediaReference, languageCode: String) -> String {
         var lines: [(String, String)] = []
-        let mediaBox = context.account.postbox.mediaBox
+        let resources = context.engine.resources
 
         if let imageRef = mediaReference.concrete(TelegramMediaImage.self) {
             let image = imageRef.media
             if let representation = largestImageRepresentation(image.representations) {
                 lines.append((ngI18n("Nagram.MediaMetadata.Resolution", languageCode), "\(Int(representation.dimensions.width)) × \(Int(representation.dimensions.height))"))
-                if let localPath = mediaBox.completedResourcePath(representation.resource), let size = fileSize(atPath: localPath) {
+                if let localPath = resources.completedResourcePath(id: EngineMediaResource.Id(representation.resource.id)), let size = fileSize(atPath: localPath) {
                     lines.append((ngI18n("Nagram.MediaMetadata.FileSize", languageCode), formatBytes(size)))
                 } else if let declared = representation.resource.size, declared > 0 {
                     lines.append((ngI18n("Nagram.MediaMetadata.FileSize", languageCode), formatBytes(declared)))
@@ -97,7 +96,7 @@ public enum NagramMediaMetadata {
                 lines.append((ngI18n("Nagram.MediaMetadata.Duration", languageCode), formatDuration(Double(duration))))
             }
 
-            let localPath = mediaBox.completedResourcePath(file.resource)
+            let localPath = resources.completedResourcePath(id: EngineMediaResource.Id(file.resource.id))
             var fileBytes: Int64?
             if let path = localPath, let size = fileSize(atPath: path) {
                 fileBytes = size
@@ -116,7 +115,7 @@ public enum NagramMediaMetadata {
                 // 流式播放的视频只有 partial 缓存、没有完整文件；faststart mp4 的 moov
                 // 在文件头，看过几秒后头部分片必然已落盘，直接解析它补齐编码与帧率。
                 if probe.codec == nil || probe.frameRate == nil {
-                    let headerPath = localPath ?? mediaBox.storePathsForId(file.resource.id).partial
+                    let headerPath = localPath ?? resources.partialResourcePath(id: EngineMediaResource.Id(file.resource.id))
                     let header = probeMP4Header(path: headerPath)
                     if probe.codec == nil {
                         probe.codec = header.codec

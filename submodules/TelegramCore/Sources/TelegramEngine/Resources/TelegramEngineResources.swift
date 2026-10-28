@@ -562,6 +562,11 @@ public extension TelegramEngine {
             return self.account.postbox.mediaBox.completedResourcePath(id: MediaResourceId(id.stringRepresentation), pathExtension: pathExtension)
         }
 
+        // MARK: NAGRAM — 媒体信息弹窗在只有 partial 缓存时解析视频头部。
+        public func partialResourcePath(id: EngineMediaResource.Id) -> String {
+            return self.account.postbox.mediaBox.storePathsForId(MediaResourceId(id.stringRepresentation)).partial
+        }
+
         public func storeResourceData(id: EngineMediaResource.Id, data: Data, synchronous: Bool = false) {
             self.account.postbox.mediaBox.storeResourceData(MediaResourceId(id.stringRepresentation), data: data, synchronous: synchronous)
         }

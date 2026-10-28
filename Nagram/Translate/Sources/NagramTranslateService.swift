@@ -1,7 +1,6 @@
 import AccountContext
 import Foundation
 import NagramSettings
-import Postbox
 import SwiftSignalKit
 import TelegramCore
 
@@ -61,45 +60,18 @@ public final class NagramTranslateService {
     }
 
     private func translationContext(messageId: EngineMessage.Id) -> Signal<[String], NoError> {
-        return self.context.account.postbox.transaction { transaction -> Message? in
-            return transaction.getMessage(messageId)
-        }
-        |> mapToSignal { target -> Signal<[String], NoError> in
-            guard let target else {
-                return .single([])
-            }
-            return self.context.account.postbox.aroundMessageHistoryViewForLocation(
-                .peer(peerId: messageId.peerId, threadId: target.threadId),
-                anchor: .message(messageId),
-                ignoreMessagesInTimestampRange: nil,
-                ignoreMessageIds: Set(),
-                count: 32,
-                trackHoles: false,
-                clipHoles: true,
-                ignoreRelatedChats: true,
-                fixedCombinedReadStates: nil,
-                topTaggedMessageIdNamespaces: [Namespaces.Message.Cloud],
-                tag: nil,
-                appendMessagesFromTheSameGroup: false,
-                namespaces: .not(Namespaces.Message.allNonRegular),
-                orderStatistics: []
-            )
-            |> take(1)
-            |> map { view, _, _ -> [String] in
-                return view.entries.map(\.message)
-                    .filter { $0.index < target.index }
-                    .sorted(by: { $0.index < $1.index })
-                    .suffix(5)
-                    .compactMap(nagramTranslationContextText)
-            }
+        return self.context.engine.messages.nagramMessagesPreceding(messageId: messageId, count: 32)
+        |> map { messages -> [String] in
+            return messages.suffix(5).compactMap(nagramTranslationContextText)
         }
     }
 
     private func translateMessagesExternally(provider: NagramTranslationProvider, messageIds: [EngineMessage.Id], fromLang: String?, toLang: String) -> Signal<Never, TranslationError> {
-        return self.context.account.postbox.transaction { transaction -> [(EngineMessage.Id, String, [MessageTextEntity], AudioTranscriptionMessageAttribute?)] in
+        return self.context.engine.data.get(TelegramEngine.EngineData.Item.Messages.Messages(ids: Set(messageIds)))
+        |> map { messages -> [(EngineMessage.Id, String, [MessageTextEntity], AudioTranscriptionMessageAttribute?)] in
             var items: [(EngineMessage.Id, String, [MessageTextEntity], AudioTranscriptionMessageAttribute?)] = []
             for messageId in messageIds {
-                guard let message = transaction.getMessage(messageId) else {
+                guard let message = messages[messageId] else {
                     continue
                 }
                 if !message.text.isEmpty {
@@ -142,26 +114,11 @@ public final class NagramTranslateService {
     }
 
     private func storeTranslation(messageId: EngineMessage.Id, text: String, entities: [MessageTextEntity], toLang: String, sourceText: String, sourceTranscription: AudioTranscriptionMessageAttribute?) -> Signal<Never, NoError> {
-        return self.context.account.postbox.transaction { transaction in
-            transaction.updateMessage(messageId, update: { currentMessage in
-                if let sourceTranscription {
-                    guard currentMessage.text.isEmpty, let current = currentMessage.attributes.first(where: { $0 is AudioTranscriptionMessageAttribute }) as? AudioTranscriptionMessageAttribute, !current.isPending, current.text == sourceText, current.id == sourceTranscription.id, current.source == sourceTranscription.source, current.requestId == sourceTranscription.requestId else {
-                        return .skip
-                    }
-                } else if currentMessage.text != sourceText {
-                    return .skip
-                }
-                let storeForwardInfo = currentMessage.forwardInfo.flatMap(StoreMessageForwardInfo.init)
-                var attributes = currentMessage.attributes.filter { !($0 is TranslationMessageAttribute) }
-                attributes.append(TranslationMessageAttribute(text: text, entities: entities, toLang: toLang))
-                return .update(StoreMessage(id: currentMessage.id, customStableId: nil, globallyUniqueId: currentMessage.globallyUniqueId, groupingKey: currentMessage.groupingKey, threadId: currentMessage.threadId, timestamp: currentMessage.timestamp, flags: StoreMessageFlags(currentMessage.flags), tags: currentMessage.tags, globalTags: currentMessage.globalTags, localTags: currentMessage.localTags, forwardInfo: storeForwardInfo, authorId: currentMessage.author?.id, text: currentMessage.text, attributes: attributes, media: currentMessage.media))
-            })
-        }
-        |> ignoreValues
+        return self.context.engine.messages.nagramStoreExternalTranslation(messageId: messageId, text: text, entities: entities, toLang: toLang, sourceText: sourceText, sourceTranscription: sourceTranscription)
     }
 }
 
-private func nagramTranslationContextText(_ message: Message) -> String? {
+private func nagramTranslationContextText(_ message: EngineMessage) -> String? {
     let text: String
     if !message.text.isEmpty {
         text = message.text

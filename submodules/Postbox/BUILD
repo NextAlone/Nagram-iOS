@@ -7,12 +7,6 @@ load("@build_bazel_rules_apple//apple/testing/default_runner:ios_test_runner.bzl
 package_group(
     name = "clients",
     packages = [
-        # MARK: NAGRAM — Nagram modules that still use Postbox directly; migrate them to TelegramEngine to drop these.
-        "//Nagram/Demo",
-        "//Nagram/MediaMetadata",
-        "//Nagram/SessionBackupUI",
-        "//Nagram/TelegramSettingsCloudSync",
-        "//Nagram/Translate",
         "//Telegram",
         "//Telegram/NotificationService",
         "//submodules/AccountContext",

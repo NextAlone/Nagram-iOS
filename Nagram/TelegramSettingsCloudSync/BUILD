@@ -12,7 +12,6 @@ swift_library(
     ],
     deps = [
         "//Nagram/Settings:NagramSettings",
-        "//submodules/Postbox:Postbox",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/TelegramCore:TelegramCore",
         "//submodules/TelegramUIPreferences:TelegramUIPreferences",
