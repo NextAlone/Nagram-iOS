@@ -802,10 +802,13 @@ final class AuthorizedApplicationContext {
             }
         }
         self.context.account.importableContacts.set(optionalImportableContacts)
-        self.context.sharedContext.deviceContactPhoneNumbers.set(optionalImportableContacts
+        // MARK: NAGRAM — importable() emits nothing while contacts access is undetermined, and the chat history
+        // waits for these numbers before its first transition, so no chat could open. Start from no numbers.
+        self.context.sharedContext.deviceContactPhoneNumbers.set(.single(Set())
+        |> then(optionalImportableContacts
         |> map { contacts in
             return Set(contacts.keys.map { cleanPhoneNumber($0.rawValue) })
-        })
+        }))
         
         let previousTheme = Atomic<PresentationTheme?>(value: nil)
         self.presentationDataDisposable = (context.sharedContext.presentationData
