@@ -1588,6 +1588,17 @@ public class Window1 {
         }
     }
     
+    // MARK: NAGRAM — clears a keyboard height that no notification ever cleared.
+    // Guards against the pending layout so a notification-driven commit keeps its own transition.
+    public func clearStaleInputHeight(transition: ContainedViewLayoutTransition) {
+        guard (self.updatingLayout?.layout ?? self.windowLayout).inputHeight != nil else {
+            return
+        }
+        self.updateLayout {
+            $0.update(inputHeight: nil, transition: transition, overrideTransition: false)
+        }
+    }
+    
     private func panGestureEnded(location: CGPoint, velocity: CGPoint?) {
         if self.keyboardGestureBeginLocation == nil {
             return
