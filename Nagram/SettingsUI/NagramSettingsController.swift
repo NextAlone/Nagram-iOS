@@ -253,7 +253,7 @@ private func nagramRowDeepLinkAliases(titleKey: String) -> [String] {
     }
 }
 
-private func nagramChatListStartupFolderLabel(accountPeerId: Int64, strings: PresentationStrings, lang: String) -> String {
+private func nagramChatListStartupFolderLabel(accountPeerId: Int64, folderTitles: [Int32: String], strings: PresentationStrings, lang: String) -> String {
     switch NagramSettings.shared.chatListStartupFolderModeValue {
     case .telegramDefault:
         return ngI18n("Nagram.ChatListStartupFolder.telegram", lang)
@@ -265,6 +265,9 @@ private func nagramChatListStartupFolderLabel(accountPeerId: Int64, strings: Pre
         }
         if folderId == NagramSettings.chatListAllChatsFolderId {
             return strings.ChatList_Tabs_AllChats
+        }
+        if let title = folderTitles[folderId] {
+            return title
         }
         return "\(ngI18n("Nagram.ChatListStartupFolder.specific", lang)) #\(folderId)"
     }
@@ -1071,10 +1074,18 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
         context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.callListSettings])
         |> map { sharedData -> Bool in
             return sharedData.entries[ApplicationSpecificSharedDataKeys.callListSettings]?.get(CallListSettings.self)?.showTab ?? CallListSettings.defaultSettings.showTab
+        },
+        context.engine.peers.updatedChatListFilters()
+        |> map { filters -> [Int32: String] in
+            var titles: [Int32: String] = [:]
+            for case let .filter(id, title, _, _) in filters {
+                titles[id] = title.text
+            }
+            return titles
         }
     )
     |> deliverOnMainQueue
-    |> map { presentationData, selectedTab, _, contentSettingsConfiguration, showCallsTab -> (ItemListControllerState, (ItemListNodeState, Any)) in
+    |> map { presentationData, selectedTab, _, contentSettingsConfiguration, showCallsTab, folderTitles -> (ItemListControllerState, (ItemListNodeState, Any)) in
         currentShowCallsTab = showCallsTab
         currentContentSettingsConfiguration = contentSettingsConfiguration
         let lang = presentationData.strings.baseLanguageCode
@@ -1118,7 +1129,7 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
                             entries.append(.input(stableId: rowStableId, section: sectionId, title: ngI18n(titleKey, lang), text: get(), placeholder: ngI18n(placeholderKey, lang), isSecret: isSecret, index: rowIndex))
                         }
                     case let .startupFolder(titleKey):
-                        entries.append(.disclosure(stableId: rowStableId, section: sectionId, title: ngI18n(titleKey, lang), label: nagramChatListStartupFolderLabel(accountPeerId: context.account.peerId.toInt64(), strings: presentationData.strings, lang: lang), index: rowIndex))
+                        entries.append(.disclosure(stableId: rowStableId, section: sectionId, title: ngI18n(titleKey, lang), label: nagramChatListStartupFolderLabel(accountPeerId: context.account.peerId.toInt64(), folderTitles: folderTitles, strings: presentationData.strings, lang: lang), index: rowIndex))
                     case let .slider(titleKey, minValue, maxValue, get, _, isVisible):
                         if isVisible() {
                             entries.append(.slider(stableId: rowStableId, section: sectionId, title: titleKey.map { ngI18n($0, lang) }, minValue: minValue, maxValue: maxValue, value: get(), index: rowIndex))
