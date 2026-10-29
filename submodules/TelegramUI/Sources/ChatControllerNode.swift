@@ -72,6 +72,9 @@ import UndoUI
 import BrowserUI
 // MARK: NAGRAM
 import NagramChatTools // MARK: NAGRAM
+import PeerInfoUI // MARK: NAGRAM
+import InviteLinksUI // MARK: NAGRAM
+import TranslateUI // MARK: NAGRAM
 import NagramSettings
 import NagramSettingsSignal // MARK: NAGRAM
 import RichTextAttachmentScreen
@@ -920,7 +923,12 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         
         self.setupHistoryNode()
         // MARK: NAGRAM - Apply toolbar settings immediately to an open chat.
-        self.nagramChatToolsDisposable.set((nagramBoolSignal("nagram.chatToolsEnabled", defaultValue: false)
+        self.nagramChatToolsDisposable.set((combineLatest(
+            nagramBoolSignal("nagram.chatToolsEnabled", defaultValue: false),
+            nagramStringSignal("nagram.chatTools.order", defaultValue: ""),
+            nagramStringSignal("nagram.chatTools.hidden", defaultValue: ""),
+            nagramStringSignal("nagram.chatTools.size", defaultValue: "")
+        )
         |> deliverOnMainQueue).startStrict(next: { [weak self] _ in
             self?.requestLayout(.animated(duration: 0.25, curve: .easeInOut))
         }))
@@ -1229,7 +1237,7 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
     }
     
     // MARK: NAGRAM - Reuse the same actions as the native chat controls.
-    private func performNagramChatTool(_ action: NagramChatToolsComponent.Action) {
+    private func performNagramChatTool(_ action: NagramChatToolId) {
         switch action {
         case .search:
             self.interfaceInteraction?.beginMessageSearch(.everything, "")
@@ -1239,6 +1247,16 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
             }
         case .beginning:
             self.interfaceInteraction?.scrollToTop()
+        case .latest:
+            self.navigateButtons.downPressed?()
+        case .mentions:
+            self.navigateButtons.mentionsPressed?()
+        case .select:
+            self.interfaceInteraction?.beginMessageSelection([], { _ in })
+        case .translate:
+            self.toggleNagramAutoTranslate()
+        case .manage:
+            break
         case .notifications:
             self.interfaceInteraction?.togglePeerNotifications()
         case .cache:
@@ -1264,6 +1282,97 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                 }
             })
         }
+    }
+
+    private var isNagramAutoTranslateEnabled: Bool {
+        guard let peerId = self.chatLocation.peerId else {
+            return false
+        }
+        return NagramSettings.shared.isAutoTranslateEnabled(accountPeerId: self.context.account.peerId.toInt64(), peerId: peerId.toInt64(), threadId: self.chatLocation.threadId)
+    }
+
+    // Same switch as the profile's "Auto Translate This Chat".
+    private func toggleNagramAutoTranslate() {
+        guard let peerId = self.chatLocation.peerId else {
+            return
+        }
+        let threadId = self.chatLocation.threadId
+        let value = !self.isNagramAutoTranslateEnabled
+        let context = self.context
+        NagramSettings.shared.setAutoTranslateEnabled(value, accountPeerId: context.account.peerId.toInt64(), peerId: peerId.toInt64(), threadId: threadId)
+        let _ = updateChatTranslationStateInteractively(engine: context.engine, peerId: peerId, threadId: threadId, { current in
+            return current?.withIsEnabled(value)
+        }).startStandalone()
+        if value {
+            let _ = context.engine.messages.togglePeerMessagesTranslationHidden(peerId: peerId, hidden: false).startStandalone()
+            let _ = (chatTranslationState(context: context, peerId: peerId, threadId: threadId) |> take(1)).startStandalone()
+        }
+        self.requestLayout(.animated(duration: 0.2, curve: .easeInOut))
+    }
+
+    // The admin screens the profile opens, offered only where the account can use them.
+    private func nagramChatManageItems() -> [NagramChatToolsComponent.ManageItem] {
+        let strings = self.chatPresentationInterfaceState.strings
+        var items: [NagramChatToolsComponent.ManageItem] = []
+        if let channel = self.chatPresentationInterfaceState.renderedPeer?.peer as? TelegramChannel {
+            guard channel.flags.contains(.isCreator) || channel.adminRights != nil else {
+                return []
+            }
+            let isGroup: Bool
+            if case .group = channel.info {
+                isGroup = true
+            } else {
+                isGroup = false
+            }
+            items.append(NagramChatToolsComponent.ManageItem(id: "recentActions", title: strings.Group_Info_AdminLog, symbol: "clock.arrow.circlepath"))
+            items.append(NagramChatToolsComponent.ManageItem(id: "members", title: isGroup ? strings.Group_Info_Members : strings.Channel_Info_Subscribers, symbol: "person.2"))
+            items.append(NagramChatToolsComponent.ManageItem(id: "admins", title: strings.GroupInfo_Administrators, symbol: "star"))
+            if isGroup && channel.hasPermission(.banMembers) {
+                items.append(NagramChatToolsComponent.ManageItem(id: "permissions", title: strings.GroupInfo_Permissions, symbol: "lock"))
+            }
+            if channel.hasPermission(.banMembers) {
+                items.append(NagramChatToolsComponent.ManageItem(id: "removed", title: strings.GroupRemoved_Title, symbol: "person.crop.circle.badge.xmark"))
+            }
+            if channel.hasPermission(.inviteMembers) {
+                items.append(NagramChatToolsComponent.ManageItem(id: "inviteLinks", title: strings.GroupInfo_InviteLinks, symbol: "link"))
+            }
+        } else if let group = self.chatPresentationInterfaceState.renderedPeer?.peer as? TelegramGroup {
+            switch group.role {
+            case .creator, .admin:
+                items.append(NagramChatToolsComponent.ManageItem(id: "admins", title: strings.GroupInfo_Administrators, symbol: "star"))
+                items.append(NagramChatToolsComponent.ManageItem(id: "permissions", title: strings.GroupInfo_Permissions, symbol: "lock"))
+                items.append(NagramChatToolsComponent.ManageItem(id: "inviteLinks", title: strings.GroupInfo_InviteLinks, symbol: "link"))
+            case .member:
+                break
+            }
+        }
+        return items
+    }
+
+    private func performNagramChatManageAction(_ id: String) {
+        guard let controller = self.controller, let peer = self.chatPresentationInterfaceState.renderedPeer?.peer else {
+            return
+        }
+        let context = self.context
+        let updatedPresentationData = controller.updatedPresentationData
+        let target: ViewController
+        switch id {
+        case "recentActions":
+            target = context.sharedContext.makeChatRecentActionsController(context: context, peer: EnginePeer(peer), adminPeerId: nil, starsState: nil)
+        case "members":
+            target = channelMembersController(context: context, updatedPresentationData: updatedPresentationData, peerId: peer.id)
+        case "admins":
+            target = channelAdminsController(context: context, updatedPresentationData: updatedPresentationData, peerId: peer.id)
+        case "permissions":
+            target = channelPermissionsController(context: context, updatedPresentationData: updatedPresentationData, peerId: peer.id)
+        case "removed":
+            target = channelBlacklistController(context: context, updatedPresentationData: updatedPresentationData, peerId: peer.id)
+        case "inviteLinks":
+            target = inviteLinkListController(context: context, updatedPresentationData: updatedPresentationData, peerId: peer.id, admin: nil)
+        default:
+            return
+        }
+        controller.push(target)
     }
 
     func containerLayoutUpdated(_ layout: ContainerViewLayout, navigationBarHeight: CGFloat, transition protoTransition: ContainedViewLayoutTransition, listViewTransaction: (ListViewUpdateSizeAndInsets, CGFloat, Bool, @escaping () -> Void) -> Void, updateExtraNavigationBarBackgroundHeight: (CGFloat, CGFloat, ContainedViewLayoutTransition) -> Void) {
@@ -1547,20 +1656,39 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
            !self.chatPresentationInterfaceState.isNotAccessible,
            self.chatPresentationInterfaceState.search == nil,
            self.chatPresentationInterfaceState.interfaceState.selectionState == nil {
-            headerPanels.append(HeaderPanelContainerComponent.Panel(
-                key: "nagramTools",
-                orderIndex: -1,
-                component: AnyComponent(NagramChatToolsComponent(
-                    theme: self.chatPresentationInterfaceState.theme,
-                    languageCode: self.chatPresentationInterfaceState.strings.baseLanguageCode,
-                    isMuted: self.chatPresentationInterfaceState.peerIsMuted,
-                    hasPinnedMessages: self.chatPresentationInterfaceState.pinnedMessageId != nil || self.chatPresentationInterfaceState.pinnedMessage != nil,
-                    showNotifications: peerId != self.context.account.peerId,
-                    action: { [weak self] action in
-                        self?.performNagramChatTool(action)
-                    }
+            let nagramManageItems = self.nagramChatManageItems()
+            let nagramTools = NagramSettings.shared.enabledChatTools.filter { tool in
+                switch tool {
+                case .notifications:
+                    return peerId != self.context.account.peerId
+                case .manage:
+                    return !nagramManageItems.isEmpty
+                default:
+                    return true
+                }
+            }
+            if !nagramTools.isEmpty {
+                headerPanels.append(HeaderPanelContainerComponent.Panel(
+                    key: "nagramTools",
+                    orderIndex: -1,
+                    component: AnyComponent(NagramChatToolsComponent(
+                        theme: self.chatPresentationInterfaceState.theme,
+                        languageCode: self.chatPresentationInterfaceState.strings.baseLanguageCode,
+                        tools: nagramTools,
+                        size: NagramSettings.shared.chatToolsSize,
+                        isMuted: self.chatPresentationInterfaceState.peerIsMuted,
+                        hasPinnedMessages: self.chatPresentationInterfaceState.pinnedMessageId != nil || self.chatPresentationInterfaceState.pinnedMessage != nil,
+                        isTranslateEnabled: self.isNagramAutoTranslateEnabled,
+                        manageItems: nagramManageItems,
+                        action: { [weak self] action in
+                            self?.performNagramChatTool(action)
+                        },
+                        manageAction: { [weak self] id in
+                            self?.performNagramChatManageAction(id)
+                        }
+                    ))
                 ))
-            ))
+            }
         }
         
         if !hideTopPanels, self.chatPresentationInterfaceState.search == nil, let headerTopicsPanel = headerTopicsPanelForChatPresentationInterfaceState(self.chatPresentationInterfaceState, context: self.context, controllerInteraction: self.controllerInteraction, interfaceInteraction: self.interfaceInteraction, force: false) {

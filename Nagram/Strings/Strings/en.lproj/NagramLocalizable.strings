@@ -534,6 +534,21 @@ With iCloud Keychain sync on, backups follow your other devices and appear on th
 "Nagram.ChatTools.notifications" = "Mute";
 "Nagram.ChatTools.unmute" = "Unmute";
 "Nagram.ChatTools.cache" = "Clear Cache";
+"Nagram.ChatTools.latest" = "Latest";
+"Nagram.ChatTools.mentions" = "Mentions";
+"Nagram.ChatTools.select" = "Select";
+"Nagram.ChatTools.translate" = "Translate";
+"Nagram.ChatTools.translateOff" = "Stop Translating";
+"Nagram.ChatTools.manage" = "Manage";
+"Nagram.ChatTools.Settings" = "Toolbar Buttons";
+"Nagram.ChatTools.SizeHeader" = "Button Size";
+"Nagram.ChatTools.Size.compact" = "Compact (Icons Only)";
+"Nagram.ChatTools.Size.standard" = "Standard";
+"Nagram.ChatTools.Size.large" = "Large";
+"Nagram.ChatTools.ItemsHeader" = "Buttons Shown";
+"Nagram.ChatTools.ItemsFooter" = "Tap Edit to reorder. Manage appears only in groups and channels you administer, and Mute is not shown in Saved Messages.";
+"Nagram.ChatTools.Reset" = "Reset Toolbar";
+"Nagram.ChatTools.ResetConfirm" = "Restore the default buttons, order and size?";
 "Nagram.ChatFolderNoneAvailable" = "No folders are available. Create a folder first, or check whether this chat is already in every folder.";
 
 "Nagram.InviteLinks.BulkRevoke" = "Revoke Invitation Links…";

@@ -534,6 +534,21 @@
 "Nagram.ChatTools.notifications" = "靜音";
 "Nagram.ChatTools.unmute" = "取消靜音";
 "Nagram.ChatTools.cache" = "清除快取";
+"Nagram.ChatTools.latest" = "最新";
+"Nagram.ChatTools.mentions" = "@我";
+"Nagram.ChatTools.select" = "多選";
+"Nagram.ChatTools.translate" = "翻譯";
+"Nagram.ChatTools.translateOff" = "關閉翻譯";
+"Nagram.ChatTools.manage" = "管理";
+"Nagram.ChatTools.Settings" = "工具列按鈕";
+"Nagram.ChatTools.SizeHeader" = "按鈕尺寸";
+"Nagram.ChatTools.Size.compact" = "緊湊（僅圖示）";
+"Nagram.ChatTools.Size.standard" = "標準";
+"Nagram.ChatTools.Size.large" = "大";
+"Nagram.ChatTools.ItemsHeader" = "顯示的按鈕";
+"Nagram.ChatTools.ItemsFooter" = "點「編輯」後可拖動排序。「管理」只在你是管理員的群組和頻道裡顯示，「靜音」不在儲存的訊息裡顯示。";
+"Nagram.ChatTools.Reset" = "重設工具列";
+"Nagram.ChatTools.ResetConfirm" = "恢復預設的按鈕、順序和尺寸？";
 "Nagram.ChatFolderNoneAvailable" = "沒有可加入的資料夾。請先建立資料夾，或檢查此聊天是否已加入所有資料夾。";
 
 "Nagram.InviteLinks.BulkRevoke" = "批次撤銷邀請連結…";

@@ -406,6 +406,7 @@ private func nagramGroups(
     setSensitiveContentEnabled: @escaping (Bool) -> Void,
     bottomBarLayoutAction: @escaping () -> Void,
     messageMenuAction: @escaping () -> Void,
+    chatToolsAction: @escaping () -> Void,
     textStyleToolbarAction: @escaping () -> Void,
     textStyleMenuAction: @escaping () -> Void,
     regexFiltersAction: @escaping () -> Void,
@@ -482,6 +483,7 @@ private func nagramGroups(
         ]),
         NagramGroup(tab: .chats, headerKey: "Nagram.Section.ChatNavigation", footerKeys: ["Nagram.StayAtLatestMessageAfterRefresh.Footer", "Nagram.Section.ChatNavigation.Footer"], rows: [
             .toggle(titleKey: "Nagram.ChatToolsEnabled", get: { NagramSettings.shared.chatToolsEnabled }, set: { NagramSettings.shared.chatToolsEnabled = $0 }),
+            .navigation(titleKey: "Nagram.ChatTools.Settings", action: chatToolsAction),
             .toggle(titleKey: "Nagram.RecentChats", get: { NagramSettings.shared.recentChatsEnabled }, set: { NagramSettings.shared.recentChatsEnabled = $0 }),
             .toggle(titleKey: "Nagram.StayAtLatestMessageAfterRefresh", get: { NagramSettings.shared.stayAtLatestMessageAfterRefresh }, set: { NagramSettings.shared.stayAtLatestMessageAfterRefresh = $0 }),
             .toggle(titleKey: "Nagram.DisableScrollToNextChannel", get: { NagramSettings.shared.disableScrollToNextChannel }, set: { NagramSettings.shared.disableScrollToNextChannel = $0 }),
@@ -678,6 +680,7 @@ public func nagramSettingsSearchEntries(lang: String) -> [NagramSettingsSearchEn
         setSensitiveContentEnabled: { _ in },
         bottomBarLayoutAction: {},
         messageMenuAction: {},
+        chatToolsAction: {},
         textStyleToolbarAction: {},
         textStyleMenuAction: {},
         regexFiltersAction: {},
@@ -920,6 +923,8 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
         pushControllerImpl?(nagramBottomBarSettingsController(context: context))
     }, messageMenuAction: {
         pushControllerImpl?(nagramMessageMenuSettingsController(context: context))
+    }, chatToolsAction: {
+        pushControllerImpl?(nagramChatToolsSettingsController(context: context))
     }, textStyleToolbarAction: {
         pushControllerImpl?(nagramTextStyleToolbarSettingsController(context: context))
     }, textStyleMenuAction: {

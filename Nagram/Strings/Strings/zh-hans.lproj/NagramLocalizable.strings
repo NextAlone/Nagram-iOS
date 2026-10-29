@@ -534,6 +534,21 @@
 "Nagram.ChatTools.notifications" = "静音";
 "Nagram.ChatTools.unmute" = "取消静音";
 "Nagram.ChatTools.cache" = "清理缓存";
+"Nagram.ChatTools.latest" = "最新";
+"Nagram.ChatTools.mentions" = "@我";
+"Nagram.ChatTools.select" = "多选";
+"Nagram.ChatTools.translate" = "翻译";
+"Nagram.ChatTools.translateOff" = "关闭翻译";
+"Nagram.ChatTools.manage" = "管理";
+"Nagram.ChatTools.Settings" = "工具栏按钮";
+"Nagram.ChatTools.SizeHeader" = "按钮尺寸";
+"Nagram.ChatTools.Size.compact" = "紧凑（仅图标）";
+"Nagram.ChatTools.Size.standard" = "标准";
+"Nagram.ChatTools.Size.large" = "大";
+"Nagram.ChatTools.ItemsHeader" = "显示的按钮";
+"Nagram.ChatTools.ItemsFooter" = "点「编辑」后可拖动排序。「管理」只在你是管理员的群组和频道里显示，「静音」不在收藏夹里显示。";
+"Nagram.ChatTools.Reset" = "重置工具栏";
+"Nagram.ChatTools.ResetConfirm" = "恢复默认的按钮、顺序和尺寸？";
 "Nagram.ChatFolderNoneAvailable" = "没有可添加的分组。请先创建分组，或检查此聊天是否已加入所有分组。";
 
 "Nagram.InviteLinks.BulkRevoke" = "批量撤销邀请链接…";

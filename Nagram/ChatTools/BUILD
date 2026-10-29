@@ -6,6 +6,7 @@ swift_library(
     srcs = glob(["Sources/**/*.swift"]),
     copts = ["-warnings-as-errors"],
     deps = [
+        "//Nagram/Settings:NagramSettings",
         "//Nagram/Strings:NagramStrings",
         "//submodules/ComponentFlow",
         "//submodules/Display",

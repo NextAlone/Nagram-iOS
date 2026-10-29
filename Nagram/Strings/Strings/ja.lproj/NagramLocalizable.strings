@@ -534,6 +534,21 @@ iCloud キーチェーン同期を有効にすると、バックアップは他�
 "Nagram.ChatTools.notifications" = "ミュート";
 "Nagram.ChatTools.unmute" = "通知オン";
 "Nagram.ChatTools.cache" = "キャッシュ削除";
+"Nagram.ChatTools.latest" = "最新";
+"Nagram.ChatTools.mentions" = "メンション";
+"Nagram.ChatTools.select" = "選択";
+"Nagram.ChatTools.translate" = "翻訳";
+"Nagram.ChatTools.translateOff" = "翻訳をオフ";
+"Nagram.ChatTools.manage" = "管理";
+"Nagram.ChatTools.Settings" = "ツールバーのボタン";
+"Nagram.ChatTools.SizeHeader" = "ボタンのサイズ";
+"Nagram.ChatTools.Size.compact" = "コンパクト（アイコンのみ）";
+"Nagram.ChatTools.Size.standard" = "標準";
+"Nagram.ChatTools.Size.large" = "大";
+"Nagram.ChatTools.ItemsHeader" = "表示するボタン";
+"Nagram.ChatTools.ItemsFooter" = "「編集」で並べ替えできます。「管理」は管理者のグループとチャンネルでのみ表示され、「ミュート」は保存済みメッセージでは表示されません。";
+"Nagram.ChatTools.Reset" = "ツールバーをリセット";
+"Nagram.ChatTools.ResetConfirm" = "既定のボタン、順序、サイズに戻しますか？";
 "Nagram.ChatFolderNoneAvailable" = "追加できるフォルダがありません。フォルダを作成するか、このチャットがすべてのフォルダに追加済みか確認してください。";
 
 "Nagram.InviteLinks.BulkRevoke" = "招待リンクを一括取り消し…";
