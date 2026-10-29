@@ -406,6 +406,7 @@ private func nagramGroups(
     setSensitiveContentEnabled: @escaping (Bool) -> Void,
     bottomBarLayoutAction: @escaping () -> Void,
     messageMenuAction: @escaping () -> Void,
+    textStyleToolbarAction: @escaping () -> Void,
     textStyleMenuAction: @escaping () -> Void,
     regexFiltersAction: @escaping () -> Void,
     inlineBotRulesAction: @escaping () -> Void,
@@ -508,11 +509,7 @@ private func nagramGroups(
         NagramGroup(tab: .messages, headerKey: "Nagram.Section.Sending", footerKeys: [], rows: [
             .toggle(titleKey: "Nagram.DisableSendAsButton", get: { NagramSettings.shared.disableSendAsButton }, set: { NagramSettings.shared.disableSendAsButton = $0 }),
             .toggle(titleKey: "Nagram.SendWithReturnKey", get: { NagramSettings.shared.sendWithReturnKey }, set: { NagramSettings.shared.sendWithReturnKey = $0 }),
-            .choice(titleKey: "Nagram.TextStyleToolbar", prefix: "Nagram.TextStyleToolbar", options: NagramTextStyleToolbarMode.allCases.map(\.rawValue), current: { NagramSettings.shared.textStyleToolbarMode.rawValue }, set: { value in
-                if let mode = NagramTextStyleToolbarMode(rawValue: value) {
-                    NagramSettings.shared.textStyleToolbarMode = mode
-                }
-            }),
+            .navigation(titleKey: "Nagram.TextStyleToolbar", action: textStyleToolbarAction),
             .navigation(titleKey: "Nagram.TextStyleMenu", action: textStyleMenuAction),
             .toggle(titleKey: "Nagram.HideRecordingButton", get: { NagramSettings.shared.hideRecordingButton }, set: { NagramSettings.shared.hideRecordingButton = $0 }),
         ]),
@@ -681,6 +678,7 @@ public func nagramSettingsSearchEntries(lang: String) -> [NagramSettingsSearchEn
         setSensitiveContentEnabled: { _ in },
         bottomBarLayoutAction: {},
         messageMenuAction: {},
+        textStyleToolbarAction: {},
         textStyleMenuAction: {},
         regexFiltersAction: {},
         inlineBotRulesAction: {},
@@ -922,6 +920,8 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
         pushControllerImpl?(nagramBottomBarSettingsController(context: context))
     }, messageMenuAction: {
         pushControllerImpl?(nagramMessageMenuSettingsController(context: context))
+    }, textStyleToolbarAction: {
+        pushControllerImpl?(nagramTextStyleToolbarSettingsController(context: context))
     }, textStyleMenuAction: {
         pushControllerImpl?(nagramTextStyleMenuSettingsController(context: context))
     }, regexFiltersAction: {

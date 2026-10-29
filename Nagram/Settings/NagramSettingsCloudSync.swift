@@ -78,6 +78,8 @@ enum NagramSettingsSyncKeys {
         "nagram.sendWithReturnKey",
         "nagram.showTextStyleToolbar",
         "nagram.textStyleToolbarMode",
+        "nagram.textStyleToolbar.order",
+        "nagram.textStyleToolbar.hidden",
         "nagram.enablePanguOnSending",
         "nagram.enablePanguOnEditing",
         "nagram.enablePanguOnReceiving",

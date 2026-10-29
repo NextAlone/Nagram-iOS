@@ -30,10 +30,10 @@ private let nagramTextStyleMenuPositionKey = "nagram.textStyleMenu.position"
 public extension NagramSettings {
     var textStyleMenuItemOrder: [NagramTextStyleMenuItemId] {
         get {
-            return self.normalizedTextStyleMenuOrder(self.textStyleMenuIds(from: NagramDemoMode.userDefaults.string(forKey: nagramTextStyleMenuOrderKey)))
+            return nagramNormalizedTextStyleIds(nagramTextStyleIds(from: NagramDemoMode.userDefaults.string(forKey: nagramTextStyleMenuOrderKey)))
         }
         set {
-            let order = self.normalizedTextStyleMenuOrder(newValue)
+            let order = nagramNormalizedTextStyleIds(newValue)
             NagramSettingsCloudSync.shared.set(order.map(\.rawValue).joined(separator: ","), forKey: nagramTextStyleMenuOrderKey)
         }
     }
@@ -77,24 +77,6 @@ public extension NagramSettings {
 
 private extension NagramSettings {
     var enabledTextStyleMenuItemIds: Set<NagramTextStyleMenuItemId> {
-        return Set(self.textStyleMenuIds(from: NagramDemoMode.userDefaults.string(forKey: nagramTextStyleMenuEnabledKey)))
-    }
-
-    func textStyleMenuIds(from string: String?) -> [NagramTextStyleMenuItemId] {
-        guard let string, !string.isEmpty else {
-            return []
-        }
-        return string.split(separator: ",").compactMap { NagramTextStyleMenuItemId(rawValue: String($0)) }
-    }
-
-    func normalizedTextStyleMenuOrder(_ ids: [NagramTextStyleMenuItemId]) -> [NagramTextStyleMenuItemId] {
-        var result: [NagramTextStyleMenuItemId] = []
-        var seen = Set<NagramTextStyleMenuItemId>()
-        for id in ids + NagramTextStyleMenuItemId.allCases {
-            if seen.insert(id).inserted {
-                result.append(id)
-            }
-        }
-        return result
+        return Set(nagramTextStyleIds(from: NagramDemoMode.userDefaults.string(forKey: nagramTextStyleMenuEnabledKey)))
     }
 }

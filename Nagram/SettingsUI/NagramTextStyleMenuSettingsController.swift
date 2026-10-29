@@ -141,7 +141,7 @@ private enum NagramTextStyleMenuEntry: ItemListNodeEntry {
     }
 }
 
-private func nagramTextStyleMenuItemTitle(_ id: NagramTextStyleMenuItemId, strings: PresentationStrings) -> String {
+func nagramTextStyleMenuItemTitle(_ id: NagramTextStyleMenuItemId, strings: PresentationStrings) -> String {
     switch id {
     case .quote:
         return strings.TextFormat_Quote

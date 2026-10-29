@@ -144,6 +144,15 @@
 "Nagram.TextStyleMenu.ItemsFooter" = "Enabled styles appear directly on the first level of the text selection menu. Tap Edit to reorder. Quote, Spoiler and Date are hidden in secret chats.";
 "Nagram.TextStyleMenu.Reset" = "Reset Selection Menu";
 "Nagram.TextStyleMenu.ResetConfirm" = "Reset all selection menu styles, order and position?";
+"Nagram.TextStyleToolbar.PreviewHeader" = "Preview";
+"Nagram.TextStyleToolbar.PreviewBar" = "Persistent Bar";
+"Nagram.TextStyleToolbar.PreviewPanel" = "Keyboard Panel";
+"Nagram.TextStyleToolbar.PreviewEmpty" = "No styles enabled";
+"Nagram.TextStyleToolbar.ModeHeader" = "Show In";
+"Nagram.TextStyleToolbar.ItemsHeader" = "Styles";
+"Nagram.TextStyleToolbar.ItemsFooter" = "The keyboard panel and the persistent bar share this order and these switches. Tap Edit to reorder. Quote, Spoiler, Date and Code are hidden in secret chats.";
+"Nagram.TextStyleToolbar.Reset" = "Reset Styles and Order";
+"Nagram.TextStyleToolbar.ResetConfirm" = "Show every style and restore the default order?";
 "Nagram.PanguOnSending" = "Enable Pangu on Sending";
 "Nagram.PanguOnEditing" = "Enable Pangu on Editing";
 "Nagram.HideRecordingButton" = "Hide Voice Recording Button";

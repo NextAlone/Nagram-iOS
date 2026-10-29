@@ -198,48 +198,73 @@ private enum ChatTextFormattingToolbarAction: Int, CaseIterable, Hashable {
     case underline
     case code
 
+    init(_ id: NagramTextStyleMenuItemId) {
+        switch id {
+        case .quote:
+            self = .quote
+        case .spoiler:
+            self = .spoiler
+        case .bold:
+            self = .bold
+        case .italic:
+            self = .italic
+        case .monospace:
+            self = .monospace
+        case .link:
+            self = .link
+        case .date:
+            self = .date
+        case .strikethrough:
+            self = .strikethrough
+        case .underline:
+            self = .underline
+        case .code:
+            self = .code
+        }
+    }
+
+    var nagramId: NagramTextStyleMenuItemId {
+        switch self {
+        case .quote:
+            return .quote
+        case .spoiler:
+            return .spoiler
+        case .bold:
+            return .bold
+        case .italic:
+            return .italic
+        case .monospace:
+            return .monospace
+        case .link:
+            return .link
+        case .date:
+            return .date
+        case .strikethrough:
+            return .strikethrough
+        case .underline:
+            return .underline
+        case .code:
+            return .code
+        }
+    }
+
+    /// The styles the user shows, in their order, among those the chat allows (a secret chat has no
+    /// spoilers, dates, quotes or code blocks).
     static func visibleActions(hasSpoilers: Bool, hasQuotes: Bool) -> [ChatTextFormattingToolbarAction] {
-        var result: [ChatTextFormattingToolbarAction] = []
-        if hasQuotes {
-            result.append(.quote)
+        return NagramSettings.shared.enabledTextStyleToolbarItems.map(ChatTextFormattingToolbarAction.init).filter { action in
+            switch action {
+            case .spoiler, .date:
+                return hasSpoilers
+            case .quote, .code:
+                return hasQuotes
+            default:
+                return true
+            }
         }
-        if hasSpoilers {
-            result.append(.spoiler)
-        }
-        result.append(contentsOf: [.bold, .italic, .monospace, .link])
-        if hasSpoilers {
-            result.append(.date)
-        }
-        result.append(contentsOf: [.strikethrough, .underline])
-        if hasQuotes {
-            result.append(.code)
-        }
-        return result
     }
 
     var title: String {
-        switch self {
-        case .quote:
-            return "❝"
-        case .spoiler:
-            return "||"
-        case .bold:
-            return "B"
-        case .italic:
-            return "I"
-        case .monospace:
-            return "`"
-        case .link:
-            return "↗"
-        case .date:
-            return "◷"
-        case .strikethrough:
-            return "S"
-        case .underline:
-            return "U"
-        case .code:
-            return "</>"
-        }
+        return self.nagramId.glyph
     }
 
     func attributedIcon(color: UIColor, fontSize: CGFloat = 20.0) -> NSAttributedString {
@@ -907,7 +932,7 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
     
     // MARK: NAGRAM — 文本格式面板按钮插在 emoji / stickers 按钮旁边。
     private func effectiveAccessoryItems(_ accessoryItems: [ChatTextInputAccessoryItem]) -> [ChatTextInputAccessoryItem] {
-        guard NagramSettings.shared.textStyleToolbarMode.showsPanel else {
+        guard NagramSettings.shared.textStyleToolbarMode.showsPanel, !NagramSettings.shared.enabledTextStyleToolbarItems.isEmpty else {
             return accessoryItems
         }
         var result = accessoryItems
@@ -4825,7 +4850,9 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
 
     // MARK: NAGRAM — 常驻格式条：返回它在面板中占用的高度（不显示时为 0）。
     private func updateTextFormattingBar(frame: CGRect, interfaceState: ChatPresentationInterfaceState, tintColor: GlassBackgroundView.TintColor, transition: ContainedViewLayoutTransition) -> CGFloat {
+        let isSecretChat = interfaceState.chatLocation.peerId?.namespace == Namespaces.Peer.SecretChat
         let isVisible = NagramSettings.shared.textStyleToolbarMode.showsBar
+            && !ChatTextFormattingToolbarAction.visibleActions(hasSpoilers: !isSecretChat, hasQuotes: !isSecretChat).isEmpty
             && !self.sendingTextDisabled
             && !self.extendedSearchLayout
             && interfaceState.inputTextPanelState.mediaRecordingState == nil

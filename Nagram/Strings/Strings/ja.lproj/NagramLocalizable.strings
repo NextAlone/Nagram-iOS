@@ -144,6 +144,15 @@
 "Nagram.TextStyleMenu.ItemsFooter" = "オンにしたスタイルはテキスト選択メニューの最初の階層に直接表示されます。「編集」で並べ替えできます。シークレットチャットでは引用・スポイラー・日付は表示されません。";
 "Nagram.TextStyleMenu.Reset" = "選択メニューをリセット";
 "Nagram.TextStyleMenu.ResetConfirm" = "選択メニューのスタイル、順序、挿入位置をすべてリセットしますか？";
+"Nagram.TextStyleToolbar.PreviewHeader" = "プレビュー";
+"Nagram.TextStyleToolbar.PreviewBar" = "常時表示バー";
+"Nagram.TextStyleToolbar.PreviewPanel" = "キーボードパネル";
+"Nagram.TextStyleToolbar.PreviewEmpty" = "有効なスタイルはありません";
+"Nagram.TextStyleToolbar.ModeHeader" = "表示方法";
+"Nagram.TextStyleToolbar.ItemsHeader" = "表示するスタイル";
+"Nagram.TextStyleToolbar.ItemsFooter" = "キーボードパネルと常時表示バーはこの順序とスイッチを共有します。「編集」で並べ替えできます。シークレットチャットでは引用、ネタバレ、日付、コードは表示されません。";
+"Nagram.TextStyleToolbar.Reset" = "スタイルと順序をリセット";
+"Nagram.TextStyleToolbar.ResetConfirm" = "すべてのスタイルを表示し、既定の順序に戻しますか？";
 "Nagram.PanguOnSending" = "送信メッセージをPangu化";
 "Nagram.PanguOnEditing" = "編集メッセージをPangu化";
 "Nagram.HideRecordingButton" = "音声録音ボタンを非表示";

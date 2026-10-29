@@ -144,6 +144,15 @@
 "Nagram.TextStyleMenu.ItemsFooter" = "开启的样式会直接显示在选中文字菜单的第一层。点「编辑」后可拖动排序。私密聊天不显示引用、剧透和日期。";
 "Nagram.TextStyleMenu.Reset" = "重置选中文字菜单";
 "Nagram.TextStyleMenu.ResetConfirm" = "重置所有选中文字菜单的样式、排序和插入位置？";
+"Nagram.TextStyleToolbar.PreviewHeader" = "预览";
+"Nagram.TextStyleToolbar.PreviewBar" = "常驻格式条";
+"Nagram.TextStyleToolbar.PreviewPanel" = "键盘面板";
+"Nagram.TextStyleToolbar.PreviewEmpty" = "没有开启的样式";
+"Nagram.TextStyleToolbar.ModeHeader" = "显示方式";
+"Nagram.TextStyleToolbar.ItemsHeader" = "显示的样式";
+"Nagram.TextStyleToolbar.ItemsFooter" = "键盘面板和常驻条共用这里的顺序和开关。点「编辑」后可拖动排序。私密聊天不显示引用、剧透、日期和代码块。";
+"Nagram.TextStyleToolbar.Reset" = "重置样式和顺序";
+"Nagram.TextStyleToolbar.ResetConfirm" = "显示全部样式并恢复默认顺序？";
 "Nagram.PanguOnSending" = "发送消息 Pangu 化";
 "Nagram.PanguOnEditing" = "编辑消息 Pangu 化";
 "Nagram.HideRecordingButton" = "隐藏语音录制按钮";
