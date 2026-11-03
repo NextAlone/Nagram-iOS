@@ -372,6 +372,8 @@ public final class WindowKeyboardGestureRecognizerDelegate: NSObject, UIGestureR
 public class Window1 {
     public let hostView: WindowHostView
     public let badgeView: UIImageView
+    // MARK: NAGRAM - Keep a stable main-window anchor when the badge moves above the keyboard.
+    private let badgeContainerView = UIView()
     
     private var deviceMetrics: DeviceMetrics
     
@@ -859,7 +861,10 @@ public class Window1 {
         }
         self.windowPanRecognizer = recognizer
         self.hostView.containerView.addGestureRecognizer(recognizer)
-        self.hostView.containerView.addSubview(self.badgeView)
+        // MARK: NAGRAM
+        self.badgeContainerView.isUserInteractionEnabled = false
+        self.hostView.containerView.addSubview(self.badgeContainerView)
+        self.badgeContainerView.addSubview(self.badgeView)
     }
             
     public required init(coder aDecoder: NSCoder) {
@@ -867,6 +872,8 @@ public class Window1 {
     }
     
     deinit {
+        // MARK: NAGRAM - The keyboard window can outlive this window's content.
+        self.badgeView.removeFromSuperview()
         if let statusBarChangeObserver = self.statusBarChangeObserver {
             NotificationCenter.default.removeObserver(statusBarChangeObserver)
         }
@@ -937,6 +944,34 @@ public class Window1 {
         } else {
             self.badgeView.isHidden = badgeIsHidden
         }
+    }
+
+    // MARK: NAGRAM - Global menus move into the keyboard window; keep the badge above their blur.
+    private func updateBadgeLayout() {
+        guard let image = self.badgeView.image else {
+            return
+        }
+        self.updateBadgeVisibility()
+        self.badgeContainerView.frame = CGRect(origin: CGPoint(), size: self.windowLayout.size)
+
+        let parentView: UIView
+        if (self.windowLayout.inputHeight ?? 0.0) > 0.0,
+           let keyboardWindow = self.statusBarHost?.keyboardWindow,
+           let keyboardView = self.statusBarHost?.keyboardView,
+           !keyboardView.frame.height.isZero,
+           isViewVisibleInHierarchy(keyboardView) {
+            parentView = keyboardWindow
+            self.badgeView.layer.zPosition = 1001.0
+        } else {
+            parentView = self.badgeContainerView
+            self.badgeView.layer.zPosition = 0.0
+        }
+        if self.badgeView.superview !== parentView {
+            parentView.addSubview(self.badgeView)
+        }
+
+        let frame = CGRect(origin: CGPoint(x: floorToScreenPixels((self.windowLayout.size.width - image.size.width) / 2.0), y: self.deviceMetrics.appBadgeOffset), size: image.size)
+        self.badgeView.frame = self.badgeContainerView.convertAcrossWindows(frame, to: parentView)
     }
     
     public func setForceInCallStatusBar(_ forceInCallStatusBarText: String?, transition: ContainedViewLayoutTransition = .animated(duration: 0.3, curve: .easeInOut)) {
@@ -1187,7 +1222,8 @@ public class Window1 {
                 if let coveringView = self.coveringView {
                     self.hostView.containerView.insertSubview(controller.view, belowSubview: coveringView)
                 } else {
-                    self.hostView.containerView.insertSubview(controller.view, belowSubview: self.badgeView)
+                    // MARK: NAGRAM - The badge itself may be in the keyboard window.
+                    self.hostView.containerView.insertSubview(controller.view, belowSubview: self.badgeContainerView)
                 }
                 
                 if let controller = controller as? ViewController {
@@ -1227,7 +1263,8 @@ public class Window1 {
                     if let controller = self.topPresentationContext.controllers.first {
                         self.hostView.containerView.insertSubview(coveringView, belowSubview: controller.0.displayNode.view)
                     } else {
-                        self.hostView.containerView.insertSubview(coveringView, belowSubview: self.badgeView)
+                        // MARK: NAGRAM - The badge itself may be in the keyboard window.
+                        self.hostView.containerView.insertSubview(coveringView, belowSubview: self.badgeContainerView)
                     }
                     if !self.windowLayout.size.width.isZero {
                         coveringView.frame = CGRect(origin: CGPoint(), size: self.windowLayout.size)
@@ -1478,11 +1515,8 @@ public class Window1 {
                     coveringView.updateLayout(self.windowLayout.size)
                 }
                 
-                if let image = self.badgeView.image {
-                    self.updateBadgeVisibility()
-                    // MARK: NAGRAM - Match Swiftgram's per-device vertical placement.
-                    self.badgeView.frame = CGRect(origin: CGPoint(x: floorToScreenPixels((self.windowLayout.size.width - image.size.width) / 2.0), y: self.deviceMetrics.appBadgeOffset), size: image.size)
-                }
+                // MARK: NAGRAM
+                self.updateBadgeLayout()
             }
         }
     }
@@ -1514,10 +1548,14 @@ public class Window1 {
         if let controller = controller as? ViewController {
             if let navigationController = self._rootController as? NavigationController {
                 navigationController.presentOverlay(controller: controller, inGlobal: true)
+                // MARK: NAGRAM - Recheck the keyboard host when presenting without a window layout change.
+                self.updateBadgeLayout()
                 return
             }
         }
         self.overlayPresentationContext.present(controller)
+        // MARK: NAGRAM
+        self.updateBadgeLayout()
     }
     
     public func addGlobalPortalHostView(sourceView: PortalSourceView) {
