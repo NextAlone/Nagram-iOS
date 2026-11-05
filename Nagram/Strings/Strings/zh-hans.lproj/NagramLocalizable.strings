@@ -565,6 +565,8 @@
 "Nagram.MutualContact.Description" = "此联系人是双向联系人。";
 "Nagram.UnpinAllMessagesAlert" = "要取消所有消息的置顶吗？";
 "Nagram.ConfirmUnpin" = "取消置顶前确认";
+"Nagram.SkipOpenLinkConfirmation" = "跳过打开链接确认";
+"Nagram.SkipOpenLinkConfirmation.Footer" = "打开隐藏真实地址的链接时不再询问“打开链接？”。带登录信息、可能伪装真实网站的链接仍会确认。";
 "Nagram.Section.MemberAdminActions" = "群成员管理";
 "Nagram.Section.MemberAdminActions.Footer" = "在你有封禁权限的群组中，长按成员头像或消息里的 @用户名 / 提及，可直接修改其权限，或封禁并删除其全部消息；对方消息已撤回时同样可用。开启「移除成员时可删除其消息」后，群资料成员列表的「移除」会打开同一面板。";
 "Nagram.MemberAdminActionsOnAvatar" = "长按头像显示管理操作";

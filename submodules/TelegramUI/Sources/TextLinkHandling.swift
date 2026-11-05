@@ -16,6 +16,7 @@ import PresentationDataUtils
 import UrlWhitelist
 import UndoUI
 import BrowserUI
+import NagramSettings // MARK: NAGRAM
 
 func handleTextLinkActionImpl(context: AccountContext, peerId: EnginePeer.Id?, navigateDisposable: MetaDisposable, controller: ViewController, action: TextLinkItemActionType, itemLink: TextLinkItem) {
     let presentationData = context.sharedContext.currentPresentationData.with({ $0 })
@@ -149,7 +150,8 @@ func handleTextLinkActionImpl(context: AccountContext, peerId: EnginePeer.Id?, n
                         concealed = true
                     }
                     
-                    if concealed {
+                    // MARK: NAGRAM — "Skip Open Link Confirmation"; a login-part link still asks.
+                    if concealed && (loginPartUrl != nil || !NagramSettings.shared.skipOpenLinkConfirmation) {
                         // For a login part the prompt shows the host the link really opens. The external-URL opener
                         // asks about such a link as well, so accepting it here tells the opener it has been confirmed.
                         var rawDisplayUrl: String = loginPartUrl.map { urlRemovingLoginPart($0).absoluteString } ?? parsedString

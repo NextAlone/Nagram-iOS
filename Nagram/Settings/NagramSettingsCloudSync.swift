@@ -25,6 +25,7 @@ enum NagramSettingsSyncKeys {
         "nagram.chatSearchFieldAtBottom",
         "nagram.confirmCalls",
         "nagram.confirmUnpin",
+        "nagram.skipOpenLinkConfirmation",
         "nagram.memberAdminActionsOnAvatar",
         "nagram.memberAdminActionsOnUsername",
         "nagram.memberAdminActionsOnMemberList",

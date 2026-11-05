@@ -22,6 +22,7 @@ swift_library(
         "//submodules/TelegramUI/Components/AlertComponent/AlertCheckComponent",
         "//submodules/TelegramUI/Components/AlertComponent/AlertWebpagePreviewComponent",
         "//submodules/UrlHandling",
+        "//Nagram/Settings:NagramSettings",
     ],
     visibility = [
         "//visibility:public",

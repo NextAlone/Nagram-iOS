@@ -264,6 +264,10 @@ public final class NagramSettings {
     /// 取消消息置顶前确认，含消息菜单的取消置顶和取消所有置顶（默认关 = 保持原生行为）
     @NagramDefault("nagram.confirmUnpin", false)
     public var confirmUnpin: Bool
+    /// 点击隐藏真实地址的链接（文字链接等）时跳过“打开链接？”确认（默认关 = 保持原生确认）。
+    /// 带登录信息、会伪装真实主机的链接仍然确认。
+    @NagramDefault("nagram.skipOpenLinkConfirmation", false)
+    public var skipOpenLinkConfirmation: Bool
     /// 有封禁权限的群里，长按成员头像显示修改权限 / 封禁并删除消息（默认关 = 保持原生菜单）
     @NagramDefault("nagram.memberAdminActionsOnAvatar", false)
     public var memberAdminActionsOnAvatar: Bool

@@ -565,6 +565,8 @@ iCloud キーチェーン同期を有効にすると、バックアップは他�
 "Nagram.MutualContact.Description" = "この連絡先は相互連絡先です。";
 "Nagram.UnpinAllMessagesAlert" = "すべてのメッセージのピン留めを解除しますか？";
 "Nagram.ConfirmUnpin" = "ピン留め解除前に確認";
+"Nagram.SkipOpenLinkConfirmation" = "リンクを開く確認をスキップ";
+"Nagram.SkipOpenLinkConfirmation.Footer" = "実際のアドレスを隠したリンクを「リンクを開きますか？」と確認せずに開きます。ログイン情報で実際のサイトを偽装できるリンクは引き続き確認します。";
 "Nagram.Section.MemberAdminActions" = "メンバー管理";
 "Nagram.Section.MemberAdminActions.Footer" = "メンバーをブロックできるグループで、メンバーのアイコンやメッセージ内の @ユーザー名・メンションを長押しすると、権限の変更や、ブロックして全メッセージを削除できます。相手のメッセージが削除済みでも使えます。「削除時にメッセージも削除可能」をオンにすると、グループ情報のメンバー一覧の「削除」でも同じパネルが開きます。";
 "Nagram.MemberAdminActionsOnAvatar" = "アイコン長押しで管理操作";

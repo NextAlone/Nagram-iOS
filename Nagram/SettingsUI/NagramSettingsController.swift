@@ -518,9 +518,10 @@ private func nagramGroups(
         NagramGroup(tab: .messages, headerKey: "Nagram.Section.MessageMenu", footerKeys: [], rows: [
             .navigation(titleKey: "Nagram.MessageMenu", action: messageMenuAction),
         ]),
-        NagramGroup(tab: .messages, headerKey: "Nagram.Section.Confirmations", footerKeys: [], rows: [
+        NagramGroup(tab: .messages, headerKey: "Nagram.Section.Confirmations", footerKeys: ["Nagram.SkipOpenLinkConfirmation.Footer"], rows: [
             .toggle(titleKey: "Nagram.ConfirmUnpin", get: { NagramSettings.shared.confirmUnpin }, set: { NagramSettings.shared.confirmUnpin = $0 }),
             .toggle(titleKey: "Nagram.ConfirmCalls", get: { NagramSettings.shared.confirmCalls }, set: { NagramSettings.shared.confirmCalls = $0 }),
+            .toggle(titleKey: "Nagram.SkipOpenLinkConfirmation", get: { NagramSettings.shared.skipOpenLinkConfirmation }, set: { NagramSettings.shared.skipOpenLinkConfirmation = $0 }),
         ]),
         NagramGroup(tab: .messages, headerKey: "Nagram.Section.MemberAdminActions", footerKeys: ["Nagram.Section.MemberAdminActions.Footer"], rows: [
             .toggle(titleKey: "Nagram.MemberAdminActionsOnAvatar", get: { NagramSettings.shared.memberAdminActionsOnAvatar }, set: { NagramSettings.shared.memberAdminActionsOnAvatar = $0 }),

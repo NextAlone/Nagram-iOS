@@ -12,6 +12,7 @@ import AlertComponent
 import AlertCheckComponent
 import AlertWebpagePreviewComponent
 import UrlHandling
+import NagramSettings // MARK: NAGRAM
 
 public func openUserGeneratedUrl(
     context: AccountContext,
@@ -114,7 +115,10 @@ public func openUserGeneratedUrl(
         }
     }
 
-    if concealed && !skipConcealedAlert {
+    // MARK: NAGRAM — "Skip Open Link Confirmation". A login-part link still asks (it disguises the real host), and so
+    // does a prompt carrying an option the user asked for (the long-press "Open in App/Browser" one).
+    let nagramSkipsConcealedAlert = NagramSettings.shared.skipOpenLinkConfirmation && loginPartUrl == nil && concealedAlertOption == nil
+    if concealed && !skipConcealedAlert && !nagramSkipsConcealedAlert {
         // For a login part the prompt shows the host the link really opens. The external-URL opener asks about such
         // a link as well, so accepting it here tells the opener it has been confirmed.
         let displayUrl = loginPartUrl.map { urlRemovingLoginPart($0).absoluteString } ?? parsedString
