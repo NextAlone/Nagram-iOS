@@ -309,31 +309,44 @@ private func nagramMirrorRegexFilterValue(_ value: Any?, forKey key: String) {
     }
 }
 
+/// Looked up for every chat of every chat list update and every message, so it is keyed on the stored rules' bytes:
+/// a hit is one byte comparison. Decoding the JSON and comparing the decoded rules on each lookup was enough work,
+/// with many chats and rules, for the system to kill the app while the chat list was updating (13.0 crash log).
 private final class NagramRegexFilterMatcherCache {
-    private var rules: [NagramRegexFilterRule]?
+    private var hasValue = false
+    private var rulesData: Data?
     private var matcher: NagramRegexFilterMatcher?
     private let lock = NSLock()
 
-    func matcher(for rules: [NagramRegexFilterRule]) -> NagramRegexFilterMatcher? {
+    func matcher(forRulesData rulesData: Data?) -> NagramRegexFilterMatcher? {
         self.lock.lock()
         defer {
             self.lock.unlock()
         }
-        if self.rules == rules {
+        if self.hasValue && self.rulesData == rulesData {
             return self.matcher
         }
-        let matcher = NagramRegexFilterMatcher(rules: rules)
-        self.rules = rules
+        let matcher = NagramRegexFilterMatcher(rules: nagramDecodeRegexFilterRules(rulesData))
+        self.hasValue = true
+        self.rulesData = rulesData
         self.matcher = matcher.isEmpty ? nil : matcher
         return self.matcher
     }
 
     func invalidate() {
         self.lock.lock()
-        self.rules = nil
+        self.hasValue = false
+        self.rulesData = nil
         self.matcher = nil
         self.lock.unlock()
     }
+}
+
+private func nagramDecodeRegexFilterRules(_ data: Data?) -> [NagramRegexFilterRule] {
+    guard let data, let rules = try? JSONDecoder().decode([NagramRegexFilterRule].self, from: data) else {
+        return []
+    }
+    return rules
 }
 
 private let nagramRegexFilterMatcherCache = NagramRegexFilterMatcherCache()
@@ -385,11 +398,7 @@ public extension NagramSettings {
 
     var regexFilterRules: [NagramRegexFilterRule] {
         get {
-            guard let data = nagramRegexFilterDefaults.data(forKey: nagramRegexFilterRulesKey),
-                  let rules = try? JSONDecoder().decode([NagramRegexFilterRule].self, from: data) else {
-                return []
-            }
-            return rules
+            return nagramDecodeRegexFilterRules(nagramRegexFilterDefaults.data(forKey: nagramRegexFilterRulesKey))
         }
         set {
             if newValue.isEmpty {
@@ -460,7 +469,7 @@ public extension NagramSettings {
         guard self.isRegexFilteringEnabled(peerId: peerId, isOutgoing: isOutgoing) else {
             return nil
         }
-        return nagramRegexFilterMatcherCache.matcher(for: self.regexFilterRules)
+        return nagramRegexFilterMatcherCache.matcher(forRulesData: nagramRegexFilterDefaults.data(forKey: nagramRegexFilterRulesKey))
     }
 }
 
