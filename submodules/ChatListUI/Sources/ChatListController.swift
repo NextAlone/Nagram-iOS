@@ -388,7 +388,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                     
                     self.primaryContext?.rightButton = NavigationBarComponent.Button(id: "compose",
                         content: .icon(imageName: "Chat List/ComposeIcon"),
-                        tint: .accent,
+                        // MARK: NAGRAM — keep the compose button on clear glass instead of upstream 13.1.2's accent capsule.
+                        tint: .generic,
                         action: { [weak self] _ in
                             self?.composePressed()
                         }
@@ -7521,7 +7522,8 @@ private final class ChatListLocationContext {
                 } else {
                     self.rightButton = NavigationBarComponent.Button(id: "compose",
                         content: .icon(imageName: "Chat List/ComposeIcon"),
-                        tint: .accent,
+                        // MARK: NAGRAM — keep the compose button on clear glass instead of upstream 13.1.2's accent capsule.
+                        tint: .generic,
                         action: { [weak self] _ in
                             self?.parentController?.composePressed()
                         }
