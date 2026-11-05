@@ -216,6 +216,16 @@ open class NavigationController: UINavigationController, ContainableController, 
     private var globalOverlayBelowKeyboardContainerParent: GlobalOverlayContainerParent?
     private var globalOverlayContainerParent: GlobalOverlayContainerParent?
     public var globalOverlayControllersUpdated: (() -> Void)?
+    // MARK: NAGRAM - True while a global overlay is shown from the keyboard window, above the app window.
+    public private(set) var hasGlobalOverlayInKeyboardWindow = false
+    public var globalOverlayKeyboardHostingUpdated: (() -> Void)?
+    
+    private func computeHasGlobalOverlayInKeyboardWindow() -> Bool {
+        guard let globalOverlayContainerParent = self.globalOverlayContainerParent, let keyboardWindow = self.statusBarHost?.keyboardWindow, globalOverlayContainerParent.view.superview === keyboardWindow else {
+            return false
+        }
+        return self.globalOverlayContainers.contains(where: { $0.supernode === globalOverlayContainerParent })
+    }
     
     public private(set) var validLayout: ContainerViewLayout?
     private var validStatusBarStyle: NavigationStatusBarStyle?
@@ -1476,6 +1486,13 @@ open class NavigationController: UINavigationController, ContainableController, 
         
         if notifyGlobalOverlayControllersUpdated {
             self.internalGlobalOverlayControllersUpdated()
+        }
+        
+        // MARK: NAGRAM - Let the window keep its app badge above global overlays hosted in the keyboard window.
+        let hasGlobalOverlayInKeyboardWindow = self.computeHasGlobalOverlayInKeyboardWindow()
+        if self.hasGlobalOverlayInKeyboardWindow != hasGlobalOverlayInKeyboardWindow {
+            self.hasGlobalOverlayInKeyboardWindow = hasGlobalOverlayInKeyboardWindow
+            self.globalOverlayKeyboardHostingUpdated?()
         }
         
         self.updateSupportedOrientations?()

@@ -954,12 +954,13 @@ public class Window1 {
         self.updateBadgeVisibility()
         self.badgeContainerView.frame = CGRect(origin: CGPoint(), size: self.windowLayout.size)
 
+        // Only while a global overlay is actually in the keyboard window: the keyboard window's sublayer
+        // transform follows navigation, and the app-lock screen (top presentation context) covers the badge.
         let parentView: UIView
-        if (self.windowLayout.inputHeight ?? 0.0) > 0.0,
-           let keyboardWindow = self.statusBarHost?.keyboardWindow,
-           let keyboardView = self.statusBarHost?.keyboardView,
-           !keyboardView.frame.height.isZero,
-           isViewVisibleInHierarchy(keyboardView) {
+        if let navigationController = self._rootController as? NavigationController,
+           navigationController.hasGlobalOverlayInKeyboardWindow,
+           self.topPresentationContext.controllers.isEmpty,
+           let keyboardWindow = self.statusBarHost?.keyboardWindow {
             parentView = keyboardWindow
             self.badgeView.layer.zPosition = 1001.0
         } else {
@@ -1186,6 +1187,10 @@ public class Window1 {
                     rootController.keyboardViewManager = self.keyboardViewManager
                     rootController.inCallNavigate = { [weak self] in
                         self?.inCallNavigate?()
+                    }
+                    // MARK: NAGRAM - Follow global overlays into and out of the keyboard window.
+                    rootController.globalOverlayKeyboardHostingUpdated = { [weak self] in
+                        self?.updateBadgeLayout()
                     }
                 }
                 
@@ -1548,14 +1553,10 @@ public class Window1 {
         if let controller = controller as? ViewController {
             if let navigationController = self._rootController as? NavigationController {
                 navigationController.presentOverlay(controller: controller, inGlobal: true)
-                // MARK: NAGRAM - Recheck the keyboard host when presenting without a window layout change.
-                self.updateBadgeLayout()
                 return
             }
         }
         self.overlayPresentationContext.present(controller)
-        // MARK: NAGRAM
-        self.updateBadgeLayout()
     }
     
     public func addGlobalPortalHostView(sourceView: PortalSourceView) {
