@@ -555,42 +555,48 @@ public enum DeviceMetrics: CaseIterable, Equatable {
         }
     }
     
+    // MARK: NAGRAM - The app badge sits behind the camera housing. Shown on Swiftgram's device list.
     public var showAppBadge: Bool {
-        // MARK: NAGRAM - Match Swiftgram's supported-device list.
-        switch self {
-            case .iPhoneX, .iPhoneXSMax, .iPhoneXr, .iPhone12Mini, .iPhone12, .iPhone12ProMax, .iPhone13Mini, .iPhone13, .iPhone13Pro, .iPhone13ProMax, .iPhone14Pro, .iPhone14ProZoomed, .iPhone14ProMax, .iPhone14ProMaxZoomed, .iPhone16Pro, .iPhone16ProMax, .iPhoneAir, .iPhone18Pro, .iPhone18ProMax:
-                return true
+        return self.appBadgeCenterY != nil
+    }
+
+    // MARK: NAGRAM - The vertical centre of the camera housing the badge is centred on, in the model's own unzoomed
+    // points (multiply by `appBadgeScale`), or nil where no badge is shown.
+    public var appBadgeCenterY: CGFloat? {
+        return DeviceMetrics.appBadgeCenterY(resolved: self, modelIdentifier: DeviceMetrics.currentModelIdentifier)
+    }
+
+    // MARK: NAGRAM - The housing is the hardware's, so it is read from the model's own profile. Display Zoom resolves
+    // the profile by the zoomed screen size, which can land on another phone: a zoomed iPhone 16 Pro Max matched a
+    // notched profile and drew the badge at the screen's top edge, half of it above the island.
+    static func appBadgeCenterY(resolved: DeviceMetrics, modelIdentifier: String?) -> CGFloat? {
+        let profile = modelIdentifier.flatMap { DeviceMetrics.profiles(for: $0).first } ?? resolved
+        switch profile {
+            case .iPhoneX, .iPhone12Mini, .iPhone13Mini:
+                return 13.0
+            case .iPhoneXSMax:
+                return 15.0
+            case .iPhoneXr:
+                return 17.0
+            case .iPhone12, .iPhone13, .iPhone13Pro:
+                return 15.0
+            case .iPhone12ProMax, .iPhone13ProMax:
+                return 17.0
+            case .iPhone14Pro, .iPhone14ProMax, .iPhone16Pro, .iPhone16ProMax, .iPhoneAir, .iPhone18Pro, .iPhone18ProMax:
+                // The island's own geometry; its centre matches the status bar's, which iOS centres on the island
+                // (measured on the iOS 27 simulator, 2026-11-06: 32.2 on the 402- and 440-wide phones, 38.2 on Air).
+                return profile.cutoutFrame?.midY
+            case .iPhone14ProZoomed:
+                return DeviceMetrics.iPhone14Pro.cutoutFrame?.midY
+            case .iPhone14ProMaxZoomed:
+                return DeviceMetrics.iPhone14ProMax.cutoutFrame?.midY
             default:
-                return false
+                return nil
         }
     }
 
-    // MARK: NAGRAM - Match Swiftgram's per-device badge offset and Display Zoom scaling.
-    public var appBadgeOffset: CGFloat {
-        let defaultOffset: CGFloat
-        switch self {
-            case .iPhoneX, .iPhone12Mini, .iPhone13Mini:
-                defaultOffset = 2.0
-            case .iPhoneXSMax:
-                defaultOffset = 4.0
-            case .iPhoneXr:
-                defaultOffset = 6.0
-            case .iPhone12, .iPhone13, .iPhone13Pro:
-                defaultOffset = 4.0
-            case .iPhone12ProMax, .iPhone13ProMax:
-                defaultOffset = 6.0
-            case .iPhone14Pro, .iPhone14ProZoomed:
-                defaultOffset = 18.0
-            case .iPhone14ProMax, .iPhone14ProMaxZoomed:
-                defaultOffset = 19.0
-            case .iPhone16Pro, .iPhone18Pro:
-                defaultOffset = 21.0
-            case .iPhone16ProMax, .iPhoneAir, .iPhone18ProMax:
-                defaultOffset = 22.0
-            default:
-                defaultOffset = 0.0
-        }
-        let scaleFactor = UIScreen.main.scale / UIScreen.main.nativeScale
-        return floorToScreenPixels(defaultOffset * scaleFactor)
+    // MARK: NAGRAM - Display Zoom shrinks the housing in points; the badge's size and placement follow it.
+    public var appBadgeScale: CGFloat {
+        return UIScreen.main.scale / UIScreen.main.nativeScale
     }
 }

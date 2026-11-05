@@ -1480,8 +1480,12 @@ public class Window1 {
                 
                 if let image = self.badgeView.image {
                     self.updateBadgeVisibility()
-                    // MARK: NAGRAM - Match Swiftgram's per-device vertical placement.
-                    self.badgeView.frame = CGRect(origin: CGPoint(x: floorToScreenPixels((self.windowLayout.size.width - image.size.width) / 2.0), y: self.deviceMetrics.appBadgeOffset), size: image.size)
+                    // MARK: NAGRAM - Centre the badge on the camera housing, scaled with Display Zoom.
+                    if let badgeCenterY = self.deviceMetrics.appBadgeCenterY {
+                        let badgeScale = self.deviceMetrics.appBadgeScale
+                        let badgeSize = CGSize(width: floorToScreenPixels(image.size.width * badgeScale), height: floorToScreenPixels(image.size.height * badgeScale))
+                        self.badgeView.frame = CGRect(origin: CGPoint(x: floorToScreenPixels((self.windowLayout.size.width - badgeSize.width) / 2.0), y: floorToScreenPixels(badgeCenterY * badgeScale - badgeSize.height / 2.0)), size: badgeSize)
+                    }
                 }
             }
         }
