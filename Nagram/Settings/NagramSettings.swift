@@ -361,7 +361,7 @@ public final class NagramSettings {
             self.bottomBarSettings = settings
         }
     }
-    /// 展示宽底栏（默认开 = 保持原生均分宽度）。兼容旧调用点。
+    /// 展示宽底栏（默认关 = 与官方一致的紧凑居中底栏）。兼容旧调用点。
     public var wideTabBar: Bool {
         get {
             return self.bottomBarSettings.buttonWidthFillRatio >= 100

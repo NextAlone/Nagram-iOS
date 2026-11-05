@@ -843,7 +843,10 @@ public final class TabBarComponent: Component {
                 // MARK: NAGRAM — support adaptive content width instead of forced equal-width slots.
                 if let buttonWidthFillRatio = component.buttonWidthFillRatio {
                     let minLayoutItemCount = max(component.items.count, component.layoutItemCount ?? component.items.count)
-                    let minWidth = floorToScreenPixels(availableItemsWidth / CGFloat(max(1, minLayoutItemCount)))
+                    // The compact end always reserves the standalone slot, so a tab without search keeps the
+                    // same button width as one with it instead of widening the bar when it is switched to.
+                    let compactItemsWidth = availableSize.width - (barHeight + 8.0) - innerInset * 2.0
+                    let minWidth = floorToScreenPixels(max(0.0, compactItemsWidth) / CGFloat(max(1, minLayoutItemCount)))
                     let maxWidth = floorToScreenPixels(availableItemsWidth / CGFloat(max(1, component.items.count)))
                     let clampedRatio = max(0.0, min(1.0, buttonWidthFillRatio))
                     let buttonWidth = floorToScreenPixels(minWidth + (maxWidth - minWidth) * clampedRatio)

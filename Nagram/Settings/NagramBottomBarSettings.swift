@@ -73,9 +73,11 @@ public struct NagramBottomBarSettings: Equatable {
         hiddenItems: Set<NagramBottomBarItemId> = [],
         topSearchVisible: Bool = true,
         showLabels: Bool = true,
-        widthMode: NagramBottomBarWidthMode = .full,
-        slotMode: NagramBottomBarSlotMode = .visibleOnly,
-        buttonWidthFillRatio: Int32 = 100,
+        // Telegram's own bar hugs its buttons and is centred, so the default is the compact end of the width
+        // slider (issue #76); "full" spreads the buttons across the screen.
+        widthMode: NagramBottomBarWidthMode = .adaptive,
+        slotMode: NagramBottomBarSlotMode = .preserveHidden,
+        buttonWidthFillRatio: Int32 = 0,
         alignment: NagramBottomBarAlignment = .leftCenter,
         searchMode: NagramBottomBarSearchMode = .button
     ) {
@@ -362,12 +364,32 @@ public extension NagramBottomBarSettings {
         static let searchMode = "nagram.bottomBarLayout.searchMode"
     }
 
+    /// Version 2 made the compact bar the default. Version 1 stored the old full-width default on every launch, so a
+    /// version 1 layout still exactly at that default moves to the new one; any other width setting is kept.
+    private static let currentVersion = 2
+
     static func load(from defaults: UserDefaults = NagramDemoMode.userDefaults) -> NagramBottomBarSettings {
-        if defaults.object(forKey: Keys.marker) == nil {
+        guard let version = (defaults.object(forKey: Keys.marker) as? NSNumber)?.intValue else {
             let migratedSettings = self.legacySettings(from: defaults)
             migratedSettings.save(to: defaults)
             return migratedSettings
         }
+        if version < Self.currentVersion {
+            var settings = self.storedSettings(from: defaults)
+            if settings.widthMode == .full && settings.slotMode == .visibleOnly && settings.buttonWidthFillRatio >= 100 && settings.alignment == .leftCenter {
+                let compact = NagramBottomBarSettings()
+                settings.widthMode = compact.widthMode
+                settings.slotMode = compact.slotMode
+                settings.buttonWidthFillRatio = compact.buttonWidthFillRatio
+                settings.alignment = compact.alignment
+            }
+            settings.save(to: defaults)
+            return settings
+        }
+        return self.storedSettings(from: defaults)
+    }
+
+    private static func storedSettings(from defaults: UserDefaults) -> NagramBottomBarSettings {
 
         let bottomItems = Self.itemIds(forKey: Keys.bottomItems, defaults: defaults)
         let hiddenItems = Set(Self.itemIds(forKey: Keys.hiddenItems, defaults: defaults))
@@ -395,7 +417,7 @@ public extension NagramBottomBarSettings {
         var settings = self
         settings.normalize()
 
-        NagramSettingsCloudSync.shared.set(1, forKey: Keys.marker, defaults: defaults)
+        NagramSettingsCloudSync.shared.set(Self.currentVersion, forKey: Keys.marker, defaults: defaults)
         NagramSettingsCloudSync.shared.set(settings.isBottomBarVisible, forKey: Keys.isBottomBarVisible, defaults: defaults)
         NagramSettingsCloudSync.shared.set(settings.bottomItems.map(\.rawValue), forKey: Keys.bottomItems, defaults: defaults)
         if let externalItem = settings.externalItem {
@@ -441,7 +463,7 @@ public extension NagramBottomBarSettings {
         let hideChats = defaults.object(forKey: "nagram.hideTabBarChats") as? Bool ?? false
         let hideSettings = defaults.object(forKey: "nagram.hideTabBarSettings") as? Bool ?? false
         let hideTopSearch = defaults.object(forKey: "nagram.showTabBarSearch") as? Bool ?? false
-        let wideTabBar = defaults.object(forKey: "nagram.wideTabBar") as? Bool ?? true
+        let wideTabBar = defaults.object(forKey: "nagram.wideTabBar") as? Bool ?? false
 
         var hiddenItems = Set<NagramBottomBarItemId>()
         if hideContacts {
