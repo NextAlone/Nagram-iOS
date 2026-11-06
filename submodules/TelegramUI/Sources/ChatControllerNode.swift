@@ -4215,6 +4215,26 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
             if updatedInputFocus {
                 if !self.ignoreUpdateHeight && !waitForKeyboardLayout {
                     self.scheduleLayoutTransitionRequest(layoutTransition)
+                } else if waitForKeyboardLayout {
+                    // MARK: NAGRAM — the panel-mounting layout is delegated to the keyboard frame
+                    // notification that follows the inputView swap. When it never arrives (iPad, see PR #73),
+                    // no layout runs at all: the panel stays unmounted and the window keeps the stale
+                    // keyboard height. Re-check on the next runloop tick and clear it if nothing landed.
+                    let previousInputHeight = self.validLayout?.0.inputHeight
+                    DispatchQueue.main.async { [weak self] in
+                        guard let strongSelf = self else {
+                            return
+                        }
+                        guard case .media = strongSelf.chatPresentationInterfaceState.inputMode else {
+                            return
+                        }
+                        guard let (validLayout, _) = strongSelf.validLayout, validLayout.inputHeight != nil else {
+                            return
+                        }
+                        if previousInputHeight != nil && validLayout.inputHeight == previousInputHeight {
+                            strongSelf.context.sharedContext.mainWindow?.clearStaleInputHeight(transition: .animated(duration: 0.25, curve: .spring))
+                        }
+                    }
                 }
                 
                 if self.chatPresentationInterfaceStateRequiresInputFocus(chatPresentationInterfaceState) {
