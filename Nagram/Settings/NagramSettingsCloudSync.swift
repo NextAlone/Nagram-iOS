@@ -49,6 +49,7 @@ enum NagramSettingsSyncKeys {
         "nagram.chatListFolderTabsCompact",
         "nagram.chatListFolderTabsAtBottom",
         "nagram.chatListFolderSwipeWraps",
+        "nagram.hideChatListComposeButton",
         "nagram.hideAllChatsFolder",
         "nagram.localPinnedChatsEnabled",
         "nagram.hideFolderUnreadCount",

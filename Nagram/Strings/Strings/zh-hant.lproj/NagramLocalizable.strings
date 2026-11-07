@@ -114,6 +114,7 @@
 "Nagram.ChatListMessagePreviewStyle.three" = "三行";
 "Nagram.ChatListMessagePreviewStyle.two" = "兩行";
 "Nagram.HideSavedAndArchivedMessagesInList" = "在列表中隱藏收藏夾和歸檔會話資訊";
+"Nagram.HideChatListComposeButton" = "隱藏新增對話按鈕";
 "Nagram.KeepNewChatsVisibleAtTop" = "列表頂部保持顯示新訊息對話";
 "Nagram.DisableCommunityChatGrouping" = "停用社群聊天合併顯示";
 "Nagram.CommunityAvatarTapAction" = "點擊社群頭像行為";

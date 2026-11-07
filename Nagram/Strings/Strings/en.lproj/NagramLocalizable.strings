@@ -114,6 +114,7 @@
 "Nagram.ChatListMessagePreviewStyle.three" = "Three Lines";
 "Nagram.ChatListMessagePreviewStyle.two" = "Two Lines";
 "Nagram.HideSavedAndArchivedMessagesInList" = "Hide Saved and Archived Messages in List";
+"Nagram.HideChatListComposeButton" = "Hide Compose Button";
 "Nagram.KeepNewChatsVisibleAtTop" = "Keep New Chats Visible at Top";
 "Nagram.DisableCommunityChatGrouping" = "Disable Community Chat Grouping";
 "Nagram.CommunityAvatarTapAction" = "Community Avatar Tap Action";

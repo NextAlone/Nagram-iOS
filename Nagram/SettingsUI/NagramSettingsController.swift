@@ -465,6 +465,7 @@ private func nagramGroups(
                 }
             }),
             .toggle(titleKey: "Nagram.HideSavedAndArchivedMessagesInList", get: { NagramSettings.shared.hideSavedAndArchivedMessagesInList }, set: { NagramSettings.shared.hideSavedAndArchivedMessagesInList = $0 }),
+            .toggle(titleKey: "Nagram.HideChatListComposeButton", get: { NagramSettings.shared.hideChatListComposeButton }, set: { NagramSettings.shared.hideChatListComposeButton = $0 }),
             .toggle(titleKey: "Nagram.KeepNewChatsVisibleAtTop", get: { NagramSettings.shared.keepNewChatsVisibleAtTop }, set: { NagramSettings.shared.keepNewChatsVisibleAtTop = $0 }),
             .toggle(titleKey: "Nagram.DisableCommunityChatGrouping", get: { NagramSettings.shared.disableCommunityChatGrouping }, set: { NagramSettings.shared.disableCommunityChatGrouping = $0 }),
             .choice(titleKey: "Nagram.CommunityAvatarTapAction", prefix: "Nagram.CommunityAvatarTapAction", options: NagramCommunityAvatarTapAction.allCases.map { $0.rawValue }, current: { NagramSettings.shared.communityAvatarTapActionValue.rawValue }, set: { NagramSettings.shared.communityAvatarTapAction = $0 }),

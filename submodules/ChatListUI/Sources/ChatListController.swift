@@ -7236,7 +7236,7 @@ private final class ChatListLocationContext {
                     peerStatus,
                     parentController.updatedPresentationData.1,
                     // MARK: NAGRAM — 合并 Nagram 设置 signal，使 header 入口显隐即时重算。
-                    combineLatest(storyPostingAvailable, nagramBoolSignal("nagram.hideStories", defaultValue: false), nagramBottomBarSettingsSignal())
+                    combineLatest(storyPostingAvailable, nagramBoolSignal("nagram.hideStories", defaultValue: false), nagramBottomBarSettingsSignal(), nagramBoolSignal("nagram.hideChatListComposeButton", defaultValue: false))
                 ).startStrict(next: { [weak self] networkState, proxy, passcode, stateAndFilterId, isReorderingTabs, peerStatus, presentationData, storyPostingAvailableAndHideStories in
                     guard let self else {
                         return
@@ -7597,6 +7597,8 @@ private final class ChatListLocationContext {
                             self?.parentController?.editPressed()
                         }
                     )
+                } else if NagramSettings.shared.hideChatListComposeButton { // MARK: NAGRAM
+                    self.rightButton = nil
                 } else {
                     self.rightButton = NavigationBarComponent.Button(id: "compose",
                         content: .icon(imageName: "Chat List/ComposeIcon"),
