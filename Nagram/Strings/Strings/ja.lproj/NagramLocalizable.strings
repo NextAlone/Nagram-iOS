@@ -223,6 +223,7 @@
 "Nagram.MessageMenu.Item.increaseSpeed" = "再生速度を上げる";
 "Nagram.MessageMenu.Item.sendGift" = "ギフトを送る";
 "Nagram.MessageMenu.Item.reply" = "返信";
+"Nagram.MessageMenu.Item.replyPrivately" = "個別に返信";
 "Nagram.MessageMenu.Item.repeat" = "リピート送信";
 "Nagram.MessageMenu.Item.repeatWithoutQuote" = "引用なしでリピート送信";
 "Nagram.MessageMenu.Item.sendScheduledNow" = "今すぐ送信";

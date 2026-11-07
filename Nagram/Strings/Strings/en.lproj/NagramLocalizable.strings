@@ -223,6 +223,7 @@
 "Nagram.MessageMenu.Item.increaseSpeed" = "Increase Speed";
 "Nagram.MessageMenu.Item.sendGift" = "Send Gift";
 "Nagram.MessageMenu.Item.reply" = "Reply";
+"Nagram.MessageMenu.Item.replyPrivately" = "Reply Privately";
 "Nagram.MessageMenu.Item.repeat" = "Repeat";
 "Nagram.MessageMenu.Item.repeatWithoutQuote" = "Repeat Without Quote";
 "Nagram.MessageMenu.Item.sendScheduledNow" = "Send Now";

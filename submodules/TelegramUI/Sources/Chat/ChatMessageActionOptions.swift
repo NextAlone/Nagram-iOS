@@ -1166,3 +1166,34 @@ extension ChatControllerImpl {
         ))
     }
 }
+
+// MARK: NAGRAM — 私下回复：把群消息设为与发送者私聊的回复对象，再打开该私聊
+func nagramReplyPrivately(selfController: ChatControllerImpl, message: EngineRawMessage) {
+    guard let authorId = message.author?.id else {
+        return
+    }
+    let replySubject = ChatInterfaceState.ReplyMessageSubject(messageId: message.id, quote: nil, innerSubject: nil)
+    let _ = selfController.presentVoiceMessageDiscardAlert(action: { [weak selfController] in
+        guard let selfController, let navigationController = selfController.effectiveNavigationController else {
+            return
+        }
+        for controller in navigationController.viewControllers {
+            if let chatController = controller as? ChatControllerImpl, chatLocationMatchesDestination(chatController.chatLocation, peerId: authorId, threadId: nil), chatController.presentationInterfaceState.subject == nil {
+                chatController.updateChatPresentationInterfaceState(animated: false, interactive: true, { $0.updatedInterfaceState({ $0.withUpdatedReplyMessageSubject(replySubject).withoutSelectionState() }) })
+                let _ = navigationController.popToViewController(chatController, animated: true)
+                return
+            }
+        }
+        let _ = (ChatInterfaceState.update(engine: selfController.context.engine, peerId: authorId, threadId: nil, { currentState in
+            return currentState.withUpdatedReplyMessageSubject(replySubject)
+        })
+        |> deliverOnMainQueue).startStandalone(completed: { [weak navigationController, weak selfController] in
+            guard let selfController, let navigationController else {
+                return
+            }
+            let chatController = ChatControllerImpl(context: selfController.context, chatLocation: .peer(id: authorId))
+            chatController.activateInput(type: .text)
+            navigationController.pushViewController(chatController)
+        })
+    })
+}

@@ -10,6 +10,7 @@ public enum NagramMessageMenuItemId: String, CaseIterable {
     case increaseSpeed
     case sendGift
     case reply
+    case replyPrivately
     case `repeat`
     case repeatWithoutQuote
     case sendScheduledNow
@@ -54,7 +55,7 @@ public enum NagramMessageMenuItemId: String, CaseIterable {
 private let nagramMessageMenuOrderKey = "nagram.messageMenu.order"
 private let nagramMessageMenuDisabledKey = "nagram.messageMenu.disabled"
 private let nagramMessageMenuEnabledDefaultDisabledKey = "nagram.messageMenu.enabledDefaultDisabled"
-private let nagramDefaultDisabledMessageMenuItemIds: Set<NagramMessageMenuItemId> = [.repeatWithoutQuote, .forwardWithoutQuote, .viewAuthorMessages, .selectFromAuthor]
+private let nagramDefaultDisabledMessageMenuItemIds: Set<NagramMessageMenuItemId> = [.replyPrivately, .repeatWithoutQuote, .forwardWithoutQuote, .viewAuthorMessages, .selectFromAuthor]
 
 public extension NagramSettings {
     var messageMenuItemOrder: [NagramMessageMenuItemId] {

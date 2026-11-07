@@ -109,6 +109,32 @@ private func nagramManagedMessageMenuItems(_ items: [NagramManagedMessageMenuIte
     return nagramCleanMessageMenuSeparators(result)
 }
 
+// MARK: NAGRAM — 私下回复只给群里别人发的普通消息；与「在其他聊天中回复」的限制一致（内容保护、服务消息、阅后即焚等不行）
+private func nagramCanReplyPrivately(message: EngineRawMessage, accountPeerId: EnginePeer.Id, copyProtectionEnabled: Bool) -> Bool {
+    switch message.id.peerId.namespace {
+    case Namespaces.Peer.CloudGroup:
+        break
+    case Namespaces.Peer.CloudChannel:
+        guard let channel = message.peers[message.id.peerId] as? TelegramChannel, case .group = channel.info, !channel.isMonoForum else {
+            return false
+        }
+    default:
+        return false
+    }
+    guard message.id.namespace == Namespaces.Message.Cloud, let author = message.author as? TelegramUser, author.id != accountPeerId, !author.isDeleted else {
+        return false
+    }
+    if copyProtectionEnabled || message.isCopyProtected() || message.minAutoremoveOrClearTimeout == viewOnceTimeout {
+        return false
+    }
+    for media in message.media {
+        if media is TelegramMediaAction || media is TelegramMediaExpiredContent {
+            return false
+        }
+    }
+    return true
+}
+
 private func nagramCleanMessageMenuSeparators(_ items: [ContextMenuItem]) -> [ContextMenuItem] {
     var result: [ContextMenuItem] = []
     var previousWasSeparator = true
@@ -1312,6 +1338,16 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                         completed()
                     })
                 })
+            })))
+        }
+        
+        // MARK: NAGRAM — 私下回复：在群里把别人的消息带到与其私聊里回复
+        if let replyPrivately = interfaceInteraction.replyPrivately, nagramCanReplyPrivately(message: message, accountPeerId: context.account.peerId, copyProtectionEnabled: chatPresentationInterfaceState.copyProtectionEnabled) {
+            actions.append(.replyPrivately, .action(ContextMenuActionItem(text: ngI18n("Nagram.MessageMenu.Item.replyPrivately", chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Replace"), color: theme.actionSheet.primaryTextColor)
+            }, action: { _, f in
+                f(.dismissWithoutContent)
+                replyPrivately(message)
             })))
         }
         
