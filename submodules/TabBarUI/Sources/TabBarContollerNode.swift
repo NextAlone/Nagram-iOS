@@ -61,6 +61,15 @@ final class TabBarControllerNode: ASDisplayNode {
             
             self.onLayout?()
         }
+        
+        // MARK: NAGRAM
+        var onDidMoveToWindow: (() -> Void)?
+        
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            
+            self.onDidMoveToWindow?()
+        }
     }
     
     private var theme: PresentationTheme
@@ -74,6 +83,10 @@ final class TabBarControllerNode: ASDisplayNode {
     private var tabBarView = ComponentView<Empty>()
     private var tabBarContentState: (hasItems: Bool, hasContent: Bool)?
     private var needsTabBarRecreation = false
+    // MARK: NAGRAM — native glass that enters the window while the bar is hidden below the screen stays blank when
+    // the bar is shown again (the settings search hides it, and a pushed search result removes the tab controller from
+    // the window until it is popped). Recreate it when it is next shown.
+    private var tabBarEnteredWindowHidden = false
     
     private let disabledOverlayNode: ASDisplayNode
     private var toolbar: ComponentView<Empty>?
@@ -162,6 +175,14 @@ final class TabBarControllerNode: ASDisplayNode {
                     let _ = self.updateImpl(params: layoutResult.params, transition: .immediate)
                 }
             }
+        }
+        
+        // MARK: NAGRAM
+        (self.view as? View)?.onDidMoveToWindow = { [weak self] in
+            guard let self, self.view.window != nil, self.tabBarHidden else {
+                return
+            }
+            self.tabBarEnteredWindowHidden = true
         }
         
         self.backgroundColor = theme.list.plainBackgroundColor
@@ -414,6 +435,10 @@ final class TabBarControllerNode: ASDisplayNode {
             }
         }
         self.tabBarContentState = (hasTabBarItems, hasVisibleTabBarContent)
+        if self.tabBarEnteredWindowHidden && !params.isTabBarHidden {
+            self.tabBarEnteredWindowHidden = false
+            self.needsTabBarRecreation = true
+        }
         if self.needsTabBarRecreation && tabBarSearchState?.isActive != true {
             self.needsTabBarRecreation = false
             let previousTabBarView = self.tabBarView
