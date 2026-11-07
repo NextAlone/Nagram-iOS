@@ -475,6 +475,7 @@ private func nagramGroups(
             .startupFolder(titleKey: "Nagram.ChatListStartupFolder"),
             .choice(titleKey: "Nagram.ChatListFolderTabDisplayMode", prefix: "Nagram.ChatListFolderTabDisplayMode", options: ["text", "icon", "both"], current: { NagramSettings.shared.chatListFolderTabDisplayModeValue.rawValue }, set: { NagramSettings.shared.chatListFolderTabDisplayMode = $0 }),
             .toggle(titleKey: "Nagram.ChatListFolderTabsCompact", get: { NagramSettings.shared.chatListFolderTabsCompact }, set: { NagramSettings.shared.chatListFolderTabsCompact = $0 }),
+            .toggle(titleKey: "Nagram.ChatListFolderTabsAtBottom", get: { NagramSettings.shared.chatListFolderTabsAtBottom }, set: { NagramSettings.shared.chatListFolderTabsAtBottom = $0 }),
             .toggle(titleKey: "Nagram.HideFolderUnreadCount", get: { NagramSettings.shared.hideFolderUnreadCount }, set: { NagramSettings.shared.hideFolderUnreadCount = $0 }),
             .toggle(titleKey: "Nagram.HideAllChatsFolder", get: { NagramSettings.shared.hideAllChatsFolder }, set: { NagramSettings.shared.hideAllChatsFolder = $0 }),
             .toggle(titleKey: "Nagram.ShowArchiveInFolders", get: { NagramSettings.shared.showArchiveInFolders }, set: { NagramSettings.shared.showArchiveInFolders = $0 }),

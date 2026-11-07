@@ -412,6 +412,7 @@
 "Nagram.ChatListFolderTabDisplayMode.icon" = "Icon Only";
 "Nagram.ChatListFolderTabDisplayMode.both" = "Icon and Text";
 "Nagram.ChatListFolderTabsCompact" = "Compact Folder Tabs";
+"Nagram.ChatListFolderTabsAtBottom" = "Folder Tabs at Bottom";
 "Nagram.HideAllChatsFolder" = "Hide All Chats Folder";
 "Nagram.Section.LocalPinnedChats" = "Pinned Chats";
 "Nagram.LocalPinnedChatsEnabled" = "Pin Locally Beyond the Limit";

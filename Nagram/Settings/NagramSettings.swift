@@ -430,6 +430,9 @@ public final class NagramSettings {
     /// 首页分组标签紧凑布局
     @NagramDefault("nagram.chatListFolderTabsCompact", false)
     public var chatListFolderTabsCompact: Bool
+    /// 首页分组标签放在底栏上方（默认关 = 原生顶部）
+    @NagramDefault("nagram.chatListFolderTabsAtBottom", false)
+    public var chatListFolderTabsAtBottom: Bool
     @NagramDefault("nagram.hideFolderUnreadCount", false)
     public var hideFolderUnreadCount: Bool
     /// 隐藏首页的“全部会话”分组（至少存在一个自定义分组时生效）

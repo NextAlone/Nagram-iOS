@@ -47,6 +47,7 @@ enum NagramSettingsSyncKeys {
         "nagram.communityAvatarTapAction",
         "nagram.chatListStartupFolderMode",
         "nagram.chatListFolderTabsCompact",
+        "nagram.chatListFolderTabsAtBottom",
         "nagram.hideAllChatsFolder",
         "nagram.localPinnedChatsEnabled",
         "nagram.hideFolderUnreadCount",

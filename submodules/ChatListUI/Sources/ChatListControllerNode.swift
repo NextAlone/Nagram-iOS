@@ -1298,6 +1298,29 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
     let navigationBarView = ComponentView<Empty>()
     weak var controller: ChatListControllerImpl?
     
+    // MARK: NAGRAM — 文件夹标签放在底栏上方时的容器，与顶部同一个玻璃胶囊组件。
+    private let nagramBottomFolderTabsView = ComponentView<Empty>()
+    private var nagramBottomFolderTabs: AnyComponent<Empty>?
+    
+    /// 只有主聊天列表（全部聊天的根列表，非侧栏、非预览）把文件夹标签放到底部。
+    var nagramFolderTabsAtBottom: Bool {
+        guard NagramSettings.shared.chatListFolderTabsAtBottom, let controller = self.controller else {
+            return false
+        }
+        guard case .chatList(.root) = controller.location, !controller.isSideList, !controller.previewing else {
+            return false
+        }
+        return true
+    }
+    
+    /// 文件夹标签当前所在的视图（顶部标题栏或底部容器）。
+    var nagramFolderTabsView: HorizontalTabsComponent.View? {
+        if self.nagramFolderTabsAtBottom {
+            return (self.nagramBottomFolderTabsView.view as? HeaderPanelContainerComponent.View)?.tabs as? HorizontalTabsComponent.View
+        }
+        return ((self.navigationBarView.view as? ChatListNavigationBar.View)?.headerPanels as? HeaderPanelContainerComponent.View)?.tabs as? HorizontalTabsComponent.View
+    }
+    
     private var toolbar: ComponentView<Empty>?
     var toolbarData: Toolbar?
     var toolbarActionSelected: ((ToolbarActionOption) -> Void)?
@@ -1667,6 +1690,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         }
         
         var navigationHeaderPanels: AnyComponent<Empty>?
+        self.nagramBottomFolderTabs = nil // MARK: NAGRAM
         if self.controller?.tabContainerData != nil || !panels.isEmpty {
             var tabs: AnyComponent<Empty>?
             if let tabContainerData = self.controller?.tabContainerData, tabContainerData.0.count > 1 {
@@ -1826,9 +1850,14 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                 ))
             }
                 
+            // MARK: NAGRAM — 文件夹标签在底部时，顶部只保留其他面板（通知、播放器、实时位置）。
+            let nagramFolderTabsAtBottom = self.nagramFolderTabsAtBottom
+            if nagramFolderTabsAtBottom {
+                self.nagramBottomFolderTabs = tabs
+            }
             navigationHeaderPanels = AnyComponent(HeaderPanelContainerComponent(
                 theme: self.presentationData.theme,
-                tabs: tabs,
+                tabs: nagramFolderTabsAtBottom ? nil : tabs,
                 panels: panels
             ))
         }
@@ -2062,6 +2091,9 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         insets.left += layout.safeInsets.left
         insets.right += layout.safeInsets.right
         
+        // MARK: NAGRAM — 底栏上方的文件夹标签；列表底部内边距让出它的高度。
+        insets.bottom += self.updateNagramBottomFolderTabs(layout: layout, transition: transition)
+        
         if let toolbarData = self.toolbarData {
             var panelsBottomInset: CGFloat = layout.insets(options: []).bottom
             if layout.metrics.widthClass == .regular, let inputHeight = layout.inputHeight, inputHeight != 0.0 {
@@ -2232,6 +2264,54 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
             navigationBarComponentView.deferScrollApplication = false
             navigationBarComponentView.applyCurrentScroll(transition: ComponentTransition(transition))
         }
+    }
+    
+    // MARK: NAGRAM — 放置底部文件夹标签，返回列表需要让出的高度（不显示时为 0）。
+    private func updateNagramBottomFolderTabs(layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) -> CGFloat {
+        let gap: CGFloat = 8.0
+        guard let tabs = self.nagramBottomFolderTabs, self.isSearchDisplayControllerActive == nil, self.toolbarData == nil else {
+            if let view = self.nagramBottomFolderTabsView.view, view.superview != nil {
+                ComponentTransition(transition).setAlpha(view: view, alpha: 0.0, completion: { [weak view] finished in
+                    if finished {
+                        view?.removeFromSuperview()
+                    }
+                })
+            }
+            return 0.0
+        }
+        let bottomInset = layout.insets(options: []).bottom
+        let estimatedHeight: CGFloat = 40.0
+        let estimatedMinY = layout.size.height - bottomInset - gap - estimatedHeight
+        let sideInsets = layout.sideInsets(forBandFrom: estimatedMinY, to: estimatedMinY + estimatedHeight)
+        let width = layout.size.width - sideInsets.left - sideInsets.right
+        
+        let size = self.nagramBottomFolderTabsView.update(
+            transition: ComponentTransition(transition),
+            component: AnyComponent(HeaderPanelContainerComponent(
+                theme: self.presentationData.theme,
+                tabs: tabs,
+                panels: []
+            )),
+            environment: {},
+            containerSize: CGSize(width: width, height: 1000.0)
+        )
+        guard let view = self.nagramBottomFolderTabsView.view else {
+            return 0.0
+        }
+        let frame = CGRect(origin: CGPoint(x: sideInsets.left, y: layout.size.height - bottomInset - gap - size.height), size: size)
+        if view.superview !== self.view {
+            view.alpha = 0.0
+            self.view.addSubview(view)
+            view.frame = frame
+            ComponentTransition(transition).setAlpha(view: view, alpha: 1.0)
+        } else {
+            view.layer.removeAllAnimations()
+            ComponentTransition(transition).setAlpha(view: view, alpha: 1.0)
+            ComponentTransition(transition).setFrame(view: view, frame: frame)
+        }
+        // 保持在列表和内联列表之上。
+        self.view.bringSubviewToFront(view)
+        return size.height + gap
     }
     
     @MainActor

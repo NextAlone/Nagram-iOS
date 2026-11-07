@@ -830,7 +830,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                     return
                 }
                 
-                if let navigationBarView = strongSelf.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View, let headerPanelsView = navigationBarView.headerPanels as? HeaderPanelContainerComponent.View, let tabsView = headerPanelsView.tabs as? HorizontalTabsComponent.View {
+                if let tabsView = strongSelf.chatListDisplayNode.nagramFolderTabsView { // MARK: NAGRAM — 标签可能在底部
                     tabsView.updateTabSwitchFraction(fraction: fraction, isDragging: strongSelf.chatListDisplayNode.mainContainerNode.isSwitchingCurrentItemFilterByDragging, transition: ComponentTransition(transition))
                 }
                 if fraction.isZero {
@@ -874,7 +874,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             nagramBoolSignal("nagram.chatListFolderTabsCompact", defaultValue: false),
             nagramStringSignal("nagram.chatListFolderTabDisplayMode", defaultValue: NagramChatListFolderTabDisplayMode.text.rawValue),
             nagramBoolSignal("nagram.hideAllChatsFolder", defaultValue: false),
-            nagramBoolSignal("nagram.hideFolderUnreadCount", defaultValue: false) // MARK: NAGRAM
+            nagramBoolSignal("nagram.hideFolderUnreadCount", defaultValue: false), // MARK: NAGRAM
+            nagramBoolSignal("nagram.chatListFolderTabsAtBottom", defaultValue: false) // MARK: NAGRAM
         )
         |> deliverOnMainQueue).startStrict(next: { [weak self] _ in
             guard let self else {
@@ -3820,7 +3821,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         let _ = defaultFilterIds
         
         var reorderedFilterIdsValue: [Int32]?
-        if let navigationBarView = self.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View, let headerPanelsView = navigationBarView.headerPanels as? HeaderPanelContainerComponent.View, let tabsView = headerPanelsView.tabs as? HorizontalTabsComponent.View, let reorderedItemIds = tabsView.reorderedItemIds {
+        if let tabsView = self.chatListDisplayNode.nagramFolderTabsView, let reorderedItemIds = tabsView.reorderedItemIds { // MARK: NAGRAM — 标签可能在底部
             reorderedFilterIdsValue = reorderedItemIds.compactMap { item -> Int32? in
                 guard let value = item.base as? Int32 else {
                     return nil
