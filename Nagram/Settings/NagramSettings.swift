@@ -243,6 +243,10 @@ public final class NagramSettings {
     @NagramDefault("nagram.groupDescriptionExternalLinks", false)
     public var groupDescriptionExternalLinks: Bool
 
+    /// 频道消息在浏览数后显示转发次数
+    @NagramDefault("nagram.showChannelForwardCount", false)
+    public var showChannelForwardCount: Bool
+
     /// 在气泡时间后显示消息 ID（仅群组、超级群组和频道，与 Android Nagram 一致）
     @NagramDefault("nagram.showMessageId", false)
     public var showMessageId: Bool

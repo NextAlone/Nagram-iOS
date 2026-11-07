@@ -520,6 +520,7 @@ private func nagramGroups(
         NagramGroup(tab: .messages, headerKey: "Nagram.Section.Channels", footerKeys: ["Nagram.HideChannelForwardButton.Footer"], rows: [
             .toggle(titleKey: "Nagram.HideChannelBottomButton", get: { NagramSettings.shared.hideChannelBottomButton }, set: { NagramSettings.shared.hideChannelBottomButton = $0 }),
             .toggle(titleKey: "Nagram.HideChannelForwardButton", get: { NagramSettings.shared.wideChannelPosts }, set: { NagramSettings.shared.wideChannelPosts = $0 }),
+            .toggle(titleKey: "Nagram.ShowChannelForwardCount", get: { NagramSettings.shared.showChannelForwardCount }, set: { NagramSettings.shared.showChannelForwardCount = $0 }),
         ]),
         NagramGroup(tab: .messages, headerKey: "Nagram.Section.Sending", footerKeys: ["Nagram.ForwardHideSenderNamesByDefault.Footer"], rows: [
             .toggle(titleKey: "Nagram.DisableSendAsButton", get: { NagramSettings.shared.disableSendAsButton }, set: { NagramSettings.shared.disableSendAsButton = $0 }),

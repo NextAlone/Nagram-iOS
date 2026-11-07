@@ -611,3 +611,4 @@
 "Nagram.GroupDescriptionExternalLinks" = "群简介中的网址可点击";
 "Nagram.GroupDescriptionExternalLinks.Footer" = "Telegram 默认只让群简介里的 Telegram 链接可点击。打开后，其他网址也能点开，打开方式与频道简介里的链接相同。";
 "Nagram.MemberRequests.DismissAndBan" = "拒绝并封禁";
+"Nagram.ShowChannelForwardCount" = "显示转发次数";

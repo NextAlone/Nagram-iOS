@@ -267,6 +267,15 @@ public func stringForMessageTimestampStatus(
             dateText = "\(dateText) | \(message.id.id)"
         }
     }
+    // MARK: NAGRAM — 频道消息在浏览数后显示转发次数
+    if NagramSettings.shared.showChannelForwardCount, !associatedData.isForwardOptionsPreview, let channel = message.peers[message.id.peerId] as? TelegramChannel, case .broadcast = channel.info {
+        for attribute in message.attributes {
+            if let attribute = attribute as? ForwardCountMessageAttribute, attribute.count > 0 {
+                dateText = "\u{21AA}\u{FE0E}" + compactNumericCountString(attribute.count, decimalSeparator: dateTimeFormat.decimalSeparator) + " " + dateText
+                break
+            }
+        }
+    }
     
     return dateText
 }
