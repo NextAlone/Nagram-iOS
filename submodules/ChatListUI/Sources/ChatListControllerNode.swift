@@ -686,6 +686,8 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
     @objc private func panGesture(_ recognizer: InteractiveTransitionGestureRecognizer) {
         let filtersLimit = self.filtersLimit.flatMap({ $0 + 1 }) ?? Int32(self.availableFilters.count)
         let maxFilterIndex = min(Int(filtersLimit), self.availableFilters.count) - 1
+        // MARK: NAGRAM — 在最后一个可用分组继续左滑回到第一个分组，取代 Premium 分组上限提示
+        let nagramSwipeWraps = NagramSettings.shared.chatListFolderSwipeWraps && maxFilterIndex > 0
 
         let canOpenStoryCamera = self.validLayout?.0.metrics.widthClass == .compact
             && self.availableFilters.first?.id == self.selectedId
@@ -780,7 +782,7 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
                     let overscroll = -translation.x
                     transitionFraction = -rubberBandingOffset(offset: overscroll, bandingStart: 0.0) / layout.size.width
                     
-                    if let filtersLimit = self.filtersLimit, selectedIndex >= filtersLimit - 1 {
+                    if !nagramSwipeWraps, let filtersLimit = self.filtersLimit, selectedIndex >= filtersLimit - 1 { // MARK: NAGRAM
                         transitionFraction = 0.0
                         self.transitionFractionOffset = 0.0
                         recognizer.isEnabled = false
@@ -852,10 +854,13 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
                     return
                 }
                 var applyNodeAsCurrent: ChatListFilterTabEntryId?
+                var nagramWrapToFirstId: ChatListFilterTabEntryId? // MARK: NAGRAM
                 
                 if let directionIsToRight = directionIsToRight {
                     var updatedIndex = selectedIndex
-                    if directionIsToRight {
+                    if directionIsToRight && nagramSwipeWraps && selectedIndex >= maxFilterIndex { // MARK: NAGRAM
+                        nagramWrapToFirstId = self.availableFilters[0].id
+                    } else if directionIsToRight {
                         updatedIndex = min(updatedIndex + 1, maxFilterIndex)
                     } else {
                         updatedIndex = max(updatedIndex - 1, 0)
@@ -885,6 +890,9 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
                 self.isSwitchingCurrentItemFilterByDragging = false
                 self.currentItemFilterUpdated?(self.currentItemFilter, self.transitionFraction, transition, false)
                 self.pinnedHeaderDisplayFractionUpdated?(transition)
+                if let nagramWrapToFirstId { // MARK: NAGRAM
+                    self.switchToFilter(id: nagramWrapToFirstId)
+                }
             }
         default:
             break

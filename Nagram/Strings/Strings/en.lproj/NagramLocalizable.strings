@@ -412,6 +412,8 @@
 "Nagram.ChatListFolderTabDisplayMode.icon" = "Icon Only";
 "Nagram.ChatListFolderTabDisplayMode.both" = "Icon and Text";
 "Nagram.ChatListFolderTabsCompact" = "Compact Folder Tabs";
+"Nagram.ChatListFolderSwipeWraps" = "Swipe Past Last Folder to First";
+"Nagram.ChatListFolderSwipeWraps.Footer" = "Swiping left on the last folder opens the first one. Without Premium, the folder limit prompt is no longer shown there; folders beyond the limit stay unavailable.";
 "Nagram.ChatListFolderTabsAtBottom" = "Folder Tabs at Bottom";
 "Nagram.HideAllChatsFolder" = "Hide All Chats Folder";
 "Nagram.Section.LocalPinnedChats" = "Pinned Chats";

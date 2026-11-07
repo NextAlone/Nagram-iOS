@@ -412,6 +412,8 @@
 "Nagram.ChatListFolderTabDisplayMode.icon" = "アイコンのみ";
 "Nagram.ChatListFolderTabDisplayMode.both" = "アイコンとテキスト";
 "Nagram.ChatListFolderTabsCompact" = "フォルダタブをコンパクトに";
+"Nagram.ChatListFolderSwipeWraps" = "最後のフォルダから最初へ戻る";
+"Nagram.ChatListFolderSwipeWraps.Footer" = "最後のフォルダでさらに左へスワイプすると最初のフォルダに戻ります。Premium でない場合もフォルダ数の上限案内は表示されません。上限を超えたフォルダは引き続き利用できません。";
 "Nagram.ChatListFolderTabsAtBottom" = "フォルダタブを下部に表示";
 "Nagram.HideAllChatsFolder" = "すべてのチャットを非表示";
 "Nagram.Section.LocalPinnedChats" = "ピン留めしたチャット";

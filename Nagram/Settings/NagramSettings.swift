@@ -433,6 +433,9 @@ public final class NagramSettings {
     /// 首页分组标签放在底栏上方（默认关 = 原生顶部）
     @NagramDefault("nagram.chatListFolderTabsAtBottom", false)
     public var chatListFolderTabsAtBottom: Bool
+    /// 在最后一个分组继续左滑回到第一个分组，不再弹出 Premium 分组上限提示（默认关 = 原生）
+    @NagramDefault("nagram.chatListFolderSwipeWraps", false)
+    public var chatListFolderSwipeWraps: Bool
     @NagramDefault("nagram.hideFolderUnreadCount", false)
     public var hideFolderUnreadCount: Bool
     /// 隐藏首页的“全部会话”分组（至少存在一个自定义分组时生效）

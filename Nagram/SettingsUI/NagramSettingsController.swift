@@ -471,11 +471,12 @@ private func nagramGroups(
             .choice(titleKey: "Nagram.ChatListSwipeAction", prefix: "Nagram.ChatListSwipeAction", options: ["both", "switch", "quick", "none"], current: { NagramSettings.shared.chatListSwipeActionMode.rawValue }, set: { NagramSettings.shared.chatListSwipeAction = $0 }),
             .toggle(titleKey: "Nagram.OpenArchiveOnPull", get: { NagramSettings.shared.openArchiveOnPull }, set: { NagramSettings.shared.openArchiveOnPull = $0 }),
         ]),
-        NagramGroup(tab: .chats, headerKey: "Nagram.Section.Folders", footerKeys: [], rows: [
+        NagramGroup(tab: .chats, headerKey: "Nagram.Section.Folders", footerKeys: ["Nagram.ChatListFolderSwipeWraps.Footer"], rows: [
             .startupFolder(titleKey: "Nagram.ChatListStartupFolder"),
             .choice(titleKey: "Nagram.ChatListFolderTabDisplayMode", prefix: "Nagram.ChatListFolderTabDisplayMode", options: ["text", "icon", "both"], current: { NagramSettings.shared.chatListFolderTabDisplayModeValue.rawValue }, set: { NagramSettings.shared.chatListFolderTabDisplayMode = $0 }),
             .toggle(titleKey: "Nagram.ChatListFolderTabsCompact", get: { NagramSettings.shared.chatListFolderTabsCompact }, set: { NagramSettings.shared.chatListFolderTabsCompact = $0 }),
             .toggle(titleKey: "Nagram.ChatListFolderTabsAtBottom", get: { NagramSettings.shared.chatListFolderTabsAtBottom }, set: { NagramSettings.shared.chatListFolderTabsAtBottom = $0 }),
+            .toggle(titleKey: "Nagram.ChatListFolderSwipeWraps", get: { NagramSettings.shared.chatListFolderSwipeWraps }, set: { NagramSettings.shared.chatListFolderSwipeWraps = $0 }),
             .toggle(titleKey: "Nagram.HideFolderUnreadCount", get: { NagramSettings.shared.hideFolderUnreadCount }, set: { NagramSettings.shared.hideFolderUnreadCount = $0 }),
             .toggle(titleKey: "Nagram.HideAllChatsFolder", get: { NagramSettings.shared.hideAllChatsFolder }, set: { NagramSettings.shared.hideAllChatsFolder = $0 }),
             .toggle(titleKey: "Nagram.ShowArchiveInFolders", get: { NagramSettings.shared.showArchiveInFolders }, set: { NagramSettings.shared.showArchiveInFolders = $0 }),

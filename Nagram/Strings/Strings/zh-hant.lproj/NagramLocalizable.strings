@@ -412,6 +412,8 @@
 "Nagram.ChatListFolderTabDisplayMode.icon" = "僅圖示";
 "Nagram.ChatListFolderTabDisplayMode.both" = "圖示和文字";
 "Nagram.ChatListFolderTabsCompact" = "緊湊分組標籤";
+"Nagram.ChatListFolderSwipeWraps" = "滑過最後一個分組回到第一個";
+"Nagram.ChatListFolderSwipeWraps.Footer" = "在最後一個分組繼續左滑會回到第一個分組。未開通 Premium 時，這裡不再彈出分組數量上限提示；超出上限的分組仍然無法使用。";
 "Nagram.ChatListFolderTabsAtBottom" = "分組標籤放在底部";
 "Nagram.HideAllChatsFolder" = "隱藏全部會話分組";
 "Nagram.Section.LocalPinnedChats" = "置頂對話";
