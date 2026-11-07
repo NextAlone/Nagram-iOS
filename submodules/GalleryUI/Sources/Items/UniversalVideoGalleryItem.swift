@@ -773,7 +773,10 @@ private final class NativePictureInPictureContentImpl: NSObject, AVPictureInPict
 
         super.init()
 
-        if let videoLayer = videoNode.getVideoLayer() {
+        // MARK: NAGRAM — Where PiP is unsupported (the iOS 27 simulator) the initializer hands back nil through a
+        // non-optional type and Swift aborts on the first use ("Found a null pointer in a value of type
+        // 'AVPictureInPictureController'"), so opening any gallery video crashed there.
+        if let videoLayer = videoNode.getVideoLayer(), AVPictureInPictureController.isPictureInPictureSupported() {
             let contentDelegate = PlaybackDelegate(node: self.node)
             self.contentDelegate = contentDelegate
             
