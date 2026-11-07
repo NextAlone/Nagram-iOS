@@ -707,6 +707,12 @@ func infoItems(
                 }
             ))
         }
+        // MARK: NAGRAM — 共同群里的近期发言
+        if NagramSettings.shared.showCommonGroupMessages && !isMyProfile && data.groupsInCommon != nil, let commonGroupCount = (data.cachedData as? CachedUserData)?.commonGroupCount, commonGroupCount > 0 {
+            items[.nagram]!.append(PeerInfoScreenDisclosureItem(id: 1, label: .text("\(commonGroupCount)"), text: ngI18n("Nagram.CommonGroupMessages", nagramLanguageCode), action: {
+                interaction.openNagramCommonGroupMessages()
+            }))
+        }
     } else if case let .channel(channel) = data.peer {
         let ItemUsername = 1
         let ItemUsernameInfo = 2

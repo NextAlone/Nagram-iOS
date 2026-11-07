@@ -574,6 +574,7 @@ private func nagramGroups(
             .toggle(titleKey: "Nagram.ShowProfileId", get: { NagramSettings.shared.showProfileId }, set: { NagramSettings.shared.showProfileId = $0 }),
             .toggle(titleKey: "Nagram.ShowDC", get: { NagramSettings.shared.showDC }, set: { NagramSettings.shared.showDC = $0 }),
             .toggle(titleKey: "Nagram.ShowRegDate", get: { NagramSettings.shared.showRegDate }, set: { NagramSettings.shared.showRegDate = $0 }),
+            .toggle(titleKey: "Nagram.ShowCommonGroupMessages", get: { NagramSettings.shared.showCommonGroupMessages }, set: { NagramSettings.shared.showCommonGroupMessages = $0 }),
             .navigation(titleKey: "Nagram.GroupProfileSettings", action: groupProfileSettingsAction),
         ]),
         NagramGroup(tab: .other, headerKey: "Nagram.Section.Privacy", footerKeys: ["Nagram.DisableFiltering.Footer", "Nagram.ForceCopy.Footer"], rows: [

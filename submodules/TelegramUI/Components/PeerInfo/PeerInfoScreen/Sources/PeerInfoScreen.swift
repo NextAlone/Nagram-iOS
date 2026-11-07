@@ -13,6 +13,7 @@ import WalletSendScreen
 import NagramSettings
 import NagramSettingsUI // MARK: NAGRAM
 import NagramSettingsSignal
+import NagramCommonGroupMessages // MARK: NAGRAM
 import TelegramPresentationData
 import TelegramUIPreferences
 import AvatarNode
@@ -915,6 +916,11 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
                     return
                 }
                 self.openNagramAccountInfoContextMenu(copyItems: copyItems, node: node, gesture: gesture)
+            }, openNagramCommonGroupMessages: { [weak self] in // MARK: NAGRAM
+                guard let self else {
+                    return
+                }
+                self.controller?.push(nagramCommonGroupMessagesController(context: self.context, userPeerId: self.peerId))
             }, openMemberContextMenu: { [weak self] member, node, gesture in
                 guard let self else {
                     return
@@ -2764,8 +2770,9 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             queue: Queue.mainQueue(),
             nagramBoolSignal("nagram.showProfileId", defaultValue: false),
             nagramBoolSignal("nagram.showDC", defaultValue: false),
-            nagramBoolSignal("nagram.showRegDate", defaultValue: false)
-        ).startStrict(next: { [weak self] _, _, _ in
+            nagramBoolSignal("nagram.showRegDate", defaultValue: false),
+            nagramBoolSignal("nagram.showCommonGroupMessages", defaultValue: false)
+        ).startStrict(next: { [weak self] _, _, _, _ in
             self?.requestLayout(animated: false)
         }))
         

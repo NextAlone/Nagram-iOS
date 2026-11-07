@@ -84,6 +84,7 @@ final class PeerInfoInteraction {
     let openBusinessLocationContextMenu: (ASDisplayNode, ContextGesture?) -> Void
     let openBirthdayContextMenu: (ASDisplayNode, ContextGesture?) -> Void
     let openNagramAccountInfoContextMenu: ([PeerInfoNagramAccountInfoCopyItem], ASDisplayNode, ContextGesture?) -> Void
+    let openNagramCommonGroupMessages: () -> Void // MARK: NAGRAM
     let openMemberContextMenu: (PeerInfoMember, ASDisplayNode, ContextGesture?) -> Void
     let editingOpenAffiliateProgram: () -> Void
     let editingOpenVerifyAccounts: () -> Void
@@ -169,6 +170,7 @@ final class PeerInfoInteraction {
         openBusinessLocationContextMenu: @escaping (ASDisplayNode, ContextGesture?) -> Void,
         openBirthdayContextMenu: @escaping (ASDisplayNode, ContextGesture?) -> Void,
         openNagramAccountInfoContextMenu: @escaping ([PeerInfoNagramAccountInfoCopyItem], ASDisplayNode, ContextGesture?) -> Void,
+        openNagramCommonGroupMessages: @escaping () -> Void, // MARK: NAGRAM
         openMemberContextMenu: @escaping (PeerInfoMember, ASDisplayNode, ContextGesture?) -> Void,
         editingOpenAffiliateProgram: @escaping () -> Void,
         editingOpenVerifyAccounts: @escaping () -> Void,
@@ -253,6 +255,7 @@ final class PeerInfoInteraction {
         self.openBusinessLocationContextMenu = openBusinessLocationContextMenu
         self.openBirthdayContextMenu = openBirthdayContextMenu
         self.openNagramAccountInfoContextMenu = openNagramAccountInfoContextMenu
+        self.openNagramCommonGroupMessages = openNagramCommonGroupMessages
         self.openMemberContextMenu = openMemberContextMenu
         self.editingOpenAffiliateProgram = editingOpenAffiliateProgram
         self.editingOpenVerifyAccounts = editingOpenVerifyAccounts

@@ -320,6 +320,11 @@
 "Nagram.ShowProfileId" = "ユーザーIDを表示";
 "Nagram.ShowDC" = "データセンターを表示";
 "Nagram.ShowRegDate" = "登録日を表示";
+"Nagram.ShowCommonGroupMessages" = "共通グループでの発言を表示";
+"Nagram.CommonGroupMessages" = "共通グループでの発言";
+"Nagram.CommonGroupMessages.Searching" = "共通グループを検索中 {searched} / {total}…";
+"Nagram.CommonGroupMessages.Searched" = "{total} 件の共通グループを検索しました";
+"Nagram.CommonGroupMessages.Empty" = "共通グループに最近の発言はありません";
 "Nagram.GroupProfileSettings" = "グループプロフィールの項目";
 "Nagram.GroupProfileSettings.Footer" = "選択した項目のうち、現在のグループと権限で利用できるものだけが表示されます。";
 "Nagram.GroupProfileSettings.Item.groupType" = "グループタイプ";

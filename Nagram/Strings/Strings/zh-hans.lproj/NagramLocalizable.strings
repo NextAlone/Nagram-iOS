@@ -320,6 +320,11 @@
 "Nagram.ShowProfileId" = "显示用户 ID";
 "Nagram.ShowDC" = "显示数据中心";
 "Nagram.ShowRegDate" = "显示注册日期";
+"Nagram.ShowCommonGroupMessages" = "显示共同群发言入口";
+"Nagram.CommonGroupMessages" = "共同群发言";
+"Nagram.CommonGroupMessages.Searching" = "正在搜索共同群 {searched} / {total}…";
+"Nagram.CommonGroupMessages.Searched" = "已搜索 {total} 个共同群";
+"Nagram.CommonGroupMessages.Empty" = "共同群中没有近期发言";
 "Nagram.GroupProfileSettings" = "自定义群资料页设置项";
 "Nagram.GroupProfileSettings.Footer" = "仅显示已选择且当前群组与账号权限允许的项目。";
 "Nagram.GroupProfileSettings.Item.groupType" = "群组类型";

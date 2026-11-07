@@ -109,6 +109,7 @@ swift_library(
         "//Nagram/Settings:NagramSettings",
         "//Nagram/SettingsSignal:NagramSettingsSignal",
         "//Nagram/Strings:NagramStrings",
+        "//Nagram/CommonGroupMessages:NagramCommonGroupMessages", # MARK: NAGRAM — 共同群发言
         "//submodules/TelegramUI/Components/AdminUserActionsSheet", # MARK: NAGRAM — 成员列表移除时删除全部消息
         "//submodules/ShareController",
         "//submodules/TelegramUI/Components/ShareWithPeersScreen",

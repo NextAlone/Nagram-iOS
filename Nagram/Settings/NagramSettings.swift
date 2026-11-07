@@ -587,6 +587,9 @@ public final class NagramSettings {
     /// 资料页显示注册日期（默认关 = 保持原生）
     @NagramDefault("nagram.showRegDate", false)
     public var showRegDate: Bool
+    /// 用户资料页显示「共同群发言」入口（默认关 = 原生资料页）
+    @NagramDefault("nagram.showCommonGroupMessages", false)
+    public var showCommonGroupMessages: Bool
     /// 群组资料页直接展示的设置项；默认不展示，用户需逐项启用。
     @NagramDefault("nagram.groupProfileSettingItems", "")
     private var groupProfileSettingItems: String

@@ -96,6 +96,7 @@ enum NagramSettingsSyncKeys {
         "nagram.disableStoryCameraSwipe",
         "nagram.disableChatAvatarStories",
         "nagram.showRegDate",
+        "nagram.showCommonGroupMessages",
         "nagram.groupProfileSettingItems",
         "nagram.hidePhoneInSettings",
         "nagram.bottomBarLayout.version",

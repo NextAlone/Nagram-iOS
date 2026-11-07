@@ -320,6 +320,11 @@
 "Nagram.ShowProfileId" = "Show User ID";
 "Nagram.ShowDC" = "Show Data Center";
 "Nagram.ShowRegDate" = "Show Registration Date";
+"Nagram.ShowCommonGroupMessages" = "Show Messages in Common Groups";
+"Nagram.CommonGroupMessages" = "Messages in Common Groups";
+"Nagram.CommonGroupMessages.Searching" = "Searching {searched} of {total} common groups…";
+"Nagram.CommonGroupMessages.Searched" = "Searched {total} common groups";
+"Nagram.CommonGroupMessages.Empty" = "No recent messages in common groups";
 "Nagram.GroupProfileSettings" = "Customize Group Profile Items";
 "Nagram.GroupProfileSettings.Footer" = "Only selected items that are available for the current group and your permissions will be shown.";
 "Nagram.GroupProfileSettings.Item.groupType" = "Group Type";
