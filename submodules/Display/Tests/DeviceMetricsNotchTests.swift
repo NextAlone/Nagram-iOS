@@ -13,14 +13,15 @@ final class DeviceMetricsNotchTests: XCTestCase {
         XCTAssertFalse(metrics.hasDynamicIsland)
     }
 
-    /// The minis matched the iPhone X by screen size before devices were matched by model identifier, and the app
-    /// badge in the notch was never shown on them.
-    func test_minis_showNoAppBadge() {
+    /// The minis matched the iPhone X by screen size before devices were matched by model identifier.
+    // MARK: NAGRAM — Nagram shows the app badge on the minis (Swiftgram's device list), centred on their own notch
+    // like the iPhone X's; upstream shows none there.
+    func test_minis_showTheAppBadgeOnTheirNotch() {
         let miniIdentifiers = ["iPhone13,1", "iPhone14,4"]
         for identifier in miniIdentifiers {
             let metrics = DeviceMetrics(screenSize: CGSize(width: 375.0, height: 812.0), scale: 3.0, statusBarHeight: 50.0, onScreenNavigationHeight: 34.0, modelIdentifier: identifier)
             XCTAssertTrue(metrics.hasTopNotch, identifier)
-            XCTAssertFalse(metrics.showAppBadge, identifier)
+            XCTAssertEqual(DeviceMetrics.appBadgeCenterY(resolved: metrics, modelIdentifier: identifier), 13.0, identifier)
         }
     }
 
