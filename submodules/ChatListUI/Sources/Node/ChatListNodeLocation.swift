@@ -6,6 +6,7 @@ import Display
 import TelegramUIPreferences
 import AccountContext
 import NagramSettings // MARK: NAGRAM
+import NagramSettingsSignal // MARK: NAGRAM
 
 public enum ChatListNodeLocation: Equatable {
     case initial(count: Int, filter: ChatListFilter?)
@@ -371,6 +372,30 @@ private func nagramRecentChatsFilterUpdates(accountPeerId: Int64, filterId: Int3
     return initial |> then(changes)
 }
 
+// MARK: NAGRAM — 「全部聊天」的本地置顶会话；设置关闭时为空。
+private func nagramLocalPinnedPeerIds(accountPeerId: EnginePeer.Id) -> Signal<[EnginePeer.Id], NoError> {
+    let accountPeerIdValue = accountPeerId.toInt64()
+    let changes = Signal<Void, NoError> { subscriber in
+        subscriber.putNext(Void())
+        let observer = NotificationCenter.default.addObserver(forName: .nagramLocalPinnedChatsDidChange, object: nil, queue: .main) { notification in
+            if let updatedAccountPeerId = notification.userInfo?["accountPeerId"] as? Int64, updatedAccountPeerId == accountPeerIdValue {
+                subscriber.putNext(Void())
+            }
+        }
+        return ActionDisposable {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+    return combineLatest(changes, nagramBoolSignal("nagram.localPinnedChatsEnabled", defaultValue: false))
+    |> map { _, enabled -> [EnginePeer.Id] in
+        guard enabled else {
+            return []
+        }
+        return NagramSettings.shared.localPinnedChatIds(accountPeerId: accountPeerIdValue).map { EnginePeer.Id($0) }
+    }
+    |> distinctUntilChanged
+}
+
 public func chatListViewForLocation(chatListLocation: ChatListControllerLocation, location: ChatListNodeLocation, account: Account, shouldLoadCanMessagePeer: Bool) -> Signal<ChatListNodeViewUpdate, NoError> {
     let accountPeerId = account.peerId
     
@@ -389,13 +414,20 @@ public func chatListViewForLocation(chatListLocation: ChatListControllerLocation
         } else {
             filterPredicate = .single(nil)
         }
+        // MARK: NAGRAM — 本地置顶只用于「全部聊天」（文件夹的置顶本身没有数量上限）。
+        let localPinnedPeerIds: Signal<[EnginePeer.Id], NoError>
+        if location.filter == nil, case .root = groupId {
+            localPinnedPeerIds = nagramLocalPinnedPeerIds(accountPeerId: accountPeerId)
+        } else {
+            localPinnedPeerIds = .single([])
+        }
         
         switch location {
         case let .initial(count, _):
-            return filterPredicate
-            |> mapToSignal { filterPredicate -> Signal<ChatListNodeViewUpdate, NoError> in
+            return combineLatest(filterPredicate, localPinnedPeerIds)
+            |> mapToSignal { filterPredicate, localPinnedPeerIds -> Signal<ChatListNodeViewUpdate, NoError> in
                 let signal: Signal<(ChatListView, ViewUpdateType), NoError>
-                signal = account.viewTracker.tailChatListView(groupId: groupId._asGroup(), filterPredicate: filterPredicate, count: count, shouldLoadCanMessagePeer: shouldLoadCanMessagePeer)
+                signal = account.viewTracker.tailChatListView(groupId: groupId._asGroup(), filterPredicate: filterPredicate, count: count, shouldLoadCanMessagePeer: shouldLoadCanMessagePeer, nagramLocalPinnedPeerIds: localPinnedPeerIds) // MARK: NAGRAM
                 return signal
                 |> map { view, updateType -> ChatListNodeViewUpdate in
                     return ChatListNodeViewUpdate(list: EngineChatList(view, accountPeerId: accountPeerId), type: updateType, scrollPosition: nil)
@@ -408,10 +440,10 @@ public func chatListViewForLocation(chatListLocation: ChatListControllerLocation
             guard case let .chatList(index) = index else {
                 return .never()
             }
-            return filterPredicate
-            |> mapToSignal { filterPredicate -> Signal<ChatListNodeViewUpdate, NoError> in
+            return combineLatest(filterPredicate, localPinnedPeerIds)
+            |> mapToSignal { filterPredicate, localPinnedPeerIds -> Signal<ChatListNodeViewUpdate, NoError> in
                 var first = true
-                return account.viewTracker.aroundChatListView(groupId: groupId._asGroup(), filterPredicate: filterPredicate, index: index, count: 80, shouldLoadCanMessagePeer: shouldLoadCanMessagePeer)
+                return account.viewTracker.aroundChatListView(groupId: groupId._asGroup(), filterPredicate: filterPredicate, index: index, count: 80, shouldLoadCanMessagePeer: shouldLoadCanMessagePeer, nagramLocalPinnedPeerIds: localPinnedPeerIds) // MARK: NAGRAM
                 |> map { view, updateType -> ChatListNodeViewUpdate in
                     let genericType: ViewUpdateType
                     if first {
@@ -433,10 +465,10 @@ public func chatListViewForLocation(chatListLocation: ChatListControllerLocation
             
             let directionHint: ListViewScrollToItemDirectionHint = sourceIndex > .chatList(index) ? .Down : .Up
             let chatScrollPosition: ChatListNodeViewScrollPosition = .index(index: index, position: scrollPosition, directionHint: directionHint, animated: animated)
-            return filterPredicate
-            |> mapToSignal { filterPredicate -> Signal<ChatListNodeViewUpdate, NoError> in
+            return combineLatest(filterPredicate, localPinnedPeerIds)
+            |> mapToSignal { filterPredicate, localPinnedPeerIds -> Signal<ChatListNodeViewUpdate, NoError> in
                 var first = true
-                return account.viewTracker.aroundChatListView(groupId: groupId._asGroup(), filterPredicate: filterPredicate, index: index, count: 80, shouldLoadCanMessagePeer: shouldLoadCanMessagePeer)
+                return account.viewTracker.aroundChatListView(groupId: groupId._asGroup(), filterPredicate: filterPredicate, index: index, count: 80, shouldLoadCanMessagePeer: shouldLoadCanMessagePeer, nagramLocalPinnedPeerIds: localPinnedPeerIds) // MARK: NAGRAM
                 |> map { view, updateType -> ChatListNodeViewUpdate in
                     let genericType: ViewUpdateType
                     let scrollPosition: ChatListNodeViewScrollPosition? = first ? chatScrollPosition : nil

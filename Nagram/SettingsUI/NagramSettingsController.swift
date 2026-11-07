@@ -481,6 +481,9 @@ private func nagramGroups(
             .toggle(titleKey: "Nagram.ShowFoldersInShareSheet", get: { NagramSettings.shared.showFoldersInShareSheet }, set: { NagramSettings.shared.showFoldersInShareSheet = $0 }),
             .toggle(titleKey: "Nagram.ChooseFolderAfterJoining", get: { NagramSettings.shared.chooseFolderAfterJoining }, set: { NagramSettings.shared.chooseFolderAfterJoining = $0 }),
         ]),
+        NagramGroup(tab: .chats, headerKey: "Nagram.Section.LocalPinnedChats", footerKeys: ["Nagram.LocalPinnedChatsEnabled.Footer"], rows: [
+            .toggle(titleKey: "Nagram.LocalPinnedChatsEnabled", get: { NagramSettings.shared.localPinnedChatsEnabled }, set: { NagramSettings.shared.localPinnedChatsEnabled = $0 }),
+        ]),
         NagramGroup(tab: .chats, headerKey: "Nagram.Section.ChatNavigation", footerKeys: ["Nagram.StayAtLatestMessageAfterRefresh.Footer", "Nagram.Section.ChatNavigation.Footer"], rows: [
             .toggle(titleKey: "Nagram.ChatToolsEnabled", get: { NagramSettings.shared.chatToolsEnabled }, set: { NagramSettings.shared.chatToolsEnabled = $0 }),
             .navigation(titleKey: "Nagram.ChatTools.Settings", action: chatToolsAction),

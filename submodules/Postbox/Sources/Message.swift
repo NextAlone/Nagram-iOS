@@ -285,6 +285,18 @@ public struct ChatListIndex: Comparable, Hashable {
     public static var pinnedLowerBound: ChatListIndex {
         return ChatListIndex(pinningIndex: UInt16(Int8.max - 1), messageIndex: MessageIndex.absoluteLowerBound())
     }
+
+    // MARK: NAGRAM — Nagram 本地置顶的 pinningIndex 从 64 开始（服务端置顶最多 10 个，Premium），
+    // 不超过 pinnedLowerBound（126），所以最多 62 个。
+    public static let nagramLocalPinningIndexOffset: UInt16 = 64
+    public static let nagramLocalPinnedLimit: UInt16 = UInt16(Int8.max - 1) - nagramLocalPinningIndexOffset
+
+    public var isNagramLocalPin: Bool {
+        guard let pinningIndex = self.pinningIndex else {
+            return false
+        }
+        return pinningIndex >= ChatListIndex.nagramLocalPinningIndexOffset
+    }
     
     public var predecessor: ChatListIndex {
         return ChatListIndex(pinningIndex: self.pinningIndex, messageIndex: self.messageIndex.globalPredecessor())

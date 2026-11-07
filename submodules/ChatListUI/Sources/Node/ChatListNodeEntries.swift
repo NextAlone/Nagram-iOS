@@ -783,11 +783,28 @@ func chatListNodeEntriesForView(view: EngineChatList, state: ChatListNodeState, 
     
     var hasPinned = false
     
+    // MARK: NAGRAM — 本地置顶的会话在 Postbox 视图里还会以未置顶身份出现一次；
+    // 同一会话也可能同时是服务端置顶。每个会话只保留 pinningIndex 最小的那一条。
+    var nagramPinnedIndexByPeerId: [EnginePeer.Id: UInt16] = [:]
+    for entry in view.items {
+        if case let .chatList(index) = entry.index, let pinningIndex = index.pinningIndex {
+            let entryPeerId = index.messageIndex.id.peerId
+            if let current = nagramPinnedIndexByPeerId[entryPeerId] {
+                nagramPinnedIndexByPeerId[entryPeerId] = min(current, pinningIndex)
+            } else {
+                nagramPinnedIndexByPeerId[entryPeerId] = pinningIndex
+            }
+        }
+    }
+    
     loop: for entry in view.items {
         var peerId: EnginePeer.Id?
         var threadId: Int64?
         var activityItemId: ChatListNodePeerInputActivities.ItemId?
         if case let .chatList(index) = entry.index {
+            if let keptPinningIndex = nagramPinnedIndexByPeerId[index.messageIndex.id.peerId], index.pinningIndex != keptPinningIndex {
+                continue loop
+            }
             peerId = index.messageIndex.id.peerId
             activityItemId = ChatListNodePeerInputActivities.ItemId(peerId: index.messageIndex.id.peerId, threadId: nil)
         } else if case let .forum(_, _, threadIdValue, _, _) = entry.index, case let .forum(peerIdValue) = chatListLocation {

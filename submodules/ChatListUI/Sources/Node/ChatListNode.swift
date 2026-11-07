@@ -1681,6 +1681,11 @@ public final class ChatListNode: ListViewImpl {
                     } else {
                         location = .group(groupId._asGroup())
                     }
+                    // MARK: NAGRAM — 本地置顶的条目左滑「取消置顶」只改本地列表。
+                    if case .group(.root) = location, case let .peer(itemPeerId) = itemId, nagramIsLocallyPinnedChat(context: context, peerId: itemPeerId) {
+                        nagramRemoveLocalPinnedChat(context: context, peerId: itemPeerId)
+                        return
+                    }
                     let _ = (context.engine.peers.toggleItemPinned(location: location, itemId: itemId)
                     |> deliverOnMainQueue).startStandalone(next: { result in
                         if let strongSelf = self {
@@ -1688,6 +1693,11 @@ public final class ChatListNode: ListViewImpl {
                             case .done:
                                 break
                             case let .limitExceeded(count, _):
+                                // MARK: NAGRAM — 服务端置顶满额时改为本地置顶。
+                                if let toast = nagramLocalPinOnLimitExceeded(context: context, location: location, itemId: itemId) {
+                                    strongSelf.present?(toast)
+                                    return
+                                }
                                 if isPremium {
                                     if case .filter = location {
                                         let controller = PremiumLimitScreen(context: context, subject: .chatsPerFolder, count: Int32(count), action: {
@@ -3100,6 +3110,24 @@ public final class ChatListNode: ListViewImpl {
                     }
                 default:
                     break
+                }
+                
+                // MARK: NAGRAM — 本地置顶只在本地列表内调整顺序，从不发送给服务器。
+                if case let .index(index) = fromEntry.sortIndex, case let .chatList(chatListIndex) = index, chatListIndex.isNagramLocalPin {
+                    guard case let .PeerEntry(toPeerEntry) = toEntry, case let .chatList(toChatListIndex) = toPeerEntry.index, toChatListIndex.isNagramLocalPin else {
+                        return .single(false)
+                    }
+                    let accountPeerId = strongSelf.context.account.peerId.toInt64()
+                    let movedPeerId = chatListIndex.messageIndex.id.peerId.toInt64()
+                    let referencePeerId = toChatListIndex.messageIndex.id.peerId.toInt64()
+                    var localIds = NagramSettings.shared.localPinnedChatIds(accountPeerId: accountPeerId).filter { $0 != movedPeerId }
+                    if let referenceIndex = localIds.firstIndex(of: referencePeerId) {
+                        localIds.insert(movedPeerId, at: fromIndex < toIndex ? referenceIndex + 1 : referenceIndex)
+                    } else {
+                        localIds.append(movedPeerId)
+                    }
+                    NagramSettings.shared.setLocalPinnedChatIds(localIds, accountPeerId: accountPeerId)
+                    return .single(true)
                 }
                 
                 if case let .index(index) = fromEntry.sortIndex, case let .chatList(chatListIndex) = index, let _ = chatListIndex.pinningIndex {

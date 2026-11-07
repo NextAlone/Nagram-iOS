@@ -28,7 +28,8 @@ enum ChatListViewSpacePinned {
 
 enum ChatListViewSpace: Hashable {
     case group(groupId: PeerGroupId, pinned: ChatListViewSpacePinned, predicate: ChatListFilterPredicate?)
-    case peers(peerIds: [PeerId], asPinned: Bool)
+    // MARK: NAGRAM — pinningIndexOffset: Nagram's local pins sit after the server's pins (0 for folder pins).
+    case peers(peerIds: [PeerId], asPinned: Bool, pinningIndexOffset: UInt16)
     
     static func ==(lhs: ChatListViewSpace, rhs: ChatListViewSpace) -> Bool {
         switch lhs {
@@ -44,8 +45,8 @@ enum ChatListViewSpace: Hashable {
             } else {
                 return false
             }
-        case let .peers(peerIds, asPinned):
-            if case .peers(peerIds, asPinned) = rhs {
+        case let .peers(peerIds, asPinned, pinningIndexOffset):
+            if case .peers(peerIds, asPinned, pinningIndexOffset) = rhs {
                 return true
             } else {
                 return false
@@ -58,9 +59,10 @@ enum ChatListViewSpace: Hashable {
         case let .group(groupId, pinned, _):
             hasher.combine(groupId)
             hasher.combine(pinned)
-        case let .peers(peerIds, asPinned):
+        case let .peers(peerIds, asPinned, pinningIndexOffset):
             hasher.combine(peerIds)
             hasher.combine(asPinned)
+            hasher.combine(pinningIndexOffset)
         }
     }
 }
@@ -354,7 +356,7 @@ private final class ChatListViewSpaceState {
             
             let entries = OrderedChatListViewEntries(anchorIndex: self.anchorIndex.index, lowerOrAtAnchor: lowerOrAtAnchorMessages, higherThanAnchor: higherThanAnchorMessages)
             self.orderedEntries = entries
-        case let .peers(peerIds, asPinned):
+        case let .peers(peerIds, asPinned, pinningIndexOffset):
             var lowerOrAtAnchorMessages: [MutableChatListEntry] = self.orderedEntries.lowerOrAtAnchor.reversed()
             var higherThanAnchorMessages: [MutableChatListEntry] = self.orderedEntries.higherThanAnchor
             
@@ -380,7 +382,7 @@ private final class ChatListViewSpaceState {
                 for i in 0 ..< peerIds.count {
                     let peerId = peerIds[i]
                     if let entry = postbox.chatListTable.getEntry(peerId: peerId, messageHistoryTable: postbox.messageHistoryTable, peerChatInterfaceStateTable: postbox.peerChatInterfaceStateTable) {
-                        loadedMessages.append(mapEntry(entry, pinningIndex: asPinned ? UInt16(i) : nil))
+                        loadedMessages.append(mapEntry(entry, pinningIndex: asPinned ? pinningIndexOffset + UInt16(i) : nil))
                     }
                 }
                 loadedMessages.sort(by: { $0.entryIndex < $1.entryIndex })
@@ -492,11 +494,11 @@ private final class ChatListViewSpaceState {
                             hasUpdates = true
                             hadRemovals = true
                         }
-                    case let .peers(peerIds, asPinned):
+                    case let .peers(peerIds, asPinned, pinningIndexOffset):
                         if let peerIndex = peerIds.firstIndex(of: index.messageIndex.id.peerId) {
                             var updatedIndex = index
                             if asPinned {
-                                updatedIndex = ChatListIndex(pinningIndex: UInt16(peerIndex), messageIndex: index.messageIndex)
+                                updatedIndex = ChatListIndex(pinningIndex: pinningIndexOffset + UInt16(peerIndex), messageIndex: index.messageIndex)
                             }
                             if self.add(entry: .IntermediateMessageEntry(index: updatedIndex, messageIndex: messageIndex)) {
                                 hasUpdates = true
@@ -533,12 +535,12 @@ private final class ChatListViewSpaceState {
                                 }
                             }
                         }
-                    case let .peers(peerIds, asPinned):
+                    case let .peers(peerIds, asPinned, pinningIndexOffset):
                         for index in indices {
                             if let peerIndex = peerIds.firstIndex(of: index.messageIndex.id.peerId) {
                                 var updatedIndex = index
                                 if asPinned {
-                                    updatedIndex = ChatListIndex(pinningIndex: UInt16(peerIndex), messageIndex: index.messageIndex)
+                                    updatedIndex = ChatListIndex(pinningIndex: pinningIndexOffset + UInt16(peerIndex), messageIndex: index.messageIndex)
                                 }
                                 
                                 if self.orderedEntries.remove(index: MutableChatListEntryIndex(index: updatedIndex, isMessage: true)) {

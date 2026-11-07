@@ -413,6 +413,11 @@
 "Nagram.ChatListFolderTabDisplayMode.both" = "Icon and Text";
 "Nagram.ChatListFolderTabsCompact" = "Compact Folder Tabs";
 "Nagram.HideAllChatsFolder" = "Hide All Chats Folder";
+"Nagram.Section.LocalPinnedChats" = "Pinned Chats";
+"Nagram.LocalPinnedChatsEnabled" = "Pin Locally Beyond the Limit";
+"Nagram.LocalPinnedChatsEnabled.Footer" = "When All Chats already has as many pinned chats as Telegram allows (5, or 10 with Premium), further pins are kept on this device only, below the synced pins. They never reach Telegram’s servers or your other devices. Telegram Premium raises the synced limit; local pins are not affected by it.";
+"Nagram.LocalPinnedChats.Added" = "Pinned on this device only: Telegram’s pin limit is reached.";
+"Nagram.LocalPinnedChats.LimitReached" = "You can pin up to {limit} chats on this device.";
 "Nagram.ShowFoldersInShareSheet" = "Show Folders in Share Sheet";
 "Nagram.Section.Translation" = "Translation";
 "Nagram.Section.Translation.Footer" = "Only the translation provider is replaced; target language follows Telegram's native translate button. LLM supports OpenAI-compatible and Anthropic API formats; API Key is stored locally only. Keep Formatting sends bold, links and other formatting to external providers as HTML tags; turn it off if tags show up in translations.";

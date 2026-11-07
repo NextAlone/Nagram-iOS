@@ -604,7 +604,7 @@ final class MutableChatListView {
     private let accountPeerId: PeerId?
     private(set) var accountPeer: Peer?
     
-    init(postbox: PostboxImpl, currentTransaction: Transaction, groupId: PeerGroupId, filterPredicate: ChatListFilterPredicate?, aroundIndex: ChatListIndex, count: Int, summaryComponents: ChatListEntrySummaryComponents, extractCachedData: ((CachedPeerData) -> AnyHashable?)?, accountPeerId: PeerId?) {
+    init(postbox: PostboxImpl, currentTransaction: Transaction, groupId: PeerGroupId, filterPredicate: ChatListFilterPredicate?, aroundIndex: ChatListIndex, count: Int, summaryComponents: ChatListEntrySummaryComponents, extractCachedData: ((CachedPeerData) -> AnyHashable?)?, accountPeerId: PeerId?, nagramLocalPinnedPeerIds: [PeerId] = []) {
         self.groupId = groupId
         self.filterPredicate = filterPredicate
         self.aroundIndex = aroundIndex
@@ -626,10 +626,16 @@ final class MutableChatListView {
                 spaces.append(.group(groupId: additionalGroupId, pinned: .includePinnedAsUnpinned, predicate: filterPredicate))
             }
             if !filterPredicate.pinnedPeerIds.isEmpty {
-                spaces.append(.peers(peerIds: filterPredicate.pinnedPeerIds, asPinned: true))
+                spaces.append(.peers(peerIds: filterPredicate.pinnedPeerIds, asPinned: true, pinningIndexOffset: 0))
             }
         } else {
             spaces.append(.group(groupId: self.groupId, pinned: .includePinned, predicate: filterPredicate))
+            // MARK: NAGRAM — 本地置顶：服务端置顶之后的独立空间，pinningIndex 从 nagramLocalPinningIndexOffset 起。
+            // 这些会话也会出现在未置顶空间里，由 ChatListUI 按会话去重（保留置顶那一条）。
+            let localPinnedPeerIds = Array(nagramLocalPinnedPeerIds.prefix(Int(ChatListIndex.nagramLocalPinnedLimit)))
+            if !localPinnedPeerIds.isEmpty {
+                spaces.append(.peers(peerIds: localPinnedPeerIds, asPinned: true, pinningIndexOffset: ChatListIndex.nagramLocalPinningIndexOffset))
+            }
         }
         self.spaces = spaces
         self.state = ChatListViewState(postbox: postbox, currentTransaction: currentTransaction, spaces: self.spaces, anchorIndex: aroundIndex, summaryComponents: self.summaryComponents, extractCachedData: self.extractCachedData, halfLimit: count)

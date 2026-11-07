@@ -113,7 +113,12 @@ func chatContextMenuItems(context: AccountContext, peerId: EnginePeer.Id, promoI
             context.engine.peers.getPinnedItemIds(location: location)
         )
         |> mapToSignal { filters, pinnedItemIds -> Signal<[ContextMenuItem], NoError> in
-            let isPinned = pinnedItemIds.contains(.peer(peerId))
+            // MARK: NAGRAM — 「全部聊天」的本地置顶也显示为已置顶，取消时只改本地列表。
+            var nagramIsLocallyPinned = false
+            if case .group(.root) = location, !pinnedItemIds.contains(.peer(peerId)) {
+                nagramIsLocallyPinned = nagramIsLocallyPinnedChat(context: context, peerId: peerId)
+            }
+            let isPinned = pinnedItemIds.contains(.peer(peerId)) || nagramIsLocallyPinned
             
             let renderedPeer = context.engine.data.get(TelegramEngine.EngineData.Item.Peer.RenderedPeer(id: peerId))
             
@@ -429,6 +434,12 @@ func chatContextMenuItems(context: AccountContext, peerId: EnginePeer.Id, promoI
                             }
                             
                             items.append(.action(ContextMenuActionItem(text: isPinned ? strings.ChatList_Context_Unpin : strings.ChatList_Context_Pin, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: isPinned ? "Chat/Context Menu/Unpin" : "Chat/Context Menu/Pin"), color: theme.contextMenu.primaryColor) }, action: { c, f in
+                                // MARK: NAGRAM
+                                if nagramIsLocallyPinned {
+                                    nagramRemoveLocalPinnedChat(context: context, peerId: peerId)
+                                    f(.default)
+                                    return
+                                }
                                 let _ = (context.engine.peers.toggleItemPinned(location: location, itemId: .peer(peerId))
                                          |> deliverOnMainQueue).startStandalone(next: { result in
                                     switch result {
@@ -436,6 +447,12 @@ func chatContextMenuItems(context: AccountContext, peerId: EnginePeer.Id, promoI
                                         f(.default)
                                     case let .limitExceeded(count, _):
                                         f(.default)
+                                        
+                                        // MARK: NAGRAM — 服务端置顶满额时改为本地置顶。
+                                        if let toast = nagramLocalPinOnLimitExceeded(context: context, location: location, itemId: .peer(peerId)) {
+                                            chatListController?.present(toast, in: .current)
+                                            return
+                                        }
                                         
                                         let isPremium = limitsData.0?.isPremium ?? false
                                         if isPremium {

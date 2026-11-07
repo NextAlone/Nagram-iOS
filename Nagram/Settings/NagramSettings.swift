@@ -435,6 +435,9 @@ public final class NagramSettings {
     /// 隐藏首页的“全部会话”分组（至少存在一个自定义分组时生效）
     @NagramDefault("nagram.hideAllChatsFolder", false)
     public var hideAllChatsFolder: Bool
+    /// 「全部聊天」置顶满额时改为本机置顶（默认关 = 原生 Premium 上限提示）
+    @NagramDefault("nagram.localPinnedChatsEnabled", false)
+    public var localPinnedChatsEnabled: Bool
     /// 分享面板显示聊天文件夹标签
     @NagramDefault("nagram.showFoldersInShareSheet", true)
     public var showFoldersInShareSheet: Bool

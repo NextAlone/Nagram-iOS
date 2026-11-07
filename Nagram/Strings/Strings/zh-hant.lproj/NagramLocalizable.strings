@@ -413,6 +413,11 @@
 "Nagram.ChatListFolderTabDisplayMode.both" = "圖示和文字";
 "Nagram.ChatListFolderTabsCompact" = "緊湊分組標籤";
 "Nagram.HideAllChatsFolder" = "隱藏全部會話分組";
+"Nagram.Section.LocalPinnedChats" = "置頂對話";
+"Nagram.LocalPinnedChatsEnabled" = "超出上限時本機置頂";
+"Nagram.LocalPinnedChatsEnabled.Footer" = "「所有對話」的置頂已達 Telegram 上限（5 個，Premium 為 10 個）時，繼續置頂的對話只保存在本機，排在同步的置頂之後，不會傳送到 Telegram 伺服器，也不會出現在其他裝置上。開通 Premium 只提高同步置頂的上限，不影響本機置頂。";
+"Nagram.LocalPinnedChats.Added" = "已在本機置頂：Telegram 的置頂數量已滿。";
+"Nagram.LocalPinnedChats.LimitReached" = "本機最多置頂 {limit} 個對話。";
 "Nagram.ShowFoldersInShareSheet" = "分享面板顯示資料夾";
 "Nagram.Section.Translation" = "翻譯";
 "Nagram.Section.Translation.Footer" = "只替換翻譯 provider，目標語言跟隨 Telegram 原生翻譯按鈕選擇。LLM 支援 OpenAI-compatible 和 Anthropic API 格式；API Key 僅保存在本機。「保留格式」會把粗體、連結等格式以 HTML 標籤傳給外部 provider；若譯文中出現標籤，請關閉。";
