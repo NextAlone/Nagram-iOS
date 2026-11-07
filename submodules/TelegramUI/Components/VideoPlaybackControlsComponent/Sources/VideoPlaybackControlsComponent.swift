@@ -29,6 +29,8 @@ public final class VideoPlaybackControlsComponent: Component {
     let seek: (Bool) -> Void
     /// VoiceOver: the buttons' names (play, pause, back, forward); without them the controls are not read.
     let accessibilityStrings: PresentationStrings?
+    // MARK: NAGRAM — 快进按钮上显示的秒数（原生固定 15）。
+    let seekSeconds: Int
     
     public init(
         layoutParams: LayoutParams,
@@ -37,7 +39,8 @@ public final class VideoPlaybackControlsComponent: Component {
         displaySeekControls: Bool,
         togglePlayback: @escaping () -> Void,
         seek: @escaping (Bool) -> Void,
-        accessibilityStrings: PresentationStrings? = nil
+        accessibilityStrings: PresentationStrings? = nil,
+        seekSeconds: Int = 15 // MARK: NAGRAM
     ) {
         self.layoutParams = layoutParams
         self.isVisible = isVisible
@@ -46,6 +49,7 @@ public final class VideoPlaybackControlsComponent: Component {
         self.togglePlayback = togglePlayback
         self.seek = seek
         self.accessibilityStrings = accessibilityStrings
+        self.seekSeconds = seekSeconds
     }
     
     public static func ==(lhs: VideoPlaybackControlsComponent, rhs: VideoPlaybackControlsComponent) -> Bool {
@@ -59,6 +63,9 @@ public final class VideoPlaybackControlsComponent: Component {
             return false
         }
         if lhs.displaySeekControls != rhs.displaySeekControls {
+            return false
+        }
+        if lhs.seekSeconds != rhs.seekSeconds { // MARK: NAGRAM
             return false
         }
         return true
@@ -222,7 +229,7 @@ public final class VideoPlaybackControlsComponent: Component {
             transition.setFrame(view: self.leftButtonBackgroundView, frame: leftButtonFrame)
             self.leftButtonBackgroundView.update(size: leftButtonFrame.size, cornerRadius: leftButtonFrame.height * 0.5, isDark: true, tintColor: buttonsTintColor, isInteractive: true, isVisible: areSideButtonsVisible, transition: transition)
             transition.setFrame(view: self.leftIconView, frame: CGRect(origin: CGPoint(), size: leftButtonFrame.size))
-            self.leftIconView.update(size: leftButtonFrame.size)
+            self.leftIconView.update(size: leftButtonFrame.size, seconds: component.seekSeconds) // MARK: NAGRAM
             transition.setAlpha(view: self.leftIconView, alpha: areSideButtonsVisible ? 1.0 : 0.0)
             transition.setBlur(layer: self.leftIconView.layer, radius: areSideButtonsVisible ? 0.0 : 10.0)
             self.leftButtonBackgroundView.isUserInteractionEnabled = areSideButtonsVisible
@@ -230,7 +237,7 @@ public final class VideoPlaybackControlsComponent: Component {
             transition.setFrame(view: self.rightButtonBackgroundView, frame: rightButtonFrame)
             self.rightButtonBackgroundView.update(size: rightButtonFrame.size, cornerRadius: rightButtonFrame.height * 0.5, isDark: true, tintColor: buttonsTintColor, isInteractive: true, isVisible: areSideButtonsVisible, transition: transition)
             transition.setFrame(view: self.rightIconView, frame: CGRect(origin: CGPoint(), size: rightButtonFrame.size))
-            self.rightIconView.update(size: rightButtonFrame.size)
+            self.rightIconView.update(size: rightButtonFrame.size, seconds: component.seekSeconds) // MARK: NAGRAM
             transition.setAlpha(view: self.rightIconView, alpha: areSideButtonsVisible ? 1.0 : 0.0)
             transition.setBlur(layer: self.rightIconView.layer, radius: areSideButtonsVisible ? 0.0 : 10.0)
             self.rightButtonBackgroundView.isUserInteractionEnabled = areSideButtonsVisible
@@ -370,7 +377,7 @@ private final class PlaybackIconView: HighlightTrackingButton {
         fatalError("init(coder:) has not been implemented")
     }
     
-    func update(size: CGSize) {
+    func update(size: CGSize, seconds: Int) { // MARK: NAGRAM
         if let image = self.backgroundIconView.image {
             let factor: CGFloat = 1.4
             self.backgroundIconView.frame = CGSize(width: floor(image.size.width * factor), height: floor(image.size.height * factor)).centered(in: CGRect(origin: CGPoint(), size: size))
@@ -379,7 +386,7 @@ private final class PlaybackIconView: HighlightTrackingButton {
         let textSize = self.text.update(
             transition: .immediate,
             component: AnyComponent(MultilineTextComponent(
-                text: .plain(NSAttributedString(string: "15", font: Font.with(size: 16.0, design: .round, weight: .semibold, traits: []), textColor: .white))
+                text: .plain(NSAttributedString(string: "\(seconds)", font: Font.with(size: 16.0, design: .round, weight: .semibold, traits: []), textColor: .white))
             )),
             environment: {},
             containerSize: size

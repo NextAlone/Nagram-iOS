@@ -494,6 +494,12 @@ private func nagramGroups(
             .choice(titleKey: "Nagram.MessageDoubleTapAction", prefix: "Nagram.MessageDoubleTapAction", options: NagramMessageDoubleTapAction.allCases.map { $0.rawValue }, current: { NagramSettings.shared.messageDoubleTapActionValue.rawValue }, set: { NagramSettings.shared.messageDoubleTapAction = $0 }),
             .choice(titleKey: "Nagram.MessageDoubleTapActionWithoutEditPermission", prefix: "Nagram.MessageDoubleTapAction", options: [NagramSettings.messageDoubleTapSameAsUnified] + NagramMessageDoubleTapAction.allCases.filter { $0 != .edit }.map { $0.rawValue }, current: { NagramSettings.shared.messageDoubleTapActionWithoutEditPermissionValue }, set: { NagramSettings.shared.messageDoubleTapActionWithoutEditPermission = $0 }),
             .toggle(titleKey: "Nagram.VideoPIPSwipeUp", get: { NagramSettings.shared.videoPIPSwipeDirection == "up" }, set: { NagramSettings.shared.videoPIPSwipeDirection = $0 ? "up" : "none" }),
+            .toggle(titleKey: "Nagram.VideoControlsInFooter", get: { NagramSettings.shared.videoControlsInFooter }, set: { NagramSettings.shared.videoControlsInFooter = $0 }),
+            .choice(titleKey: "Nagram.VideoSeekInterval", prefix: "Nagram.VideoSeekInterval", options: NagramSettings.videoSeekIntervalOptions.map { String($0) }, current: { String(NagramSettings.shared.videoSeekIntervalValue) }, set: { value in
+                if let interval = Int32(value) {
+                    NagramSettings.shared.videoSeekInterval = interval
+                }
+            }),
         ]),
         // 消息
         NagramGroup(tab: .messages, headerKey: "Nagram.Section.MessageDisplay", footerKeys: [], rows: [

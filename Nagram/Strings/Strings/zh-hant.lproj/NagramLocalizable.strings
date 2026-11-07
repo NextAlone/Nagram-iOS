@@ -159,6 +159,13 @@
 "Nagram.UploadSpeedBoost" = "上傳加速";
 "Nagram.Section.Network" = "網路加速";
 "Nagram.VideoPIPSwipeUp" = "上滑開啟子母畫面";
+"Nagram.VideoControlsInFooter" = "影片控制按鈕放在進度列下方";
+"Nagram.VideoSeekInterval" = "影片快轉間隔";
+"Nagram.VideoSeekInterval.5" = "5 秒";
+"Nagram.VideoSeekInterval.10" = "10 秒";
+"Nagram.VideoSeekInterval.15" = "15 秒";
+"Nagram.VideoSeekInterval.30" = "30 秒";
+"Nagram.VideoSeekInterval.60" = "60 秒";
 "Nagram.TapMessageRowToOpenContextMenu" = "點按訊息列開啟選單";
 "Nagram.MessageDoubleTapAction" = "雙擊訊息動作";
 "Nagram.MessageDoubleTapActionWithoutEditPermission" = "無編輯權限的訊息";

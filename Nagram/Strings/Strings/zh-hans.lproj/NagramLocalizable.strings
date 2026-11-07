@@ -159,6 +159,13 @@
 "Nagram.UploadSpeedBoost" = "上传加速";
 "Nagram.Section.Network" = "网络加速";
 "Nagram.VideoPIPSwipeUp" = "上滑打开画中画";
+"Nagram.VideoControlsInFooter" = "视频控制按钮放在进度条下方";
+"Nagram.VideoSeekInterval" = "视频快进步长";
+"Nagram.VideoSeekInterval.5" = "5 秒";
+"Nagram.VideoSeekInterval.10" = "10 秒";
+"Nagram.VideoSeekInterval.15" = "15 秒";
+"Nagram.VideoSeekInterval.30" = "30 秒";
+"Nagram.VideoSeekInterval.60" = "60 秒";
 "Nagram.TapMessageRowToOpenContextMenu" = "点击消息行打开菜单";
 "Nagram.MessageDoubleTapAction" = "双击消息动作";
 "Nagram.MessageDoubleTapActionWithoutEditPermission" = "无编辑权限的消息";

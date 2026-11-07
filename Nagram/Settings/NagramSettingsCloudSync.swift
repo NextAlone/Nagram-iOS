@@ -36,6 +36,8 @@ enum NagramSettingsSyncKeys {
         "nagram.stickerSize",
         "nagram.stickerTimestamp",
         "nagram.videoPIPSwipeDirection",
+        "nagram.videoControlsInFooter",
+        "nagram.videoSeekInterval",
         "nagram.chatListSwipeAction",
         "nagram.openArchiveOnPull",
         "nagram.showArchiveInFolders",

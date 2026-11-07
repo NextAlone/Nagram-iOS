@@ -159,6 +159,13 @@
 "Nagram.UploadSpeedBoost" = "Upload Boost";
 "Nagram.Section.Network" = "Network Boost";
 "Nagram.VideoPIPSwipeUp" = "Swipe Up for Picture-in-Picture";
+"Nagram.VideoControlsInFooter" = "Video Controls Below Progress Bar";
+"Nagram.VideoSeekInterval" = "Video Seek Step";
+"Nagram.VideoSeekInterval.5" = "5 s";
+"Nagram.VideoSeekInterval.10" = "10 s";
+"Nagram.VideoSeekInterval.15" = "15 s";
+"Nagram.VideoSeekInterval.30" = "30 s";
+"Nagram.VideoSeekInterval.60" = "60 s";
 "Nagram.TapMessageRowToOpenContextMenu" = "Tap Message Row for Menu";
 "Nagram.MessageDoubleTapAction" = "Double Tap Message";
 "Nagram.MessageDoubleTapActionWithoutEditPermission" = "Messages Without Edit Permission";

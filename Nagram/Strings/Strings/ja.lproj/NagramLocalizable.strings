@@ -159,6 +159,13 @@
 "Nagram.UploadSpeedBoost" = "アップロード高速化";
 "Nagram.Section.Network" = "ネットワーク高速化";
 "Nagram.VideoPIPSwipeUp" = "上スワイプでピクチャインピクチャ";
+"Nagram.VideoControlsInFooter" = "動画の操作ボタンをシークバーの下に表示";
+"Nagram.VideoSeekInterval" = "動画のスキップ間隔";
+"Nagram.VideoSeekInterval.5" = "5 秒";
+"Nagram.VideoSeekInterval.10" = "10 秒";
+"Nagram.VideoSeekInterval.15" = "15 秒";
+"Nagram.VideoSeekInterval.30" = "30 秒";
+"Nagram.VideoSeekInterval.60" = "60 秒";
 "Nagram.TapMessageRowToOpenContextMenu" = "メッセージ行タップでメニュー";
 "Nagram.MessageDoubleTapAction" = "メッセージのダブルタップ";
 "Nagram.MessageDoubleTapActionWithoutEditPermission" = "編集できないメッセージ";

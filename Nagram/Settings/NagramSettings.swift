@@ -156,6 +156,7 @@ public final class NagramSettings {
     public static let shared = NagramSettings()
     public static let chatListAllChatsFolderId: Int32 = -1
     public static let recentStickerLimitOptions: [Int32] = [20, 30, 40, 50, 60, 80, 100, 120, 150, 200]
+    public static let videoSeekIntervalOptions: [Int32] = [5, 10, 15, 30, 60]
     public static let messageDoubleTapSameAsUnified = "sameAsUnified"
 
     public static func isICloudSyncEnabled(defaults: UserDefaults = NagramDemoMode.userDefaults) -> Bool {
@@ -392,6 +393,12 @@ public final class NagramSettings {
     /// 上滑视频开启画中画（"up" / "none"）
     @NagramDefault("nagram.videoPIPSwipeDirection", "up")
     public var videoPIPSwipeDirection: String
+    /// 视频播放控制放在进度条下方，不在画面中央显示大圆按钮（默认关 = 原生行为）
+    @NagramDefault("nagram.videoControlsInFooter", false)
+    public var videoControlsInFooter: Bool
+    /// 视频快进 / 快退步长（秒，默认 15 = 原生行为）
+    @NagramDefault("nagram.videoSeekInterval", Int32(15))
+    public var videoSeekInterval: Int32
     /// 对话列表横滑行为（"both" / "switch" / "quick" / "none"）
     @NagramDefault("nagram.chatListSwipeAction", NagramChatListSwipeAction.both.rawValue)
     public var chatListSwipeAction: String
@@ -664,6 +671,12 @@ private func nagramTranslationLLMURL(baseURLString: String, endpoint: String, de
 
 public extension NagramSettings {
     static let defaultTranslationLLMPrompt = "Translate to @toLang:\n\n@text"
+
+    /// 有效的快进步长；存储值不在可选列表中时按原生的 15 秒处理。
+    public var videoSeekIntervalValue: Int32 {
+        let value = self.videoSeekInterval
+        return NagramSettings.videoSeekIntervalOptions.contains(value) ? value : 15
+    }
 
     var recentStickerLimitValue: Int {
         guard NagramSettings.recentStickerLimitOptions.contains(self.recentStickerLimit) else {

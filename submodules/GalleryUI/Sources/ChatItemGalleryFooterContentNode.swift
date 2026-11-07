@@ -38,6 +38,7 @@ import EdgeEffect
 import RasterizedCompositionComponent
 import BadgeComponent
 import UIKitRuntimeUtils
+import NagramSettings // MARK: NAGRAM
 
 private let deleteImage = generateTintedImage(image: UIImage(bundleImageName: "Chat/Input/Accessory Panels/MessageSelectionTrash"), color: .white)
 private let actionImage = generateTintedImage(image: UIImage(bundleImageName: "Chat/Input/Accessory Panels/MessageSelectionForward"), color: .white)
@@ -293,6 +294,8 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                                 icon = paused ? .play : .pause
                             }
                             self.playPauseIconNode.enqueueState(icon, animated: true)
+                            // MARK: NAGRAM
+                            self.playbackControlButton.accessibilityLabel = icon == .pause ? self.strings.VoiceOver_Media_PlaybackPause : self.strings.VoiceOver_Media_PlaybackPlay
                             self.hasSeekControls = seekable
                         } else {
                             self.hasSeekControls = false
@@ -304,6 +307,9 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
         }
     }
     
+    // MARK: NAGRAM — 打开图库时读一次，图库存活期间不变。
+    private let nagramControlsInFooter = NagramSettings.shared.videoControlsInFooter
+
     var hasSeekControls: Bool = false {
         didSet {
             let alpha = self.hasSeekControls ? 1.0 : 0.0
@@ -653,6 +659,18 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
         //self.contentNode.addSubnode(self.backwardButton)
         //self.contentNode.addSubnode(self.forwardButton)
         //self.contentNode.addSubnode(self.playbackControlButton)
+        // MARK: NAGRAM — 播放控制放在进度条下方一行，取代画面中央的大圆按钮。
+        if self.nagramControlsInFooter {
+            let seekSeconds = "\(NagramSettings.shared.videoSeekIntervalValue)"
+            self.backwardButton.setSeconds(seekSeconds)
+            self.forwardButton.setSeconds(seekSeconds)
+            self.contentNode.addSubnode(self.backwardButton)
+            self.contentNode.addSubnode(self.forwardButton)
+            self.contentNode.addSubnode(self.playbackControlButton)
+            self.backwardButton.accessibilityLabel = presentationData.strings.VoiceOver_Gallery_SeekBackward
+            self.forwardButton.accessibilityLabel = presentationData.strings.VoiceOver_Gallery_SeekForward
+            self.playbackControlButton.accessibilityLabel = presentationData.strings.VoiceOver_Media_PlaybackPlay
+        }
         self.playbackControlButton.addSubnode(self.playPauseIconNode)
         
         self.contentNode.addSubnode(self.statusNode)
@@ -1322,7 +1340,13 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
             }
         }
         
+        // MARK: NAGRAM — 进度条与按钮面板之间的播放控制行。
+        var nagramControlsRowHeight: CGFloat = 0.0
         if let scrubberView = self.scrubberView, scrubberView.superview == self.view {
+            if self.nagramControlsInFooter {
+                nagramControlsRowHeight = 48.0
+                panelHeight += nagramControlsRowHeight
+            }
             panelHeight += 10.0
             if isLandscape {
                 panelHeight += 34.0
@@ -1334,7 +1358,7 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
             if self.textNode.isHidden || !displayCaption {
                 panelHeight += 8.0
             } else {
-                scrubberY = panelHeight - buttonPanelInsets.bottom - 44.0 - 44.0 - 10.0
+                scrubberY = panelHeight - buttonPanelInsets.bottom - 44.0 - 44.0 - 10.0 - nagramControlsRowHeight
                 if contentInset > 0.0 {
                     scrubberY -= contentInset
                 }
@@ -1510,14 +1534,16 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
             ComponentTransition(transition).setFrame(view: buttonPanelView, frame: buttonPanelFrame)
         }
 
+        // MARK: NAGRAM — 控制行位于按钮面板上方（原生代码未加入这些按钮，位置仅供 Nagram 使用）。
+        let playbackRowY = panelHeight - buttonPanelInsets.bottom - 44.0 - nagramControlsRowHeight
         if let image = self.backwardButton.backgroundIconNode.image {
-            self.backwardButton.frame = CGRect(origin: CGPoint(x: floor(buttonsCenterX - image.size.width / 2.0) - 66.0, y: panelHeight - buttonPanelInsets.bottom - 44.0 + floorToScreenPixels((44.0 - image.size.height) * 0.5)), size: image.size)
+            self.backwardButton.frame = CGRect(origin: CGPoint(x: floor(buttonsCenterX - image.size.width / 2.0) - 66.0, y: playbackRowY + floorToScreenPixels((44.0 - image.size.height) * 0.5)), size: image.size)
         }
         if let image = self.forwardButton.backgroundIconNode.image {
-            self.forwardButton.frame = CGRect(origin: CGPoint(x: floor(buttonsCenterX - image.size.width / 2.0) + 66.0, y: panelHeight - buttonPanelInsets.bottom - 44.0 + floorToScreenPixels((44.0 - image.size.height) * 0.5)), size: image.size)
+            self.forwardButton.frame = CGRect(origin: CGPoint(x: floor(buttonsCenterX - image.size.width / 2.0) + 66.0, y: playbackRowY + floorToScreenPixels((44.0 - image.size.height) * 0.5)), size: image.size)
         }
         
-        self.playbackControlButton.frame = CGRect(origin: CGPoint(x: floor(buttonsCenterX - 22.0), y: panelHeight - buttonPanelInsets.bottom - 44.0 + floorToScreenPixels((44.0 - 44.0) * 0.5)), size: CGSize(width: 44.0, height: 44.0))
+        self.playbackControlButton.frame = CGRect(origin: CGPoint(x: floor(buttonsCenterX - 22.0), y: playbackRowY), size: CGSize(width: 44.0, height: 44.0))
         self.playPauseIconNode.frame = self.playbackControlButton.bounds.offsetBy(dx: 2.0, dy: -2.0)
         
         // In the playback button's place: centred in the band beside a side strip (iPhone Duo), like the buttons.
@@ -2298,13 +2324,13 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
     
     @objc func backwardButtonPressed() {
         self.interacting?(true)
-        self.seekBackward?(15.0)
+        self.seekBackward?(Double(NagramSettings.shared.videoSeekIntervalValue)) // MARK: NAGRAM
         self.interacting?(false)
     }
     
     @objc func forwardButtonPressed() {
         self.interacting?(true)
-        self.seekForward?(15.0)
+        self.seekForward?(Double(NagramSettings.shared.videoSeekIntervalValue)) // MARK: NAGRAM
         self.interacting?(false)
     }
     
@@ -2477,6 +2503,12 @@ private final class PlaybackButtonNode: HighlightTrackingButtonNode {
         }
     }
     
+    // MARK: NAGRAM — 按钮上显示的快进秒数。
+    func setSeconds(_ text: String) {
+        self.textNode.attributedText = NSAttributedString(string: text, font: Font.with(size: 11.0, design: .round, weight: .semibold, traits: []), textColor: .white)
+        self.setNeedsLayout()
+    }
+
     override func layout() {
         super.layout()
         self.backgroundIconNode.frame = self.bounds

@@ -1249,10 +1249,12 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
         }
         
         if case let .playback(_, seekable) = self.footerContentNode.content, seekable {
+            // MARK: NAGRAM — 快进步长可在设置中选择。
+            let seekInterval = Double(NagramSettings.shared.videoSeekIntervalValue)
             if location.x >= self.bounds.width * 0.3 {
-                self.footerContentNode.seekForward?(15.0)
+                self.footerContentNode.seekForward?(seekInterval)
             } else {
-                self.footerContentNode.seekBackward?(15.0)
+                self.footerContentNode.seekBackward?(seekInterval)
             }
             return true
         }
@@ -1301,6 +1303,11 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
         if !self.controlsVisibility() || hideControls {
             playbackControlsIsVisible = false
         }
+        // MARK: NAGRAM — 控制放在进度条下方时，不在画面中央显示大圆按钮。
+        if NagramSettings.shared.videoControlsInFooter {
+            playbackControlsIsVisible = false
+        }
+        let nagramSeekInterval = NagramSettings.shared.videoSeekIntervalValue
         
         let playbackControlsSize = self.playbackControls.update(
             transition: ComponentTransition(transition),
@@ -1323,13 +1330,15 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                     guard let self else {
                         return
                     }
+                    // MARK: NAGRAM
                     if isForward {
-                        self.footerContentNode.seekForward?(15.0)
+                        self.footerContentNode.seekForward?(Double(nagramSeekInterval))
                     } else {
-                        self.footerContentNode.seekBackward?(15.0)
+                        self.footerContentNode.seekBackward?(Double(nagramSeekInterval))
                     }
                 },
-                accessibilityStrings: self.presentationData.strings
+                accessibilityStrings: self.presentationData.strings,
+                seekSeconds: Int(nagramSeekInterval) // MARK: NAGRAM
             )),
             environment: {},
             containerSize: CGSize(width: 1000.0, height: 1000.0)
