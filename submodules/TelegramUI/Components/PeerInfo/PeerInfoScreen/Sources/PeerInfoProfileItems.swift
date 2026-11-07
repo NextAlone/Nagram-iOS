@@ -846,7 +846,7 @@ func infoItems(
                 
                 if let aboutText = aboutText {
                     var enabledEntities = enabledPublicBioEntities
-                    if case .group = channel.info {
+                    if case .group = channel.info, !NagramSettings.shared.groupDescriptionExternalLinks { // MARK: NAGRAM — 群简介外部网址可点
                         enabledEntities = enabledPrivateBioEntities
                     }
                     items[currentPeerInfoSection]!.append(PeerInfoScreenLabeledValueItem(id: ItemAbout, label: presentationData.strings.Channel_Info_Description, text: aboutText, textColor: .primary, textBehavior: .multiLine(maxLines: 100, enabledEntities: enabledEntities), action: isMyProfile ? { node, _ in
@@ -999,7 +999,8 @@ func infoItems(
             }
             
             if let aboutText = aboutText {
-                items[currentPeerInfoSection]!.append(PeerInfoScreenLabeledValueItem(id: 0, label: presentationData.strings.Channel_Info_Description, text: aboutText, textColor: .primary, textBehavior: .multiLine(maxLines: 100, enabledEntities: enabledPrivateBioEntities), action: isMyProfile ? { node, _ in
+                // MARK: NAGRAM — 普通群简介外部网址可点
+                items[currentPeerInfoSection]!.append(PeerInfoScreenLabeledValueItem(id: 0, label: presentationData.strings.Channel_Info_Description, text: aboutText, textColor: .primary, textBehavior: .multiLine(maxLines: 100, enabledEntities: NagramSettings.shared.groupDescriptionExternalLinks ? enabledPublicBioEntities : enabledPrivateBioEntities), action: isMyProfile ? { node, _ in
                     bioContextAction(node, nil, nil)
                 } : nil, linkItemAction: bioLinkAction, contextAction: bioContextAction, requestLayout: { animated in
                     interaction.requestLayout(animated)

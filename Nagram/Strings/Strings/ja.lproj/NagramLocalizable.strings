@@ -608,3 +608,5 @@ iCloud キーチェーン同期を有効にすると、バックアップは他�
 "Nagram.OneHanded.ChatSearchResults" = "チャット内の検索結果を下から表示";
 "Nagram.OneHanded.ChatSearchFieldAtBottom" = "チャット内の検索フィールドを下部に表示";
 "Nagram.RaiseToRecord" = "耳に当てて録音";
+"Nagram.GroupDescriptionExternalLinks" = "グループ説明のリンクを有効化";
+"Nagram.GroupDescriptionExternalLinks.Footer" = "Telegram はグループ説明内の Telegram リンクのみをタップ可能にしています。オンにすると他のウェブリンクも、チャンネル説明のリンクと同じように開けます。";

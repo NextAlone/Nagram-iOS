@@ -238,6 +238,11 @@ public final class NagramSettings {
     /// 转发时默认隐藏发送者（默认关 = 原生）
     @NagramDefault("nagram.forwardHideSenderNamesByDefault", false)
     public var forwardHideSenderNamesByDefault: Bool
+
+    /// 群简介里的外部网址可点击（默认关 = 原生只识别 Telegram 内部链接）
+    @NagramDefault("nagram.groupDescriptionExternalLinks", false)
+    public var groupDescriptionExternalLinks: Bool
+
     /// 在气泡时间后显示消息 ID（仅群组、超级群组和频道，与 Android Nagram 一致）
     @NagramDefault("nagram.showMessageId", false)
     public var showMessageId: Bool

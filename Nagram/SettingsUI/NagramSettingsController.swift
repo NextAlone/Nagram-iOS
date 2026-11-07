@@ -508,10 +508,11 @@ private func nagramGroups(
             }),
         ]),
         // 消息
-        NagramGroup(tab: .messages, headerKey: "Nagram.Section.MessageDisplay", footerKeys: [], rows: [
+        NagramGroup(tab: .messages, headerKey: "Nagram.Section.MessageDisplay", footerKeys: ["Nagram.GroupDescriptionExternalLinks.Footer"], rows: [
             .toggle(titleKey: "Nagram.SecondsInMessages", get: { NagramSettings.shared.secondsInMessages }, set: { NagramSettings.shared.secondsInMessages = $0 }),
             .toggle(titleKey: "Nagram.ShowForwardedMessageDate", get: { NagramSettings.shared.showForwardedMessageDate }, set: { NagramSettings.shared.showForwardedMessageDate = $0 }),
             .toggle(titleKey: "Nagram.ShowMessageId", get: { NagramSettings.shared.showMessageId }, set: { NagramSettings.shared.showMessageId = $0 }),
+            .toggle(titleKey: "Nagram.GroupDescriptionExternalLinks", get: { NagramSettings.shared.groupDescriptionExternalLinks }, set: { NagramSettings.shared.groupDescriptionExternalLinks = $0 }),
             .toggle(titleKey: "Nagram.HideReactions", get: { NagramSettings.shared.hideReactions }, set: { NagramSettings.shared.hideReactions = $0 }),
             .toggle(titleKey: "Nagram.HideSponsoredMessages", get: { NagramSettings.shared.hideSponsoredMessages }, set: { NagramSettings.shared.hideSponsoredMessages = $0 }),
             .toggle(titleKey: "Nagram.HidePrivateChatActivities", get: { NagramSettings.shared.hidePrivateChatActivities }, set: { NagramSettings.shared.hidePrivateChatActivities = $0 }),
