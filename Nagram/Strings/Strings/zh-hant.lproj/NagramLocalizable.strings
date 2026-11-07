@@ -108,6 +108,8 @@
 "Nagram.Section.Sync" = "同步";
 
 "Nagram.SecondsInMessages" = "時間戳顯示秒";
+"Nagram.ForwardHideSenderNamesByDefault" = "轉發時預設隱藏傳送者";
+"Nagram.ForwardHideSenderNamesByDefault.Footer" = "轉發訊息時預設隱藏傳送者，選擇聊天時和目標聊天裡的轉發預覽都從隱藏狀態開始。單次轉發想顯示傳送者，點轉發預覽改回即可。";
 "Nagram.ShowForwardedMessageDate" = "顯示轉發訊息的原始時間";
 "Nagram.ShowMessageId" = "顯示訊息 ID";
 "Nagram.ChatListMessagePreviewStyle" = "訊息預覽樣式";

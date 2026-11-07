@@ -108,6 +108,8 @@
 "Nagram.Section.Sync" = "Sync";
 
 "Nagram.SecondsInMessages" = "Show Seconds in Timestamps";
+"Nagram.ForwardHideSenderNamesByDefault" = "Forward Without Sender Names";
+"Nagram.ForwardHideSenderNamesByDefault.Footer" = "Forwarded messages start without sender names, both in the chat picker and in the forward preview of the target chat. Tap the preview to show them again for a single forward.";
 "Nagram.ShowForwardedMessageDate" = "Show Original Time for Forwarded Messages";
 "Nagram.ShowMessageId" = "Show Message ID";
 "Nagram.ChatListMessagePreviewStyle" = "Message Preview Style";

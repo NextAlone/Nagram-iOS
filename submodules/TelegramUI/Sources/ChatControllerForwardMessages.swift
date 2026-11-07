@@ -124,6 +124,8 @@ extension ChatControllerImpl {
     }
 
     func forwardMessages(messages: [EngineRawMessage], options: ChatInterfaceForwardOptionsState? = nil, resetCurrent: Bool) {
+        // MARK: NAGRAM — 转发默认隐藏发送者：选择页和目标聊天的转发预览都从隐藏状态开始，仍可在预览里改回
+        let options = options ?? (NagramSettings.shared.forwardHideSenderNamesByDefault ? ChatInterfaceForwardOptionsState(hideNames: true, hideCaptions: false, unhideNamesOnCaptionChange: false) : nil)
         let _ = self.presentVoiceMessageDiscardAlert(action: { [weak self] in
             guard let self else {
                 return

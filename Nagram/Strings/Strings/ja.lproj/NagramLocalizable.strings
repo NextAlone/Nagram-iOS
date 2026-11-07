@@ -108,6 +108,8 @@
 "Nagram.Section.Sync" = "同期";
 
 "Nagram.SecondsInMessages" = "タイムスタンプに秒を表示";
+"Nagram.ForwardHideSenderNamesByDefault" = "転送時に送信者名を隠す";
+"Nagram.ForwardHideSenderNamesByDefault.Footer" = "メッセージを転送するとき、最初から送信者名を隠します。チャット選択画面と転送先チャットの転送プレビューの両方に適用されます。1 回だけ表示したい場合はプレビューをタップして戻せます。";
 "Nagram.ShowForwardedMessageDate" = "転送メッセージの元の時刻を表示";
 "Nagram.ShowMessageId" = "メッセージ ID を表示";
 "Nagram.ChatListMessagePreviewStyle" = "メッセージプレビュー形式";
