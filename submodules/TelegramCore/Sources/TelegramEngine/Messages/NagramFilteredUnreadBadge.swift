@@ -75,4 +75,68 @@ public extension TelegramEngine.Messages {
             return countsChats ? hiddenChatCount : hiddenMessageCount
         }
     }
+
+    /// MARK: NAGRAM — Marks as read the chats whose every unread incoming message the regex filters hide, through
+    /// the same interactive read path as opening the chat, so the server and other devices see it too. A chat is
+    /// skipped unless all of its unread messages were loaded and hidden (a hole, a visible unread message, a chat
+    /// marked unread by hand, a forum) — the cost of a mistake is a real message the user never sees.
+    func nagramMarkFullyFilteredChatsAsRead() -> Signal<Int, NoError> {
+        let account = self.account
+        return account.postbox.transaction { transaction -> Int in
+            let accountPeerId = account.peerId
+
+            var unreadPeerIds = Set(transaction.getUnreadChatListPeerIds(groupId: .root, filterPredicate: nil, additionalFilter: nil, stopOnFirstMatch: false))
+            unreadPeerIds.formUnion(transaction.getUnreadChatListPeerIds(groupId: Namespaces.PeerGroup.archive, filterPredicate: nil, additionalFilter: nil, stopOnFirstMatch: false))
+
+            var markedChatCount = 0
+            for peerId in unreadPeerIds {
+                guard let readState = transaction.getCombinedPeerReadState(peerId), readState.count > 0, !readState.markedUnread else {
+                    continue
+                }
+                guard let peer = transaction.getPeer(peerId), !peer.isForumOrMonoForum else {
+                    continue
+                }
+                guard let matcher = NagramSettings.shared.regexFilterMatcher(peerId: peerId.toInt64(), isOutgoing: false) else {
+                    continue
+                }
+
+                let historyView = transaction.getMessagesHistoryViewState(
+                    input: .single(peerId: peerId, threadId: nil),
+                    ignoreMessagesInTimestampRange: nil,
+                    ignoreMessageIds: Set(),
+                    count: Int(readState.count) + 10,
+                    clipHoles: true,
+                    anchor: .upperBound,
+                    namespaces: .not(Namespaces.Message.allNonRegular)
+                )
+                var hiddenUnreadCount: Int32 = 0
+                var newestHiddenIndex: MessageIndex?
+                var hasVisibleUnread = false
+                for entry in historyView.entries {
+                    let message = entry.message
+                    guard !entry.isRead, message.id.peerId == peerId, message.effectivelyIncoming(accountPeerId) else {
+                        continue
+                    }
+                    guard matcher.isHidden(text: message.text, authorPeerId: message.author?.id.id._internalGetInt64Value()) else {
+                        hasVisibleUnread = true
+                        break
+                    }
+                    hiddenUnreadCount += 1
+                    if let current = newestHiddenIndex {
+                        if current < message.index {
+                            newestHiddenIndex = message.index
+                        }
+                    } else {
+                        newestHiddenIndex = message.index
+                    }
+                }
+                guard !hasVisibleUnread, hiddenUnreadCount >= readState.count, let newestHiddenIndex else {
+                    continue
+                }
+                _internal_applyMaxReadIndexInteractively(transaction: transaction, stateManager: account.stateManager, index: newestHiddenIndex)
+                markedChatCount += 1
+            }
+            return markedChatCount
+        }
+    }
 }

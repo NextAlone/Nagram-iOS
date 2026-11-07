@@ -19,6 +19,7 @@ enum NagramSettingsSyncKeys {
         "nagram.forwardHideSenderNamesByDefault",
         "nagram.groupDescriptionExternalLinks",
         "nagram.showChannelForwardCount",
+        "nagram.regexFilters.autoReadHidden",
         "nagram.showMessageId",
         "nagram.hideChannelBottomButton",
         "nagram.hideSponsoredMessages",

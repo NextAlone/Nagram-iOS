@@ -180,6 +180,8 @@ private func nagramRowDeepLinkAliases(titleKey: String) -> [String] {
         return ["RegexFiltersEnabled", "EnableRegexFilters", "MessageFiltersEnabled"]
     case "Nagram.RegexFilters.FilterOutgoing":
         return ["RegexFiltersFilterOutgoing", "FilterSelf", "FilterOutgoing", "FilterOwnMessages"]
+    case "Nagram.RegexFilters.AutoReadHidden":
+        return ["RegexFiltersAutoRead", "AutoReadFiltered", "MarkFilteredAsRead"]
     case "Nagram.StickerSize":
         return ["stickerSize"]
     case "Nagram.StickerTimestamp":
@@ -568,9 +570,10 @@ private func nagramGroups(
             .toggle(titleKey: "Nagram.PanguOnSending", get: { NagramSettings.shared.enablePanguOnSending }, set: { NagramSettings.shared.enablePanguOnSending = $0 }),
             .toggle(titleKey: "Nagram.PanguOnEditing", get: { NagramSettings.shared.enablePanguOnEditing }, set: { NagramSettings.shared.enablePanguOnEditing = $0 }),
         ]),
-        NagramGroup(tab: .messages, headerKey: "Nagram.Section.Filtering", footerKeys: ["Nagram.RegexFilters.Main.Footer"], rows: [
+        NagramGroup(tab: .messages, headerKey: "Nagram.Section.Filtering", footerKeys: ["Nagram.RegexFilters.Main.Footer", "Nagram.RegexFilters.AutoReadHidden.Footer"], rows: [
             .toggle(titleKey: "Nagram.RegexFilters.GlobalEnabled", get: { NagramSettings.shared.regexFiltersEnabled }, set: { NagramSettings.shared.regexFiltersEnabled = $0 }),
             .toggle(titleKey: "Nagram.RegexFilters.FilterOutgoing", get: { NagramSettings.shared.regexFiltersFilterOutgoing }, set: { NagramSettings.shared.regexFiltersFilterOutgoing = $0 }),
+            .toggle(titleKey: "Nagram.RegexFilters.AutoReadHidden", get: { NagramSettings.shared.regexFiltersAutoReadHidden }, set: { NagramSettings.shared.regexFiltersAutoReadHidden = $0 }),
             .navigation(titleKey: "Nagram.RegexFilters", action: regexFiltersAction),
         ]),
         // 其他

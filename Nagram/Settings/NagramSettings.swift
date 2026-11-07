@@ -243,6 +243,10 @@ public final class NagramSettings {
     @NagramDefault("nagram.groupDescriptionExternalLinks", false)
     public var groupDescriptionExternalLinks: Bool
 
+    /// 未读消息全部被过滤规则隐藏的聊天自动标为已读（同步到服务器）
+    @NagramDefault("nagram.regexFilters.autoReadHidden", false)
+    public var regexFiltersAutoReadHidden: Bool
+
     /// 频道消息在浏览数后显示转发次数
     @NagramDefault("nagram.showChannelForwardCount", false)
     public var showChannelForwardCount: Bool

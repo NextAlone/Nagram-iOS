@@ -169,6 +169,7 @@ final class AuthorizedApplicationContext {
     private var showNewsTab: Bool
     private var showNewsTabDisposable: Disposable?
     private var enablePostboxTransactionsDiposable: Disposable?
+    private var nagramAutoReadFilteredDisposable: Disposable? // MARK: NAGRAM
     
     init(sharedApplicationContext: SharedApplicationContext, mainWindow: Window1, context: AccountContextImpl, accountManager: AccountManager<TelegramAccountManagerTypes>, showCallsTab: Bool, reinitializedNotificationSettings: @escaping () -> Void) {
         self.sharedApplicationContext = sharedApplicationContext
@@ -850,6 +851,22 @@ final class AuthorizedApplicationContext {
             self.showNewsTab = value
             self.rootController.updateRootControllers(showCallsTab: self.showCallsTab, showNewsTab: value)
         })
+
+        // MARK: NAGRAM — 被过滤的消息自动已读：未读变化或规则变化后（合并一秒内的变化）扫一遍，只在开关打开时运行。
+        let nagramEngine = self.context.engine
+        self.nagramAutoReadFilteredDisposable = (combineLatest(
+            nagramBoolSignal("nagram.regexFilters.autoReadHidden", defaultValue: false),
+            nagramRegexFiltersSignal(),
+            nagramEngine.data.subscribe(TelegramEngine.EngineData.Item.Messages.TotalReadCounters())
+        )
+        |> mapToSignal { enabled, _, _ -> Signal<Int, NoError> in
+            guard enabled else {
+                return .complete()
+            }
+            return .complete()
+            |> delay(1.0, queue: Queue.concurrentDefaultQueue())
+            |> then(nagramEngine.messages.nagramMarkFullyFilteredChatsAsRead())
+        }).start()
         
         self.rootController.setForceInCallStatusBar((self.context.sharedContext as! SharedAccountContextImpl).currentCallStatusBarNode)
         if let groupCallController = self.context.sharedContext.currentGroupCallController as? VoiceChatController {
@@ -863,6 +880,7 @@ final class AuthorizedApplicationContext {
     deinit {
         self.context.account.postbox.clearCaches()
         self.showNewsTabDisposable?.dispose()
+        self.nagramAutoReadFilteredDisposable?.dispose() // MARK: NAGRAM
         self.context.account.shouldKeepOnlinePresence.set(.single(false))
         self.context.account.shouldBeServiceTaskMaster.set(.single(.never))
         self.loggedOutDisposable.dispose()

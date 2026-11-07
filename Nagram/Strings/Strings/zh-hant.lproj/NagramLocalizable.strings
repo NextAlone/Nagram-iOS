@@ -618,3 +618,5 @@
 "Nagram.RegexFilters.OnlyInChats" = "只在 %d 個聊天中生效";
 "Nagram.RegexFilters.QuickAdd.Footer" = "已填入整則訊息，正則符號已轉義。可以刪減成想過濾的關鍵字。關閉上方的開關，規則會對所有聊天生效。";
 "Nagram.MessageMenu.Item.addToRegexFilter" = "加入訊息過濾";
+"Nagram.RegexFilters.AutoReadHidden" = "被過濾的訊息自動已讀";
+"Nagram.RegexFilters.AutoReadHidden.Footer" = "一個聊天的未讀訊息全部被過濾規則隱藏時，自動將這個聊天標為已讀，其他裝置上也會同步。只是遮擋或替換的訊息不算在內。";

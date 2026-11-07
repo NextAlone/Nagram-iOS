@@ -618,3 +618,5 @@ With iCloud Keychain sync on, backups follow your other devices and appear on th
 "Nagram.RegexFilters.OnlyInChats" = "Only in %d Chats";
 "Nagram.RegexFilters.QuickAdd.Footer" = "The whole message is filled in, with regex symbols escaped. Trim it down to the keyword you want to filter. Turn off the switch above to apply the rule to all chats.";
 "Nagram.MessageMenu.Item.addToRegexFilter" = "Add to Filters";
+"Nagram.RegexFilters.AutoReadHidden" = "Mark Filtered Messages as Read";
+"Nagram.RegexFilters.AutoReadHidden.Footer" = "When every unread message in a chat is hidden by a filter rule, the chat is marked as read, on your other devices too. Messages that are only masked or replaced do not count.";
