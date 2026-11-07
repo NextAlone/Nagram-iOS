@@ -1064,6 +1064,51 @@ func infoItems(
         }
     }
     
+    // MARK: NAGRAM — 群组和频道资料页的 ID/DC，ID 用 Bot API 的格式(-100… / -…)
+    if let peer = data.peer, NagramSettings.shared.showProfileId || NagramSettings.shared.showDC {
+        var chatId: String?
+        var chatPhoto: TelegramMediaImageRepresentation?
+        switch peer {
+        case let .channel(channel):
+            chatId = "-100\(channel.id.id._internalGetInt64Value())"
+            chatPhoto = channel.smallProfileImage
+        case let .legacyGroup(group):
+            chatId = "-\(group.id.id._internalGetInt64Value())"
+            chatPhoto = group.smallProfileImage
+        default:
+            break
+        }
+        if let chatId {
+            let nagramLanguageCode = presentationData.strings.baseLanguageCode
+            var textComponents: [String] = []
+            var copyItems: [PeerInfoNagramAccountInfoCopyItem] = []
+            if NagramSettings.shared.showProfileId {
+                textComponents.append(chatId)
+                copyItems.append(PeerInfoNagramAccountInfoCopyItem(title: ngI18n("Nagram.AccountInfo.CopyId", nagramLanguageCode), value: chatId))
+            }
+            if NagramSettings.shared.showDC, let cloudResource = chatPhoto?.resource as? CloudPeerPhotoSizeMediaResource {
+                let dataCenter = "DC\(cloudResource.datacenterId)"
+                textComponents.append(dataCenter)
+                copyItems.append(PeerInfoNagramAccountInfoCopyItem(title: ngI18n("Nagram.AccountInfo.CopyDC", nagramLanguageCode), value: dataCenter))
+            }
+            if !textComponents.isEmpty {
+                items[.nagram]!.append(PeerInfoScreenLabeledValueItem(
+                    id: AnyHashable("nagram_chat_info"),
+                    label: ngI18n("Nagram.AccountInfo", nagramLanguageCode),
+                    text: textComponents.joined(separator: " · "),
+                    textColor: .primary,
+                    action: nil,
+                    contextAction: { sourceNode, gesture, _ in
+                        interaction.openNagramAccountInfoContextMenu(copyItems, sourceNode, gesture)
+                    },
+                    requestLayout: { _ in
+                        interaction.requestLayout(false)
+                    }
+                ))
+            }
+        }
+    }
+
     // MARK: NAGRAM — 对话级增强，只影响当前聊天本地展示。
     if isOpenedFromChat, let peer = data.peer {
         let accountPeerId = context.account.peerId.toInt64()
