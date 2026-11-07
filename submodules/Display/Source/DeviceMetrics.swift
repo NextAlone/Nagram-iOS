@@ -390,6 +390,12 @@ public enum DeviceMetrics: CaseIterable, Equatable {
             case .iPadPro11Inch, .iPadPro3rdGen, .iPadMini, .iPadMini6thGen:
                 return 24.0
             case let .unknown(_, statusBarHeight, _, _):
+                // MARK: NAGRAM — an iPad newer than this table (iPad mini A20 Pro) is recognized before its
+                // scene reports a status bar, so the captured height is 0 and the first layout drew under the
+                // status bar until a rotation re-read it. Every iPad's full-screen status bar is 24pt.
+                if statusBarHeight.isZero && self.type == .tablet {
+                    return 24.0
+                }
                 return statusBarHeight
             default:
                 return 20.0
