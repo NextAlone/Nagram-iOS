@@ -1398,6 +1398,18 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         self.requestLayout(.animated(duration: 0.2, curve: .easeInOut))
     }
 
+    // MARK: NAGRAM — 工具栏出现在普通聊天和论坛话题页；评论区等其它回复线程不显示
+    private var nagramChatToolsPeerId: EnginePeer.Id? {
+        switch self.chatLocation {
+        case let .peer(peerId):
+            return peerId
+        case let .replyThread(message):
+            return message.isForumPost ? message.peerId : nil
+        default:
+            return nil
+        }
+    }
+
     // The admin screens the profile opens, offered only where the account can use them.
     private func nagramChatManageItems() -> [NagramChatToolsComponent.ManageItem] {
         let strings = self.chatPresentationInterfaceState.strings
@@ -1739,7 +1751,7 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         }
         if !hideTopPanels, allowsChatTools, NagramSettings.shared.chatToolsEnabled,
            case .standard(.default) = self.chatPresentationInterfaceState.mode,
-           case let .peer(peerId) = self.chatLocation,
+           let peerId = self.nagramChatToolsPeerId, // MARK: NAGRAM — 论坛话题页也显示工具栏
            self.chatPresentationInterfaceState.renderedPeer?.peer != nil,
            !self.chatPresentationInterfaceState.isNotAccessible,
            self.chatPresentationInterfaceState.search == nil,
@@ -1751,6 +1763,12 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                     return peerId != self.context.account.peerId
                 case .manage:
                     return !nagramManageItems.isEmpty
+                case .cache:
+                    // MARK: NAGRAM — 清缓存只处理整个聊天，话题页不提供
+                    if case .replyThread = self.chatLocation {
+                        return false
+                    }
+                    return true
                 default:
                     return true
                 }
