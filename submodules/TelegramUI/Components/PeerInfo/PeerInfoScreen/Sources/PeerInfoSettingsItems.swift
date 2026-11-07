@@ -235,14 +235,16 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
     // MARK: NAGRAM — 联系人 / 通话记录入口只在对应 tab 不在底栏时显示
     let nagramBottomBarSettings = NagramSettings.shared.bottomBarSettings
     let nagramVisibleTabs = nagramBottomBarSettings.isBottomBarVisible ? nagramBottomBarSettings.visibleNavigationItems : []
-    if !nagramVisibleTabs.contains(.contacts) {
-        items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 51, text: presentationData.strings.Contacts_Title, icon: PresentationResourcesSettings.clearSynced, action: {
-            interaction.openSettings(.nagramContacts)
-        }))
-    }
     if !(nagramShowCallsTab && nagramVisibleTabs.contains(.calls)) {
         items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 2, text: presentationData.strings.CallSettings_RecentCalls, icon: PresentationResourcesSettings.recentCalls, action: {
             interaction.openSettings(.recentCalls)
+        }))
+    }
+    if !nagramVisibleTabs.contains(.contacts) {
+        // Contacts live here rather than in the tab bar, which News took; so does its tab's "!" for contacts access.
+        let contactsWarning = data.globalSettings?.contactsWarning ?? false
+        items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 21, label: contactsWarning ? .badge("!", presentationData.theme.list.itemDestructiveColor) : .none, text: presentationData.strings.Contacts_Title, icon: PresentationResourcesSettings.contacts, action: {
+            interaction.openSettings(.contacts)
         }))
     }
     
@@ -277,7 +279,7 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
     } else {
         notificationsWarning = false
     }
-    items[.advanced]!.append(PeerInfoScreenDisclosureItem(id: 0, label: notificationsWarning ? .badge("!", presentationData.theme.list.itemDestructiveColor) : .none, text: presentationData.strings.Settings_NotificationsAndSounds, icon: PresentationResourcesSettings.notifications, action: {
+    items[.advanced]!.append(PeerInfoScreenDisclosureItem(id: 0, label: notificationsWarning ? .badge("!", presentationData.theme.list.itemDestructiveColor) : .none, text: presentationData.strings.Settings_NotificationsAndSounds, icon: PresentationResourcesSettings.notifications, labelAccessibilityText: notificationsWarning ? presentationData.strings.VoiceOver_TabBar_AttentionRequired : nil, action: {
         interaction.openSettings(.notificationsAndSounds)
     }))
     items[.advanced]!.append(PeerInfoScreenDisclosureItem(id: 1, text: presentationData.strings.Settings_PrivacySettings, icon: PresentationResourcesSettings.security, action: {

@@ -45,6 +45,7 @@ swift_library(
         "//submodules/AnimatedCountLabelNode",
         "//submodules/AudioWaveform",
         "//submodules/DeviceProximity",
+        "//submodules/TelegramUI/Components/StaticGlassBackground",
     ],
     visibility = [
         "//visibility:public",

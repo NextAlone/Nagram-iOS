@@ -13,7 +13,6 @@ swift_library(
         # MARK: NAGRAM — manual single-message translation provider facade
         "//Nagram/Translate:NagramTranslate",
         "//submodules/Display",
-        "//submodules/LottieSettings:LottieSettings",
         "//submodules/TelegramPresentationData",
         "//submodules/ComponentFlow",
         "//submodules/Components/ViewControllerComponent",

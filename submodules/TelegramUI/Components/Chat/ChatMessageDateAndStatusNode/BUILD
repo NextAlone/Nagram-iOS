@@ -27,6 +27,7 @@ swift_library(
         "//submodules/Components/ReactionImageComponent",
         "//submodules/TelegramUI/Components/AnimationCache",
         "//submodules/TelegramUI/Components/MultiAnimationRenderer",
+        "//submodules/TelegramUI/Components/StaticGlassBackground",
         # MARK: NAGRAM
         "//Nagram/Settings:NagramSettings",
     ],

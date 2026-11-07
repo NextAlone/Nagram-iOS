@@ -12,7 +12,6 @@ import SaveToCameraRoll
 import WebPBinding
 import GZip
 import LottieBinding
-import LottieSettings
 import AnimatedStickerNode
 import YuvConversion
 
@@ -56,7 +55,7 @@ func saveStickerToCameraRoll(context: AccountContext, fileReference: FileMediaRe
     }
     |> take(1)
     |> mapToSignal { path -> Signal<StickerCameraRollFile?, NoError> in
-        return generateStickerCameraRollFile(file: file, path: path, lottieSettings: context.lottieRenderingSettings)
+        return generateStickerCameraRollFile(file: file, path: path)
     }
     |> mapToSignal { file -> Signal<Bool, NoError> in
         guard let file else {
@@ -66,13 +65,13 @@ func saveStickerToCameraRoll(context: AccountContext, fileReference: FileMediaRe
     }
 }
 
-private func generateStickerCameraRollFile(file: TelegramMediaFile, path: String, lottieSettings: LottieRenderingSettings) -> Signal<StickerCameraRollFile?, NoError> {
+private func generateStickerCameraRollFile(file: TelegramMediaFile, path: String) -> Signal<StickerCameraRollFile?, NoError> {
     return Signal { subscriber in
         let queue = Queue(name: "SaveStickerToCameraRoll")
         queue.async {
             let result: StickerCameraRollFile?
             if file.isAnimatedSticker {
-                result = generateLottieStickerGif(file: file, path: path, lottieSettings: lottieSettings)
+                result = generateLottieStickerGif(file: file, path: path)
             } else if file.isVideoSticker {
                 result = generateVideoStickerGif(file: file, path: path, queue: queue)
             } else {
@@ -130,12 +129,12 @@ private func generateStaticStickerPng(file: TelegramMediaFile, path: String) -> 
     }
 }
 
-private func generateLottieStickerGif(file: TelegramMediaFile, path: String, lottieSettings: LottieRenderingSettings) -> StickerCameraRollFile? {
+private func generateLottieStickerGif(file: TelegramMediaFile, path: String) -> StickerCameraRollFile? {
     guard let data = try? Data(contentsOf: URL(fileURLWithPath: path), options: .mappedIfSafe) else {
         return nil
     }
     let decompressedData = TGGUnzipData(data, 8 * 1024 * 1024) ?? data
-    guard let lottie = makeLottieInstance(data: decompressedData, fitzModifier: .none, colorReplacements: nil, cacheKey: "nagram-save-sticker-\(file.fileId.id)", settings: lottieSettings) else {
+    guard let lottie = makeLottieInstance(data: decompressedData, fitzModifier: .none, colorReplacements: nil) else {
         return nil
     }
     let frameCount = Int(lottie.frameCount)

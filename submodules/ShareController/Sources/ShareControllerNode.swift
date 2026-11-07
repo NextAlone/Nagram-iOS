@@ -1,5 +1,4 @@
 import Foundation
-import LottieSettings
 // MARK: NAGRAM
 import NagramStrings
 import UIKit
@@ -279,8 +278,7 @@ private final class ShareContentInfoView: UIView {
             transition: .immediate,
             component: AnyComponent(LottieComponent(
                 content: LottieComponent.AppBundleContent(name: "anim_collectible_username"),
-                loop: false,
-                lottieSettings: .noAccountFallback
+                loop: false
             )),
             environment: {},
             containerSize: CGSize(width: 30.0, height: 30.0)

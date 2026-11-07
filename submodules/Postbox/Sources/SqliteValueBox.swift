@@ -1356,7 +1356,7 @@ public final class SqliteValueBox: ValueBox {
             resultStatement = statement
         } else {
             var statement: OpaquePointer? = nil
-            let status = sqlite3_prepare_v3(self.database.handle, "SELECT rowid FROM t\(table.id) WHERE key=?", -1, SQLITE_PREPARE_PERSISTENT, &statement, nil)
+            let status = sqlite3_prepare_v3(self.database.handle, "SELECT 1 FROM t\(table.id) WHERE key=?", -1, SQLITE_PREPARE_PERSISTENT, &statement, nil)
             precondition(status == SQLITE_OK)
             let preparedStatement = SqlitePreparedStatement(statement: statement)
             self.existsStatements[table.id] = preparedStatement
@@ -1841,9 +1841,13 @@ public final class SqliteValueBox: ValueBox {
     
     public func exists(_ table: ValueBoxTable, key: ValueBoxKey) -> Bool {
         precondition(self.queue.isCurrent())
-        if let _ = self.get(table, key: key) {
-            return true
+        if let _ = self.tables[table.id] {
+            let statement = self.existsStatement(table, key: key)
+            let result = statement.step(handle: self.database.handle, pathToRemoveOnError: self.pathToRemoveOnError)
+            statement.reset()
+            return result
         }
+        withExtendedLifetime(key, {})
         return false
     }
     

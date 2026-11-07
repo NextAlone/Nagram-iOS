@@ -316,7 +316,7 @@ final class ContactsControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         var leftButton: NavigationBarComponent.Button?
         var rightButtons: [NavigationBarComponent.Button]
         // MARK: NAGRAM — 推入模式：左侧让给返回按钮，排序移到右侧
-        let nagramIsPushed = self.controller?.nagramIsPushed ?? false
+        let nagramIsPushed = self.controller?.nagramIsPushed ?? true
         
         if let selectionState = self.contactListNode.selectionState {
             title = self.presentationData.strings.Contacts_SelectedContacts(Int32(selectionState.selectedPeerIndices.count))
@@ -334,7 +334,7 @@ final class ContactsControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
             rightButtons = []
         } else {
             title = self.presentationData.strings.Contacts_Title
-            leftButton = NavigationBarComponent.Button(id: "sort",
+            let sortButton = NavigationBarComponent.Button(id: "sort",
                 content: .text(title: self.presentationData.strings.Contacts_Sort, isBold: false),
                 action: { [weak self] sourceView in
                     guard let self else {
@@ -344,31 +344,38 @@ final class ContactsControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                     self.controller?.presentSortMenu(sourceView: sourceView, gesture: nil)
                 }
             )
-            rightButtons = [NavigationBarComponent.Button(id: "add",
+            let addButton = NavigationBarComponent.Button(id: "add",
                 content: .icon(imageName: "Chat List/AddIcon"),
+                overflow: NavigationBarComponent.OverflowInfo(title: self.presentationData.strings.Contacts_VoiceOver_AddContact, iconName: nil, priority: nil),
                 action: { [weak self] _ in
                     guard let self else {
                         return
                     }
                     self.controller?.addPressed()
                 }
-            )]
-            // MARK: NAGRAM
-            if nagramIsPushed, let sortButton = leftButton {
+            )
+            if nagramIsPushed {
+                // The left is the back button's: Sort stands on the right, its own capsule beside Add.
                 leftButton = nil
-                rightButtons.insert(sortButton, at: 0)
+                rightButtons = [sortButton, addButton]
+            } else {
+                // MARK: NAGRAM — as a bottom-bar tab, Sort keeps the left.
+                leftButton = sortButton
+                rightButtons = [addButton]
             }
         }
         
+        // Pushed (from Settings) the header has a back button.
+        let backPressed: (() -> Void)? = { [weak self] in
+            self?.controller?.navigationController?.popViewController(animated: true)
+        }
         let primaryContent = ChatListHeaderComponent.Content(
             title: self.presentationData.strings.Contacts_Title,
             titleComponent: nil,
             chatListTitle: NetworkStatusTitle(text: title, activity: false, hasProxy: false, connectsViaProxy: false, isPasscodeSet: false, isManuallyLocked: false, peerStatus: nil),
             leftButton: leftButton,
             rightButtons: rightButtons,
-            backPressed: nagramIsPushed ? { [weak self] in // MARK: NAGRAM
-                self?.controller?.dismiss()
-            } : nil
+            backPressed: nagramIsPushed ? backPressed : nil // MARK: NAGRAM — a bottom-bar tab has no back button
         )
         
         let navigationBarSize = self.navigationBarView.update(
@@ -538,13 +545,21 @@ final class ContactsControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                 }
             }
         }, placeholder: placeholderNode)
+        // The search results cover the list: VoiceOver must not read the list behind them.
+        self.contactListNode.accessibilityElementsHidden = true
     }
     
-    func deactivateSearch(placeholderNode: SearchBarPlaceholderNode?, animated: Bool) {
+    /// Ends the search; the returned closure animates the search bar out into `placeholderNode` and is called once the
+    /// navigation bar has been laid out without the active search.
+    func deactivateSearch(placeholderNode: SearchBarPlaceholderNode?, animated: Bool) -> (() -> Void)? {
         self.isSearchDisplayControllerActive = nil
-        if let searchDisplayController = self.searchDisplayController {
+        self.contactListNode.accessibilityElementsHidden = false
+        guard let searchDisplayController = self.searchDisplayController else {
+            return nil
+        }
+        self.searchDisplayController = nil
+        return { [weak placeholderNode] in
             searchDisplayController.deactivate(placeholder: placeholderNode, animated: animated)
-            self.searchDisplayController = nil
         }
     }
 }

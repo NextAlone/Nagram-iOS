@@ -515,6 +515,51 @@ private final class NativeSceneWindow: UIWindow, WindowHost {
     func cancelInteractiveKeyboardGestures() { self.host.cancelInteractiveKeyboardGestures() }
     var dismissedKeyboardByCurrentGesture: Bool { return self.host.dismissedKeyboardByCurrentGesture }
 
+    // MARK: NAGRAM — the touches this window's recognizers hold, let go of as its scene deactivates (#127). Upstream
+    // does this on its event window; here the scene window is the UIWindow that receives events.
+    private lazy var touchRelease = WindowTouchRelease(holders: { [weak self] in
+        guard let self else {
+            return []
+        }
+        return WindowTouchRelease.holders(in: self)
+    })
+
+    override init(windowScene: UIWindowScene) {
+        super.init(windowScene: windowScene)
+
+        NotificationCenter.default.addObserver(self, selector: #selector(self.sceneActivationChanged(_:)), name: UIScene.willDeactivateNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(self.sceneActivationChanged(_:)), name: UIScene.didActivateNotification, object: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    @objc private func sceneActivationChanged(_ notification: Notification) {
+        guard let scene = notification.object as? UIScene, scene === self.windowScene else {
+            return
+        }
+        let deactivates = notification.name == UIScene.willDeactivateNotification
+        // After every other observer of this change, whatever their order: an owner that lets go of its own
+        // recognizer's touch then (the chat list's pan, released at rest so that it does not fling as the app leaves)
+        // does so first, and the window lets go of what is still held.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else {
+                return
+            }
+            if deactivates {
+                self.touchRelease.sceneWillDeactivate()
+            } else {
+                self.touchRelease.sceneDidActivate()
+            }
+        }
+    }
+
+    override func sendEvent(_ event: UIEvent) {
+        self.touchRelease.update(with: event)
+        super.sendEvent(event)
+    }
+
     // MARK: NAGRAM — the scene window is the UIWindow responder; forward shakes to the event host.
     override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
         super.motionEnded(motion, with: event)

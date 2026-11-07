@@ -14,7 +14,6 @@ swift_library(
         "//Nagram/SettingsSignal:NagramSettingsSignal",
         "//Nagram/Strings:NagramStrings",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
-        "//submodules/LottieSettings:LottieSettings",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/Display:Display",
         "//submodules/TelegramCore:TelegramCore",

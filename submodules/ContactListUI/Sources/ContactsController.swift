@@ -42,68 +42,6 @@ private final class HeaderContextReferenceContentSource: ContextReferenceContent
     }
 }
 
-private final class SortHeaderButton: HighlightableButtonNode {
-    let referenceNode: ContextReferenceContentNode
-    let containerNode: ContextControllerSourceNode
-    private let textNode: ImmediateTextNode
-    
-    var contextAction: ((ASDisplayNode, ContextGesture?) -> Void)?
-
-    init(presentationData: PresentationData) {
-        self.referenceNode = ContextReferenceContentNode()
-        self.containerNode = ContextControllerSourceNode()
-        self.containerNode.animateScale = false
-        self.textNode = ImmediateTextNode()
-        self.textNode.displaysAsynchronously = false
-
-        super.init()
-
-        self.containerNode.addSubnode(self.referenceNode)
-        self.referenceNode.addSubnode(self.textNode)
-        self.addSubnode(self.containerNode)
-
-        self.containerNode.shouldBegin = { [weak self] location in
-            guard let strongSelf = self, let _ = strongSelf.contextAction else {
-                return false
-            }
-            return true
-        }
-        self.containerNode.activated = { [weak self] gesture, _ in
-            guard let strongSelf = self else {
-                return
-            }
-            strongSelf.contextAction?(strongSelf.containerNode, gesture)
-        }
-
-        self.update(theme: presentationData.theme, strings: presentationData.strings)
-    }
-
-    override func didLoad() {
-        super.didLoad()
-        self.view.isOpaque = false
-    }
-
-    func update(theme: PresentationTheme, strings: PresentationStrings) {
-        self.textNode.attributedText = NSAttributedString(string: strings.Contacts_Sort, font: Font.regular(17.0), textColor: theme.rootController.navigationBar.accentTextColor)
-        let size = self.textNode.updateLayout(CGSize(width: 100.0, height: 44.0))
-        self.textNode.frame = CGRect(origin: CGPoint(x: 0.0, y: floorToScreenPixels((44.0 - size.height) / 2.0)), size: size)
-        
-        self.containerNode.frame = CGRect(origin: CGPoint(), size: CGSize(width: size.width, height: 44.0))
-        self.referenceNode.frame = self.containerNode.bounds
-        
-        self.accessibilityLabel = strings.Contacts_Sort
-    }
-    
-    override func calculateSizeThatFits(_ constrainedSize: CGSize) -> CGSize {
-        let size = self.textNode.updateLayout(CGSize(width: 100.0, height: 44.0))
-        
-        return CGSize(width: size.width, height: 44.0)
-    }
-
-    func onLayout() {
-    }
-}
-
 public class ContactsController: ViewController {
     private let context: AccountContext
     
@@ -129,13 +67,10 @@ public class ContactsController: ViewController {
     
     private var presentationData: PresentationData
     private var presentationDataDisposable: Disposable?
-    private var authorizationDisposable: Disposable?
     private var selectionDisposable: Disposable?
     private var actionDisposable = MetaDisposable()
     private let sortOrderPromise = Promise<ContactsSortOrder>()
     private let isInVoiceOver = ValuePromise<Bool>(false)
-    
-    public var switchToChatsController: (() -> Void)?
     
     public override func updateNavigationCustomData(_ data: Any?, progress: CGFloat, transition: ContainedViewLayoutTransition) {
         if self.isNodeLoaded {
@@ -143,46 +78,33 @@ public class ContactsController: ViewController {
         }
     }
     
-    private let sortButton: SortHeaderButton
-    // MARK: NAGRAM — 从设置页推入（联系人 tab 被隐藏时），显示返回按钮
-    let nagramIsPushed: Bool
+    /// Run once the screen has appeared (`performWhenAppeared`).
+    private var hasAppeared = false
+    private var appearActions: [(ContactsController) -> Void] = []
     
-    public init(context: AccountContext, nagramIsPushed: Bool = false) { // MARK: NAGRAM
+    // MARK: NAGRAM — a tab of Nagram's bottom bar (Sort on the left, no back button); otherwise pushed as upstream.
+    let nagramIsTab: Bool
+    var nagramIsPushed: Bool {
+        return !self.nagramIsTab
+    }
+    public var switchToChatsController: (() -> Void)?
+    private var authorizationDisposable: Disposable?
+    
+    /// The Contacts screen, pushed over Settings (Settings ▸ Contacts, `tg://contacts`): the header has a back button,
+    /// Sort and Add. Nagram's bottom bar shows it as a tab instead (`nagramIsTab`).
+    public init(context: AccountContext, nagramIsTab: Bool = false) { // MARK: NAGRAM
         self.context = context
-        self.nagramIsPushed = nagramIsPushed
+        self.nagramIsTab = nagramIsTab
         
         self.presentationData = context.sharedContext.currentPresentationData.with { $0 }
         
-        self.sortButton = SortHeaderButton(presentationData: self.presentationData)
-        
         super.init(navigationBarPresentationData: nil)
-        
-        self.tabBarItemContextActionType = .always
         
         self.statusBar.statusBarStyle = self.presentationData.theme.rootController.statusBarStyle.style
         
         self.title = self.presentationData.strings.Contacts_Title
-        self.tabBarItem.title = self.presentationData.strings.Contacts_Title
-        
-        let icon: UIImage?
-        if useSpecialTabBarIcons() {
-            icon = UIImage(bundleImageName: "Chat List/Tabs/Holiday/IconContacts")
-        } else {
-            icon = UIImage(bundleImageName: "Chat List/Tabs/IconContacts")
-        }
-        
-        self.tabBarItem.image = icon
-        self.tabBarItem.selectedImage = icon
-        if !self.presentationData.reduceMotion {
-            self.tabBarItem.animationName = "TabContacts"
-        }
         
         self.navigationItem.backBarButtonItem = UIBarButtonItem(title: self.presentationData.strings.Common_Back, style: .plain, target: nil, action: nil)
-        
-        self.navigationItem.leftBarButtonItem = UIBarButtonItem(customDisplayNode: self.sortButton)
-        self.navigationItem.leftBarButtonItem?.accessibilityLabel = self.presentationData.strings.Contacts_Sort
-        self.navigationItem.rightBarButtonItem = UIBarButtonItem(image: PresentationResourcesRootController.navigationAddIcon(self.presentationData.theme), style: .plain, target: self, action: #selector(self.addPressed))
-        self.navigationItem.rightBarButtonItem?.accessibilityLabel = self.presentationData.strings.Contacts_VoiceOver_AddContact
         
         self.scrollToTop = { [weak self] in
             if let strongSelf = self {
@@ -204,8 +126,22 @@ public class ContactsController: ViewController {
             }
         }).strict()
         
-        if #available(iOSApplicationExtension 10.0, iOS 10.0, *) {
-            // MARK: NAGRAM
+        if nagramIsTab {
+            // MARK: NAGRAM — as a tab of Nagram's bottom bar the screen has its tab item and the contacts-access "!".
+            self.tabBarItemContextActionType = .always
+            self.tabBarItem.title = self.presentationData.strings.Contacts_Title
+            let icon: UIImage?
+            if useSpecialTabBarIcons() {
+                icon = UIImage(bundleImageName: "Chat List/Tabs/Holiday/IconContacts")
+            } else {
+                icon = UIImage(bundleImageName: "Chat List/Tabs/IconContacts")
+            }
+            self.tabBarItem.image = icon
+            self.tabBarItem.selectedImage = icon
+            if !self.presentationData.reduceMotion {
+                self.tabBarItem.animationName = "TabContacts"
+            }
+            
             let permissionWarningSuppressedAndSortOrder: Signal<(Bool, ContactsSortOrder), NoError> = combineLatest(context.sharedContext.accountManager.noticeEntry(key: ApplicationSpecificNotice.permissionWarningKey(permission: .contacts)!), context.engine.data.subscribe(TelegramEngine.EngineData.Item.Configuration.ApplicationSpecificPreference(key: PreferencesKeys.contactsSettings)), context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.contactSynchronizationSettings]))
             |> map { noticeView, preferences, sharedData -> (Bool, ContactsSortOrder) in
                 let settings: ContactsSettings = preferences?.get(ContactsSettings.self) ?? ContactsSettings.defaultSettings
@@ -224,8 +160,7 @@ public class ContactsController: ViewController {
                     return (false, sortOrder)
                 }
             }
-
-            // MARK: NAGRAM
+            
             let hidePermissionWarnings = nagramBoolSignal("nagram.hideTabBarPermissionWarnings", defaultValue: false)
             self.authorizationDisposable = (combineLatest(DeviceAccess.authorizationStatus(subject: .contacts), permissionWarningSuppressedAndSortOrder, hidePermissionWarnings)
             |> deliverOnMainQueue).start(next: { [weak self] status, suppressedAndSortOrder, hidePermissionWarnings in
@@ -236,6 +171,7 @@ public class ContactsController: ViewController {
                 }
             }).strict()
         } else {
+            // The contacts-access warning is Settings ▸ Contacts' (`contactsPermissionWarning` in PeerInfoScreen).
             self.sortOrderPromise.set(context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.contactSynchronizationSettings])
             |> map { sharedData -> ContactsSortOrder in
                 let settings = sharedData.entries[ApplicationSpecificSharedDataKeys.contactSynchronizationSettings]?.get(ContactSynchronizationSettings.self)
@@ -243,7 +179,6 @@ public class ContactsController: ViewController {
             })
         }
         
-        self.sortButton.addTarget(self, action: #selector(self.sortPressed), forControlEvents: .touchUpInside)
         // MARK: NAGRAM
         self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .immediate)
     }
@@ -254,27 +189,21 @@ public class ContactsController: ViewController {
     
     deinit {
         self.presentationDataDisposable?.dispose()
-        self.authorizationDisposable?.dispose()
+        self.authorizationDisposable?.dispose() // MARK: NAGRAM
         self.actionDisposable.dispose()
         self.selectionDisposable?.dispose()
     }
     
     private func updateThemeAndStrings() {
-        self.sortButton.update(theme: self.presentationData.theme, strings: self.presentationData.strings)
         self.statusBar.statusBarStyle = self.presentationData.theme.rootController.statusBarStyle.style
         
         self.title = self.presentationData.strings.Contacts_Title
-        self.tabBarItem.title = self.presentationData.strings.Contacts_Title
-        if !self.presentationData.reduceMotion {
-            self.tabBarItem.animationName = "TabContacts"
-        } else {
-            self.tabBarItem.animationName = nil
+        // MARK: NAGRAM
+        if self.nagramIsTab {
+            self.tabBarItem.title = self.presentationData.strings.Contacts_Title
+            self.tabBarItem.animationName = self.presentationData.reduceMotion ? nil : "TabContacts"
         }
         self.navigationItem.backBarButtonItem = UIBarButtonItem(title: self.presentationData.strings.Common_Back, style: .plain, target: nil, action: nil)
-        if self.navigationItem.rightBarButtonItem != nil {
-            self.navigationItem.rightBarButtonItem = UIBarButtonItem(image: PresentationResourcesRootController.navigationAddIcon(self.presentationData.theme), style: .plain, target: self, action: #selector(self.addPressed))
-            self.navigationItem.rightBarButtonItem?.accessibilityLabel = self.presentationData.strings.Contacts_VoiceOver_AddContact
-        }
     }
     
     override public func loadDisplayNode() {
@@ -312,7 +241,7 @@ public class ContactsController: ViewController {
                             strongSelf.context.sharedContext.navigateToChatController(NavigateToChatControllerParams(navigationController: navigationController, context: strongSelf.context, chatLocation: .peer(peer), purposefulAction: { [weak self] in
                                 if fromSearch {
                                     self?.deactivateSearch(animated: false)
-                                    self?.switchToChatsController?()
+                                    self?.switchToChatsController?() // MARK: NAGRAM
                                 }
                                 }, scrollToEndIfExists: scrollToEndIfExists, options: [.removeOnMasterDetails], completion: { [weak self] _ in
                                 if let strongSelf = self {
@@ -464,10 +393,6 @@ public class ContactsController: ViewController {
             }
         }
         
-        self.sortButton.contextAction = { [weak self] sourceNode, gesture in
-            self?.presentSortMenu(sourceView: sourceNode.view, gesture: gesture)
-        }
-        
         let previousToolbarValue = Atomic<Toolbar?>(value: nil)
         self.selectionDisposable = (self.contactsNode.contactListNode.selectionStateSignal
         |> deliverOnMainQueue).start(next: { [weak self] state in
@@ -515,6 +440,17 @@ public class ContactsController: ViewController {
         self.contactsNode.contactListNode.enableUpdates = true
     }
     
+    override public func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        self.hasAppeared = true
+        let actions = self.appearActions
+        self.appearActions.removeAll()
+        for action in actions {
+            action(self)
+        }
+    }
+    
     override public func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         
@@ -557,8 +493,36 @@ public class ContactsController: ViewController {
         }
     }
     
-    @objc public func sortPressed() {
-        self.sortButton.contextAction?(self.sortButton.containerNode, nil)
+    /// Opens the sort menu from the header's Sort button (`tg://contacts/sort`). Right after the push the button is
+    /// still out of the window (the bar's push transition hands it back a moment later): the menu waits for it, for a
+    /// second at most, rather than open anchored nowhere.
+    public func sortPressed() {
+        self.presentSortMenuFromHeader(attemptsLeft: 20)
+    }
+    
+    private func presentSortMenuFromHeader(attemptsLeft: Int) {
+        guard let navigationBarView = self.contactsNode.navigationBarView.view as? ChatListNavigationBar.View, let headerContentView = navigationBarView.headerContent.view as? ChatListHeaderComponent.View, let sortButtonView = headerContentView.rightButtonViews["sort"] else {
+            return
+        }
+        if sortButtonView.window == nil {
+            if attemptsLeft > 0 {
+                Queue.mainQueue().after(0.05, { [weak self] in
+                    self?.presentSortMenuFromHeader(attemptsLeft: attemptsLeft - 1)
+                })
+            }
+            return
+        }
+        self.presentSortMenu(sourceView: sortButtonView, gesture: nil)
+    }
+    
+    /// Runs `action` once the screen is on screen: at once if it already is. A deep link that pushes the screen acts
+    /// on its header only after the push has landed.
+    public func performWhenAppeared(_ action: @escaping (ContactsController) -> Void) {
+        if self.hasAppeared {
+            action(self)
+        } else {
+            self.appearActions.append(action)
+        }
     }
     
     private func activateSearch(nagramFromTabBar: Bool = false) { // MARK: NAGRAM
@@ -581,47 +545,19 @@ public class ContactsController: ViewController {
     }
     
     private func deactivateSearch(animated: Bool) {
-        self.contactsNode.deactivateSearch(placeholderNode: self.searchContentNode()?.placeholderNode, animated: animated)
+        // The search bar animates back into the placeholder's frame as it is when the search deactivates, so the
+        // bar is laid out without the active search first (beside iPhone Duo's status island the active search's
+        // placeholder is narrower), as the chat list does.
+        let completion = self.contactsNode.deactivateSearch(placeholderNode: self.searchContentNode()?.placeholderNode, animated: animated)
         self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .animated(duration: 0.5, curve: .spring)) // MARK: NAGRAM
         (self.parent as? TabBarController)?.updateIsTabBarHidden(false, transition: .animated(duration: 0.5, curve: .spring))
         self.requestLayout(transition: .animated(duration: 0.5, curve: .spring))
+        completion?()
     }
     
     func presentSortMenu(sourceView: UIView, gesture: ContextGesture?) {
-        let updateSortOrder: (ContactsSortOrder) -> Void = { [weak self] sortOrder in
-            if let strongSelf = self {
-                strongSelf.sortOrderPromise.set(.single(sortOrder))
-                let _ = updateContactSettingsInteractively(accountManager: strongSelf.context.sharedContext.accountManager, { current -> ContactSynchronizationSettings in
-                    var updated = current
-                    updated.sortOrder = sortOrder
-                    return updated
-                }).start()
-            }
-        }
-        
-        let presentationData = self.presentationData
-        let items: Signal<[ContextMenuItem], NoError> = self.context.sharedContext.accountManager.transaction { transaction in
-            return transaction.getSharedData(ApplicationSpecificSharedDataKeys.contactSynchronizationSettings)
-        }
-        |> map { entry -> [ContextMenuItem] in
-            let currentSettings: ContactSynchronizationSettings
-            if let entry = entry?.get(ContactSynchronizationSettings.self) {
-                currentSettings = entry
-            } else {
-                currentSettings = .defaultSettings
-            }
-            
-            var items: [ContextMenuItem] = []
-            items.append(.action(ContextMenuActionItem(text: presentationData.strings.Contacts_Sort_ByLastSeen, icon: { theme in return currentSettings.sortOrder == .presence ? generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Check"), color: theme.contextMenu.primaryColor) : UIImage() }, action: { _, f in
-                f(.default)
-                updateSortOrder(.presence)
-            })))
-            items.append(.action(ContextMenuActionItem(text: presentationData.strings.Contacts_Sort_ByName, icon: { theme in return currentSettings.sortOrder == .natural ? generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Check"), color: theme.contextMenu.primaryColor) : UIImage() }, action: { _, f in
-                f(.default)
-                updateSortOrder(.natural)
-            })))
-            return items
-        }
+        // The choice is written to the contact settings, which `sortOrderPromise` follows.
+        let items = contactsSortMenuItems(context: self.context, presentationData: self.presentationData)
         
         var sourceView = sourceView
         if let navigationBarComponentView = self.contactsNode.navigationBarView.view as? ChatListNavigationBar.View, let headerContentView = navigationBarComponentView.headerContent.view as? ChatListHeaderComponent.View, let value = headerContentView.navigationButtonContextContainer(sourceView: sourceView) {
@@ -781,49 +717,12 @@ public class ContactsController: ViewController {
         })
     }
     
-    override public func tabBarItemContextAction(sourceView: ContextExtractedContentContainingView, gesture: ContextGesture) {
-        var items: [ContextMenuItem] = []
-        items.append(.action(ContextMenuActionItem(text: self.presentationData.strings.Contacts_AddContact, icon: { theme in
-            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/AddUser"), color: theme.contextMenu.primaryColor)
-        }, action: { [weak self] c, f in
-            c?.dismiss(completion: { [weak self] in
-                guard let strongSelf = self else {
-                    return
-                }
-                strongSelf.addPressed()
-            })
-        })))
-        
-        let controller = makeContextController(presentationData: self.presentationData, source: .reference(ContactsTabBarContextReferenceContentSource(controller: self, sourceView: sourceView)), items: .single(ContextController.Items(content: .list(items))), recognizer: nil, gesture: gesture)
-        self.context.sharedContext.mainWindow?.presentInGlobalOverlay(controller)
-    }
-    
     override public func tabBarActivateSearch() {
         self.activateSearch(nagramFromTabBar: true) // MARK: NAGRAM
     }
 
     override public func tabBarDeactivateSearch() {
         self.deactivateSearch(animated: true)
-    }
-}
-
-private final class ContactsTabBarContextReferenceContentSource: ContextReferenceContentSource {
-    let keepInPlace: Bool = true
-    
-    private let controller: ViewController
-    private let sourceView: ContextExtractedContentContainingView
-    
-    init(controller: ViewController, sourceView: ContextExtractedContentContainingView) {
-        self.controller = controller
-        self.sourceView = sourceView
-    }
-    
-    func transitionInfo() -> ContextControllerReferenceViewInfo? {
-        return ContextControllerReferenceViewInfo(
-            referenceView: self.sourceView.contentView,
-            contentAreaInScreenSpace: mainWindowScreenBounds,
-            actionsPosition: .top
-        )
     }
 }
 

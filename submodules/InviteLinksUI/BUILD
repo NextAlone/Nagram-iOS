@@ -13,7 +13,6 @@ swift_library(
         # MARK: NAGRAM
         "//Nagram/Strings:NagramStrings",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
-        "//submodules/LottieSettings:LottieSettings",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/Display:Display",
         "//submodules/TelegramCore:TelegramCore",
@@ -65,6 +64,8 @@ swift_library(
         "//submodules/TelegramUI/Components/TextNodeWithEntities",
         "//submodules/TelegramUI/Components/ButtonComponent",
         "//submodules/ComponentFlow",
+        "//submodules/TelegramUI/Components/GlassBackgroundComponent",
+        "//submodules/Components/ComponentDisplayAdapters",
         "//submodules/Components/MultilineTextComponent",
     ],
     visibility = [

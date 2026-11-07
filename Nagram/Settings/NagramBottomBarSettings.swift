@@ -70,7 +70,8 @@ public struct NagramBottomBarSettings: Equatable {
         isBottomBarVisible: Bool = true,
         bottomItems: [NagramBottomBarItemId] = NagramBottomBarSettings.defaultBottomItems,
         externalItem: NagramBottomBarItemId? = .search,
-        hiddenItems: Set<NagramBottomBarItemId> = [],
+        // Telegram 13.2 moved Contacts out of the tab bar into Settings: the tab can still be added, but starts hidden.
+        hiddenItems: Set<NagramBottomBarItemId> = [.contacts],
         topSearchVisible: Bool = true,
         showLabels: Bool = true,
         // Telegram's own bar hugs its buttons and is centred, so the default is the compact end of the width
@@ -459,7 +460,7 @@ public extension NagramBottomBarSettings {
 
     private static func legacySettings(from defaults: UserDefaults) -> NagramBottomBarSettings {
         let hideAll = defaults.object(forKey: "nagram.hideTabBar") as? Bool ?? false
-        let hideContacts = defaults.object(forKey: "nagram.hideTabBarContacts") as? Bool ?? false
+        let hideContacts = defaults.object(forKey: "nagram.hideTabBarContacts") as? Bool ?? true
         let hideChats = defaults.object(forKey: "nagram.hideTabBarChats") as? Bool ?? false
         let hideSettings = defaults.object(forKey: "nagram.hideTabBarSettings") as? Bool ?? false
         let hideTopSearch = defaults.object(forKey: "nagram.showTabBarSearch") as? Bool ?? false

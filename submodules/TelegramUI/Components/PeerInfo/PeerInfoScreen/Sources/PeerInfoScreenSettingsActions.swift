@@ -9,7 +9,7 @@ import SettingsUI
 import NagramSettingsUI
 import PeerInfoStoryGridScreen
 import CallListUI
-import ContactListUI // MARK: NAGRAM
+import ContactListUI
 import PassportUI
 import AccountUtils
 import OverlayStatusController
@@ -90,6 +90,8 @@ extension PeerInfoScreenNode {
             })
         case .recentCalls:
             push(CallListController(context: context, mode: .navigation))
+        case .contacts:
+            push(ContactsController(context: context))
         case .devices:
             let _ = (self.activeSessionsContextAndCount.get()
             |> take(1)
@@ -163,9 +165,6 @@ extension PeerInfoScreenNode {
             if let controller = self.context.sharedContext.makeDebugSettingsController(context: self.context) {
                 push(controller)
             }
-        // MARK: NAGRAM — 联系人 tab 被隐藏时的入口
-        case .nagramContacts:
-            push(ContactsController(context: self.context, nagramIsPushed: true))
         case .appearance:
             push(themeSettingsController(context: self.context))
         case .language:

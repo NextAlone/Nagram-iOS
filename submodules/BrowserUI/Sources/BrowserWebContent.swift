@@ -1,5 +1,4 @@
 import Foundation
-import LottieSettings
 import UIKit
 import Display
 import ComponentFlow
@@ -26,6 +25,7 @@ import PassKit
 import AlertComponent
 import UIKitRuntimeUtils
 import AuthConfirmationScreen
+import WalletContext
 
 private final class TonSchemeHandler: NSObject, WKURLSchemeHandler {
     private final class PendingTask {
@@ -843,8 +843,7 @@ final class BrowserWebContent: UIView, BrowserContent, WKNavigationDelegate, WKU
                         theme: self.presentationData.theme,
                         title: self.presentationData.strings.Browser_ErrorTitle,
                         text: error.localizedDescription,
-                        insets: insets,
-                        lottieSettings: self.context.lottieRenderingSettings
+                        insets: insets
                     )
                 ),
                 environment: {},
@@ -990,7 +989,7 @@ final class BrowserWebContent: UIView, BrowserContent, WKNavigationDelegate, WKU
                 if (navigationAction.targetFrame == nil || navigationAction.targetFrame?.isMainFrame == true) && (isTelegramMeLink(url) || url.hasPrefix("tg://")) && !url.contains("/auth/push?") && !self._state.url.contains("/auth/push?") {
                     decisionHandler(.cancel, preferences)
                     if !url.contains("domain=oauth") {
-                        self.minimize()
+                        self.minimizeBeforeOpening(url)
                     }
                     self.openAppUrl(url)
                 } else {
@@ -1041,7 +1040,7 @@ final class BrowserWebContent: UIView, BrowserContent, WKNavigationDelegate, WKU
         if let url = navigationAction.request.url?.absoluteString {
             if (navigationAction.targetFrame == nil || navigationAction.targetFrame?.isMainFrame == true) && (isTelegramMeLink(url) || isTelegraPhLink(url) || url.hasPrefix("tg://")) {
                 decisionHandler(.cancel)
-                self.minimize()
+                self.minimizeBeforeOpening(url)
                 self.openAppUrl(url)
             } else {
                 self.updatePendingMainFrameUrl(for: navigationAction)
@@ -1445,7 +1444,7 @@ final class BrowserWebContent: UIView, BrowserContent, WKNavigationDelegate, WKU
         if navigationAction.targetFrame == nil {
             if let url = navigationAction.request.url?.absoluteString {
                 if isTelegramMeLink(url) || isTelegraPhLink(url) || url.hasPrefix("tg://") {
-                    self.minimize()
+                    self.minimizeBeforeOpening(url)
                     self.openAppUrl(url)
                 } else {
                     return self.open(url: url, configuration: configuration, new: true)
@@ -1453,6 +1452,13 @@ final class BrowserWebContent: UIView, BrowserContent, WKNavigationDelegate, WKU
             }
         }
         return nil
+    }
+    
+    // A TON Connect request presents its sheet over the page, which stays open behind it.
+    private func minimizeBeforeOpening(_ url: String) {
+        if !WalletContext.isTonConnectUrl(url) {
+            self.minimize()
+        }
     }
     
     func webViewDidClose(_ webView: WKWebView) {
@@ -1819,20 +1825,17 @@ private final class ErrorComponent: CombinedComponent {
     let text: String
     let insets: UIEdgeInsets
   
-    let lottieSettings: LottieRenderingSettings
 
     init(
         theme: PresentationTheme,
         title: String,
         text: String,
-        insets: UIEdgeInsets,
-        lottieSettings: LottieRenderingSettings
+        insets: UIEdgeInsets
     ) {
         self.theme = theme
         self.title = title
         self.text = text
         self.insets = insets
-        self.lottieSettings = lottieSettings
     }
     
     static func ==(lhs: ErrorComponent, rhs: ErrorComponent) -> Bool {
@@ -1876,8 +1879,7 @@ private final class ErrorComponent: CombinedComponent {
             
             let animation = animation.update(
                 component: LottieComponent(
-                    content: LottieComponent.AppBundleContent(name: "ChatListNoResults"),
-                    lottieSettings: context.component.lottieSettings
+                    content: LottieComponent.AppBundleContent(name: "ChatListNoResults")
                 ),
                 environment: {},
                 availableSize: CGSize(width: animationSize, height: animationSize),
