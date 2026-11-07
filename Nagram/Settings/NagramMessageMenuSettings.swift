@@ -39,6 +39,7 @@ public enum NagramMessageMenuItemId: String, CaseIterable {
     case saveToSavedMessages
     case forward
     case forwardWithoutQuote
+    case addToRegexFilter
     case report
     case block
     case viewStats

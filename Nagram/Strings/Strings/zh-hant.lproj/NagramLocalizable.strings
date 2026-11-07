@@ -613,3 +613,8 @@
 "Nagram.GroupDescriptionExternalLinks.Footer" = "Telegram 預設只讓群組簡介中的 Telegram 連結可點擊。開啟後，其他網址也能點開，開啟方式與頻道簡介中的連結相同。";
 "Nagram.MemberRequests.DismissAndBan" = "拒絕並封鎖";
 "Nagram.ShowChannelForwardCount" = "顯示轉發次數";
+"Nagram.RegexFilters.Scope.Chats" = "%d 個聊天";
+"Nagram.RegexFilters.OnlyInChat" = "只在「%@」中生效";
+"Nagram.RegexFilters.OnlyInChats" = "只在 %d 個聊天中生效";
+"Nagram.RegexFilters.QuickAdd.Footer" = "已填入整則訊息，正則符號已轉義。可以刪減成想過濾的關鍵字。關閉上方的開關，規則會對所有聊天生效。";
+"Nagram.MessageMenu.Item.addToRegexFilter" = "加入訊息過濾";

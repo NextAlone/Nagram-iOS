@@ -53,8 +53,10 @@ public struct NagramRegexFilterRule: Codable, Equatable {
     public var action: NagramRegexFilterAction
     public var replacement: String
     public var authorPeerId: Int64?
+    /// 只在这些聊天生效；空 = 所有聊天（旧规则没有此字段，按所有聊天处理）
+    public var peerIds: [Int64]
 
-    public init(id: String = UUID().uuidString, title: String, pattern: String, isEnabled: Bool = true, action: NagramRegexFilterAction = .hide, replacement: String = "", authorPeerId: Int64? = nil) {
+    public init(id: String = UUID().uuidString, title: String, pattern: String, isEnabled: Bool = true, action: NagramRegexFilterAction = .hide, replacement: String = "", authorPeerId: Int64? = nil, peerIds: [Int64] = []) {
         self.id = id
         self.title = title
         self.pattern = pattern
@@ -62,6 +64,7 @@ public struct NagramRegexFilterRule: Codable, Equatable {
         self.action = action
         self.replacement = replacement
         self.authorPeerId = authorPeerId
+        self.peerIds = peerIds
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -72,6 +75,7 @@ public struct NagramRegexFilterRule: Codable, Equatable {
         case action
         case replacement
         case authorPeerId
+        case peerIds
     }
 
     public init(from decoder: Decoder) throws {
@@ -83,6 +87,7 @@ public struct NagramRegexFilterRule: Codable, Equatable {
         self.action = try container.decodeIfPresent(NagramRegexFilterAction.self, forKey: .action) ?? .hide
         self.replacement = try container.decodeIfPresent(String.self, forKey: .replacement) ?? ""
         self.authorPeerId = try container.decodeIfPresent(Int64.self, forKey: .authorPeerId)
+        self.peerIds = try container.decodeIfPresent([Int64].self, forKey: .peerIds) ?? []
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -94,6 +99,19 @@ public struct NagramRegexFilterRule: Codable, Equatable {
         try container.encode(self.action, forKey: .action)
         try container.encode(self.replacement, forKey: .replacement)
         try container.encodeIfPresent(self.authorPeerId, forKey: .authorPeerId)
+        if !self.peerIds.isEmpty {
+            try container.encode(self.peerIds, forKey: .peerIds)
+        }
+    }
+
+    public func applies(toPeerId peerId: Int64?) -> Bool {
+        if self.peerIds.isEmpty {
+            return true
+        }
+        guard let peerId else {
+            return false
+        }
+        return self.peerIds.contains(peerId)
     }
 
     public var displayTitle: String {
@@ -128,7 +146,7 @@ public struct NagramRegexFilterRule: Codable, Equatable {
         guard NagramSettings.shared.isRegexFilteringEnabled(peerId: peerId, isOutgoing: isOutgoing) else {
             return false
         }
-        return NagramRegexFilterMatcher(rules: rules).matches(text, authorPeerId: authorPeerId)
+        return NagramRegexFilterMatcher(rules: rules, peerId: peerId).matches(text, authorPeerId: authorPeerId)
     }
 }
 
@@ -176,9 +194,10 @@ public struct NagramRegexFilterMatcher {
     private let rules: [CompiledRule]
     private let resultCache = NagramRegexFilterResultCache(limit: 512)
 
-    public init(rules: [NagramRegexFilterRule]) {
+    /// `peerId` 决定只对某些聊天生效的规则是否参与；nil 时只用对所有聊天生效的规则。
+    public init(rules: [NagramRegexFilterRule], peerId: Int64? = nil) {
         self.rules = rules.compactMap { rule -> CompiledRule? in
-            guard rule.isEnabled else {
+            guard rule.isEnabled, rule.applies(toPeerId: peerId) else {
                 return nil
             }
             if let authorPeerId = rule.authorPeerId {
@@ -315,29 +334,47 @@ private func nagramMirrorRegexFilterValue(_ value: Any?, forKey key: String) {
 private final class NagramRegexFilterMatcherCache {
     private var hasValue = false
     private var rulesData: Data?
-    private var matcher: NagramRegexFilterMatcher?
+    private var rules: [NagramRegexFilterRule] = []
+    /// Chats named by a rule that applies only to some chats; every other chat shares `sharedMatcher`.
+    private var scopedPeerIds = Set<Int64>()
+    private var sharedMatcher: NagramRegexFilterMatcher?
+    private var scopedMatchers: [Int64: NagramRegexFilterMatcher?] = [:]
     private let lock = NSLock()
 
-    func matcher(forRulesData rulesData: Data?) -> NagramRegexFilterMatcher? {
+    func matcher(forRulesData rulesData: Data?, peerId: Int64?) -> NagramRegexFilterMatcher? {
         self.lock.lock()
         defer {
             self.lock.unlock()
         }
-        if self.hasValue && self.rulesData == rulesData {
-            return self.matcher
+        if !(self.hasValue && self.rulesData == rulesData) {
+            self.rules = nagramDecodeRegexFilterRules(rulesData)
+            self.scopedPeerIds = Set(self.rules.filter(\.isEnabled).flatMap(\.peerIds))
+            let sharedMatcher = NagramRegexFilterMatcher(rules: self.rules, peerId: nil)
+            self.sharedMatcher = sharedMatcher.isEmpty ? nil : sharedMatcher
+            self.scopedMatchers = [:]
+            self.hasValue = true
+            self.rulesData = rulesData
         }
-        let matcher = NagramRegexFilterMatcher(rules: nagramDecodeRegexFilterRules(rulesData))
-        self.hasValue = true
-        self.rulesData = rulesData
-        self.matcher = matcher.isEmpty ? nil : matcher
-        return self.matcher
+        guard let peerId, self.scopedPeerIds.contains(peerId) else {
+            return self.sharedMatcher
+        }
+        if let cached = self.scopedMatchers[peerId] {
+            return cached
+        }
+        let matcher = NagramRegexFilterMatcher(rules: self.rules, peerId: peerId)
+        let result: NagramRegexFilterMatcher? = matcher.isEmpty ? nil : matcher
+        self.scopedMatchers[peerId] = result
+        return result
     }
 
     func invalidate() {
         self.lock.lock()
         self.hasValue = false
         self.rulesData = nil
-        self.matcher = nil
+        self.rules = []
+        self.scopedPeerIds = []
+        self.sharedMatcher = nil
+        self.scopedMatchers = [:]
         self.lock.unlock()
     }
 }
@@ -469,7 +506,7 @@ public extension NagramSettings {
         guard self.isRegexFilteringEnabled(peerId: peerId, isOutgoing: isOutgoing) else {
             return nil
         }
-        return nagramRegexFilterMatcherCache.matcher(forRulesData: nagramRegexFilterDefaults.data(forKey: nagramRegexFilterRulesKey))
+        return nagramRegexFilterMatcherCache.matcher(forRulesData: nagramRegexFilterDefaults.data(forKey: nagramRegexFilterRulesKey), peerId: peerId)
     }
 }
 

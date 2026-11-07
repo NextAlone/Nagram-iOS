@@ -613,3 +613,8 @@
 "Nagram.GroupDescriptionExternalLinks.Footer" = "Telegram 默认只让群简介里的 Telegram 链接可点击。打开后，其他网址也能点开，打开方式与频道简介里的链接相同。";
 "Nagram.MemberRequests.DismissAndBan" = "拒绝并封禁";
 "Nagram.ShowChannelForwardCount" = "显示转发次数";
+"Nagram.RegexFilters.Scope.Chats" = "%d 个聊天";
+"Nagram.RegexFilters.OnlyInChat" = "只在「%@」中生效";
+"Nagram.RegexFilters.OnlyInChats" = "只在 %d 个聊天中生效";
+"Nagram.RegexFilters.QuickAdd.Footer" = "已填入整条消息，正则符号已转义。可以删减成想过滤的关键字。关闭上面的开关，规则会对所有聊天生效。";
+"Nagram.MessageMenu.Item.addToRegexFilter" = "添加到消息过滤";

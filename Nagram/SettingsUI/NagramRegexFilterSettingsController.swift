@@ -51,7 +51,28 @@ private func nagramRegexFilterRuleLabel(_ rule: NagramRegexFilterRule, lang: Str
         return "\(status) - \(ngI18n("Nagram.RegexFilters.AuthorPeerId", lang)): \(authorPeerId)"
     }
     let action = nagramRegexFilterActionTitle(rule.action, lang: lang)
+    if !rule.peerIds.isEmpty {
+        return "\(status) - \(action) - \(nagramRegexFilterScopeLabel(count: rule.peerIds.count, lang: lang)) - \(rule.pattern)"
+    }
     return "\(status) - \(action) - \(rule.pattern)"
+}
+
+private func nagramRegexFilterScopeLabel(count: Int, lang: String) -> String {
+    return ngI18n("Nagram.RegexFilters.Scope.Chats", lang).replacingOccurrences(of: "%d", with: "\(count)")
+}
+
+/// 从聊天里快捷添加规则时带入的内容：预填的模式，以及「只在当前聊天生效」用的聊天。
+private struct NagramRegexFilterPrefill {
+    let pattern: String
+    let peerId: Int64
+    let peerTitle: String
+}
+
+private func nagramRegexFilterScopeTitle(peerIds: [Int64], prefill: NagramRegexFilterPrefill?, lang: String) -> String {
+    if let prefill, peerIds == [prefill.peerId] {
+        return ngI18n("Nagram.RegexFilters.OnlyInChat", lang).replacingOccurrences(of: "%@", with: prefill.peerTitle)
+    }
+    return ngI18n("Nagram.RegexFilters.OnlyInChats", lang).replacingOccurrences(of: "%d", with: "\(peerIds.count)")
 }
 
 private func nagramRegexFilterValidationText(_ validation: NagramRegexFilterPatternValidation, lang: String) -> String {
@@ -237,6 +258,7 @@ private struct NagramRegexFilterEditState: Equatable {
     var authorPeerId: String
     var isEnabled: Bool
     var action: NagramRegexFilterAction
+    var peerIds: [Int64]
     var validationError: String?
 }
 
@@ -261,14 +283,16 @@ private final class NagramRegexFilterEditArguments {
     let updateAuthorPeerId: (String) -> Void
     let updateEnabled: (Bool) -> Void
     let selectAction: (NagramRegexFilterAction) -> Void
+    let updateScoped: (Bool) -> Void
     let delete: () -> Void
 
-    init(updateTitle: @escaping (String) -> Void, updatePattern: @escaping (String) -> Void, updateAuthorPeerId: @escaping (String) -> Void, updateEnabled: @escaping (Bool) -> Void, selectAction: @escaping (NagramRegexFilterAction) -> Void, delete: @escaping () -> Void) {
+    init(updateTitle: @escaping (String) -> Void, updatePattern: @escaping (String) -> Void, updateAuthorPeerId: @escaping (String) -> Void, updateEnabled: @escaping (Bool) -> Void, selectAction: @escaping (NagramRegexFilterAction) -> Void, updateScoped: @escaping (Bool) -> Void, delete: @escaping () -> Void) {
         self.updateTitle = updateTitle
         self.updatePattern = updatePattern
         self.updateAuthorPeerId = updateAuthorPeerId
         self.updateEnabled = updateEnabled
         self.selectAction = selectAction
+        self.updateScoped = updateScoped
         self.delete = delete
     }
 }
@@ -277,6 +301,7 @@ private enum NagramRegexFilterEditEntry: ItemListNodeEntry {
     case header(stableId: Int32, section: Int32, text: String)
     case enabled(stableId: Int32, section: Int32, title: String, value: Bool)
     case action(stableId: Int32, section: Int32, title: String, value: NagramRegexFilterAction, label: String)
+    case scope(stableId: Int32, section: Int32, title: String, value: Bool)
     case title(stableId: Int32, section: Int32, title: String, text: String, placeholder: String)
     case authorPeerId(stableId: Int32, section: Int32, title: String, text: String, placeholder: String)
     case pattern(stableId: Int32, section: Int32, text: String, placeholder: String)
@@ -291,6 +316,8 @@ private enum NagramRegexFilterEditEntry: ItemListNodeEntry {
         case let .enabled(_, section, _, _):
             return section
         case let .action(_, section, _, _, _):
+            return section
+        case let .scope(_, section, _, _):
             return section
         case let .title(_, section, _, _, _):
             return section
@@ -314,6 +341,8 @@ private enum NagramRegexFilterEditEntry: ItemListNodeEntry {
         case let .enabled(stableId, _, _, _):
             return stableId
         case let .action(stableId, _, _, _, _):
+            return stableId
+        case let .scope(stableId, _, _, _):
             return stableId
         case let .title(stableId, _, _, _, _):
             return stableId
@@ -340,6 +369,9 @@ private enum NagramRegexFilterEditEntry: ItemListNodeEntry {
             return false
         case let .action(lId, lSection, lTitle, lValue, lLabel):
             if case let .action(rId, rSection, rTitle, rValue, rLabel) = rhs { return lId == rId && lSection == rSection && lTitle == rTitle && lValue == rValue && lLabel == rLabel }
+            return false
+        case let .scope(lId, lSection, lTitle, lValue):
+            if case let .scope(rId, rSection, rTitle, rValue) = rhs { return lId == rId && lSection == rSection && lTitle == rTitle && lValue == rValue }
             return false
         case let .title(lId, lSection, lTitle, lText, lPlaceholder):
             if case let .title(rId, rSection, rTitle, rText, rPlaceholder) = rhs { return lId == rId && lSection == rSection && lTitle == rTitle && lText == rText && lPlaceholder == rPlaceholder }
@@ -379,6 +411,10 @@ private enum NagramRegexFilterEditEntry: ItemListNodeEntry {
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: label, sectionId: section, style: .blocks, action: {
                 arguments.selectAction(value)
             })
+        case let .scope(_, section, title, value):
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, sectionId: section, style: .blocks, updated: { value in
+                arguments.updateScoped(value)
+            })
         case let .title(_, section, title, text, placeholder):
             return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(string: title), text: text, placeholder: placeholder, type: .regular(capitalization: false, autocorrection: false), returnKeyType: .next, clearType: .always, tag: NagramRegexFilterEditInputTag(0), sectionId: section, textUpdated: { value in
                 arguments.updateTitle(value)
@@ -403,7 +439,7 @@ private enum NagramRegexFilterEditEntry: ItemListNodeEntry {
     }
 }
 
-private func nagramRegexFilterEditEntries(presentationData: PresentationData, state: NagramRegexFilterEditState, isNew: Bool) -> [NagramRegexFilterEditEntry] {
+private func nagramRegexFilterEditEntries(presentationData: PresentationData, state: NagramRegexFilterEditState, isNew: Bool, scopeCandidatePeerIds: [Int64], prefill: NagramRegexFilterPrefill?) -> [NagramRegexFilterEditEntry] {
     let lang = presentationData.strings.baseLanguageCode
     var entries: [NagramRegexFilterEditEntry] = []
     var stableId: Int32 = 0
@@ -413,6 +449,11 @@ private func nagramRegexFilterEditEntries(presentationData: PresentationData, st
     entries.append(.enabled(stableId: stableId, section: 0, title: ngI18n("Nagram.RegexFilters.Enabled", lang), value: state.isEnabled))
     stableId += 1
     entries.append(.action(stableId: stableId, section: 0, title: ngI18n("Nagram.RegexFilters.Action", lang), value: state.action, label: nagramRegexFilterActionTitle(state.action, lang: lang)))
+    stableId += 1
+    if !scopeCandidatePeerIds.isEmpty {
+        let scopePeerIds = state.peerIds.isEmpty ? scopeCandidatePeerIds : state.peerIds
+        entries.append(.scope(stableId: stableId, section: 0, title: nagramRegexFilterScopeTitle(peerIds: scopePeerIds, prefill: prefill, lang: lang), value: !state.peerIds.isEmpty))
+    }
     stableId += 1
     entries.append(.authorPeerId(stableId: stableId, section: 0, title: ngI18n("Nagram.RegexFilters.AuthorPeerId", lang), text: state.authorPeerId, placeholder: ngI18n("Nagram.RegexFilters.AuthorPeerId.Placeholder", lang)))
     stableId += 1
@@ -428,7 +469,7 @@ private func nagramRegexFilterEditEntries(presentationData: PresentationData, st
         entries.append(.error(stableId: stableId, section: 0, text: validationError))
         stableId += 1
     } else {
-        entries.append(.footer(stableId: stableId, section: 0, text: ngI18n("Nagram.RegexFilters.Edit.Footer", lang)))
+        entries.append(.footer(stableId: stableId, section: 0, text: ngI18n(prefill != nil && isNew ? "Nagram.RegexFilters.QuickAdd.Footer" : "Nagram.RegexFilters.Edit.Footer", lang)))
         stableId += 1
     }
 
@@ -439,8 +480,18 @@ private func nagramRegexFilterEditEntries(presentationData: PresentationData, st
     return entries
 }
 
-private func nagramRegexFilterEditController(context: AccountContext, rule: NagramRegexFilterRule?, completion: @escaping () -> Void) -> ViewController {
-    let initialState = NagramRegexFilterEditState(title: rule?.title ?? "", pattern: rule?.pattern ?? "", authorPeerId: rule?.authorPeerId.flatMap { String($0) } ?? "", isEnabled: rule?.isEnabled ?? true, action: rule?.action ?? .hide, validationError: nil)
+private func nagramRegexFilterEditController(context: AccountContext, rule: NagramRegexFilterRule?, prefill: NagramRegexFilterPrefill? = nil, completion: @escaping () -> Void) -> ViewController {
+    // 已限定聊天的规则可以改回所有聊天；从聊天里快捷添加的新规则默认只在该聊天生效。
+    let scopeCandidatePeerIds: [Int64]
+    if let rule, !rule.peerIds.isEmpty {
+        scopeCandidatePeerIds = rule.peerIds
+    } else if let prefill {
+        scopeCandidatePeerIds = [prefill.peerId]
+    } else {
+        scopeCandidatePeerIds = []
+    }
+    let initialPeerIds: [Int64] = rule?.peerIds ?? (prefill.map { [$0.peerId] } ?? [])
+    let initialState = NagramRegexFilterEditState(title: rule?.title ?? "", pattern: rule?.pattern ?? prefill?.pattern ?? "", authorPeerId: rule?.authorPeerId.flatMap { String($0) } ?? "", isEnabled: rule?.isEnabled ?? true, action: rule?.action ?? .hide, peerIds: initialPeerIds, validationError: nil)
     let statePromise = ValuePromise<NagramRegexFilterEditState>(initialState, ignoreRepeated: false)
     let stateValue = Atomic<NagramRegexFilterEditState>(value: initialState)
 
@@ -480,6 +531,13 @@ private func nagramRegexFilterEditController(context: AccountContext, rule: Nagr
         statePromise.set(updated)
     }, selectAction: { value in
         selectActionImpl?(value)
+    }, updateScoped: { value in
+        let updated = stateValue.modify { state -> NagramRegexFilterEditState in
+            var state = state
+            state.peerIds = value ? scopeCandidatePeerIds : []
+            return state
+        }
+        statePromise.set(updated)
     }, delete: {
         deleteImpl?()
     })
@@ -498,7 +556,7 @@ private func nagramRegexFilterEditController(context: AccountContext, rule: Nagr
         })
         let title = rule == nil ? ngI18n("Nagram.RegexFilters.Add", lang) : ngI18n("Nagram.RegexFilters.Edit", lang)
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(title), leftNavigationButton: nil, rightNavigationButton: rightNavigationButton, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: nagramRegexFilterEditEntries(presentationData: presentationData, state: state, isNew: rule == nil), style: .blocks, focusItemTag: rule == nil ? NagramRegexFilterEditInputTag(1) : nil, animateChanges: true)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: nagramRegexFilterEditEntries(presentationData: presentationData, state: state, isNew: rule == nil, scopeCandidatePeerIds: scopeCandidatePeerIds, prefill: prefill), style: .blocks, focusItemTag: rule == nil ? NagramRegexFilterEditInputTag(1) : nil, animateChanges: true)
         return (controllerState, (listState, arguments))
     }
 
@@ -572,7 +630,7 @@ private func nagramRegexFilterEditController(context: AccountContext, rule: Nagr
             return
         }
 
-        let updatedRule = NagramRegexFilterRule(id: rule?.id ?? UUID().uuidString, title: state.title.trimmingCharacters(in: .whitespacesAndNewlines), pattern: authorPeerId == nil ? pattern : "", isEnabled: state.isEnabled, action: authorPeerId == nil ? state.action : .hide, replacement: "", authorPeerId: authorPeerId)
+        let updatedRule = NagramRegexFilterRule(id: rule?.id ?? UUID().uuidString, title: state.title.trimmingCharacters(in: .whitespacesAndNewlines), pattern: authorPeerId == nil ? pattern : "", isEnabled: state.isEnabled, action: authorPeerId == nil ? state.action : .hide, replacement: "", authorPeerId: authorPeerId, peerIds: state.peerIds)
         NagramSettings.shared.upsertRegexFilterRule(updatedRule)
         completion()
         let _ = (controller?.navigationController as? NavigationController)?.popViewController(animated: true)
@@ -595,4 +653,10 @@ private func nagramRegexFilterEditController(context: AccountContext, rule: Nagr
     }
 
     return controller
+}
+
+/// 从聊天里长按消息快捷添加过滤规则：预填转义后的消息文字，默认只在该聊天生效，可在编辑页删减为关键字或改为所有聊天。
+public func nagramRegexFilterQuickAddController(context: AccountContext, text: String, peerId: Int64, peerTitle: String) -> ViewController {
+    let prefill = NagramRegexFilterPrefill(pattern: NSRegularExpression.escapedPattern(for: text.trimmingCharacters(in: .whitespacesAndNewlines)), peerId: peerId, peerTitle: peerTitle)
+    return nagramRegexFilterEditController(context: context, rule: nil, prefill: prefill, completion: {})
 }

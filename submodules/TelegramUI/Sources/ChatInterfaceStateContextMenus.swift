@@ -28,6 +28,7 @@ import TelegramUIPreferences
 import NagramSettings
 import NagramStrings
 import NagramTranscription // MARK: NAGRAM
+import NagramSettingsUI // MARK: NAGRAM — 快捷添加消息过滤规则
 import TranslateUI
 import DebugSettingsUI
 import ChatPresentationInterfaceState
@@ -2184,6 +2185,19 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     f(.dismissWithoutContent)
                 })))
             }
+        }
+        
+        // MARK: NAGRAM — 长按群/频道消息快捷添加过滤规则：预填转义后的消息文字，默认只在当前聊天生效
+        if NagramSettings.shared.regexFiltersEnabled, message.effectivelyIncoming(context.account.peerId), !message.text.isEmpty, message.id.peerId.namespace == Namespaces.Peer.CloudGroup || message.id.peerId.namespace == Namespaces.Peer.CloudChannel, let chatPeer = message.peers[message.id.peerId] {
+            let filterText = message.text
+            let filterPeerId = message.id.peerId.toInt64()
+            let filterPeerTitle = EnginePeer(chatPeer).compactDisplayTitle
+            actions.append(.addToRegexFilter, .action(ContextMenuActionItem(text: ngI18n("Nagram.MessageMenu.Item.addToRegexFilter", chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Restrict"), color: theme.actionSheet.primaryTextColor)
+            }, action: { _, f in
+                f(.dismissWithoutContent)
+                controllerInteraction.navigationController()?.pushViewController(nagramRegexFilterQuickAddController(context: context, text: filterText, peerId: filterPeerId, peerTitle: filterPeerTitle))
+            })))
         }
         
         if data.messageActions.options.contains(.report) {
