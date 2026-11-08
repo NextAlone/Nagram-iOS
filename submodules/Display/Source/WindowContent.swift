@@ -212,11 +212,102 @@ public func doesViewTreeDisableInteractiveTransitionGestureRecognizer(_ view: UI
 // on the same iPad), so a shorter frame is the bar, unless the first responder has an input (accessory) view: that is
 // drawn across the bottom with a hardware keyboard too, and its frame is as short. A phone posts a zero-height frame for
 // a hardware keyboard.
-func isHardwareKeyboardBar(keyboardFrame: CGRect, deviceType: DeviceType, responderHasInputViews: Bool) -> Bool {
+// MARK: NAGRAM — with an input method that composes text from candidates (Chinese, Japanese, Cantonese) the bar does
+// not hide: it shows the candidates, a mode button and a microphone across the bottom for as long as the text input
+// is first responder (68-81.5pt on an iPad mini (A20 Pro), iPadOS 27.3, Simplified Chinese Pinyin), so it is taken as
+// the keyboard, or the chat's formatting bar and the chat list stay under it.
+func isHardwareKeyboardBar(keyboardFrame: CGRect, deviceType: DeviceType, responderHasInputViews: Bool, inputLanguage: String? = nil) -> Bool {
     if case .tablet = deviceType, !responderHasInputViews, keyboardFrame.height > 0.0, keyboardFrame.height < 100.0 {
+        if let inputLanguage, inputLanguageShowsCandidateBar(inputLanguage) {
+            return false
+        }
         return true
     }
     return false
+}
+
+// MARK: NAGRAM
+/// Whether an input mode's primary language (`UITextInputMode.primaryLanguage`, such as "zh-Hans") composes text from
+/// candidates, which iPadOS keeps on screen in the hardware-keyboard bar.
+func inputLanguageShowsCandidateBar(_ inputLanguage: String) -> Bool {
+    let language = inputLanguage.split(separator: "-").first.map(String.init) ?? inputLanguage
+    return ["zh", "ja", "yue"].contains(language)
+}
+
+// MARK: NAGRAM
+/// The candidate bar can be dragged into a bottom corner, where it shrinks to a button about 75pt wide. iPadOS posts no
+/// keyboard frame for that (the last one is still the bar's full width), so the bar's own host view in the keyboard
+/// window tells: narrower than half the window, it no longer runs under the content.
+func isCandidateBarCollapsed(hostWidth: CGFloat, windowWidth: CGFloat) -> Bool {
+    return hostWidth > 0.0 && hostWidth < windowWidth / 2.0
+}
+
+// MARK: NAGRAM — follows the candidate bar's host view while the bar is taken as the keyboard.
+private final class CandidateBarTracker {
+    private weak var hostView: UIView?
+    private var observations: [NSKeyValueObservation] = []
+    private(set) var height: CGFloat?
+    private(set) var isCollapsed = false
+    var collapsedChanged: ((Bool) -> Void)?
+
+    func track(height: CGFloat, keyboardWindow: UIWindow?, windowWidth: CGFloat) {
+        self.height = height
+        let hostView = keyboardWindow.flatMap(CandidateBarTracker.findHostView(in:))
+        if hostView !== self.hostView {
+            self.observations.removeAll()
+            self.hostView = hostView
+            if let hostView {
+                let update: () -> Void = { [weak self] in
+                    DispatchQueue.main.async {
+                        self?.reevaluate()
+                    }
+                }
+                self.observations.append(hostView.layer.observe(\.bounds, options: [.new], changeHandler: { _, _ in update() }))
+                self.observations.append(hostView.layer.observe(\.position, options: [.new], changeHandler: { _, _ in update() }))
+            }
+        }
+        self.windowWidth = windowWidth
+        self.isCollapsed = self.currentlyCollapsed()
+    }
+
+    func stop() {
+        self.observations.removeAll()
+        self.hostView = nil
+        self.height = nil
+        self.isCollapsed = false
+    }
+
+    private var windowWidth: CGFloat = 0.0
+
+    private func currentlyCollapsed() -> Bool {
+        guard let hostView = self.hostView else {
+            return false
+        }
+        return isCandidateBarCollapsed(hostWidth: hostView.bounds.width, windowWidth: self.windowWidth)
+    }
+
+    private func reevaluate() {
+        guard self.height != nil else {
+            return
+        }
+        let collapsed = self.currentlyCollapsed()
+        if collapsed != self.isCollapsed {
+            self.isCollapsed = collapsed
+            self.collapsedChanged?(collapsed)
+        }
+    }
+
+    private static func findHostView(in view: UIView) -> UIView? {
+        if NSStringFromClass(type(of: view)) == "UIInputSetHostView" {
+            return view
+        }
+        for subview in view.subviews {
+            if let result = findHostView(in: subview) {
+                return result
+            }
+        }
+        return nil
+    }
 }
 
 public func getFirstResponderAndAccessoryHeight(_ view: UIView, _ accessoryHeight: CGFloat? = nil) -> (UIView?, CGFloat?) {
@@ -403,6 +494,8 @@ public class Window1 {
     private var keyboardWillHideObserver: AnyObject?
     private var keyboardTypeChangeObserver: AnyObject?
     private var voiceOverStatusObserver: AnyObject?
+    // MARK: NAGRAM
+    private let candidateBarTracker = CandidateBarTracker()
     
     private var windowLayout: WindowLayout
     private var updatingLayout: UpdatingLayout?
@@ -678,6 +771,13 @@ public class Window1 {
         testView.layer.zPosition = 1000.0
         self.hostView.containerView.addSubview(testView)
         #endif
+        // MARK: NAGRAM — dragging the candidate bar into a corner or back posts no keyboard frame.
+        self.candidateBarTracker.collapsedChanged = { [weak self] isCollapsed in
+            guard let self, let height = self.candidateBarTracker.height else {
+                return
+            }
+            self.updateLayout { $0.update(inputHeight: isCollapsed ? nil : height, transition: .animated(duration: 0.3, curve: .spring), overrideTransition: false) }
+        }
         self.keyboardFrameChangeObserver = NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillChangeFrameNotification, object: nil, queue: nil, using: { [weak self] notification in
             if let strongSelf = self {
                 var isTablet = false
@@ -790,8 +890,19 @@ public class Window1 {
                 if let keyboardFrameEnd = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
                     let firstResponder = getFirstResponderAndAccessoryHeight(strongSelf.hostView.eventView).0
                     let responderHasInputViews = firstResponder?.inputView != nil || firstResponder?.inputAccessoryView != nil
-                    if isHardwareKeyboardBar(keyboardFrame: keyboardFrameEnd, deviceType: strongSelf.deviceMetrics.type, responderHasInputViews: responderHasInputViews) {
+                    let inputLanguage = firstResponder?.textInputMode?.primaryLanguage
+                    if isHardwareKeyboardBar(keyboardFrame: keyboardFrameEnd, deviceType: strongSelf.deviceMetrics.type, responderHasInputViews: responderHasInputViews, inputLanguage: inputLanguage) {
                         keyboardHeight = 0.0
+                        strongSelf.candidateBarTracker.stop()
+                    } else if !keyboardHeight.isZero, isHardwareKeyboardBar(keyboardFrame: keyboardFrameEnd, deviceType: strongSelf.deviceMetrics.type, responderHasInputViews: responderHasInputViews) {
+                        // MARK: NAGRAM — the candidate bar of a composing input method, taken as the keyboard unless it
+                        // has been dragged into a corner.
+                        strongSelf.candidateBarTracker.track(height: keyboardHeight, keyboardWindow: strongSelf.statusBarHost?.keyboardWindow, windowWidth: strongSelf.windowLayout.size.width)
+                        if strongSelf.candidateBarTracker.isCollapsed {
+                            keyboardHeight = 0.0
+                        }
+                    } else {
+                        strongSelf.candidateBarTracker.stop()
                     }
                 }
                 
@@ -827,7 +938,8 @@ public class Window1 {
             guard let self else {
                 return
             }
-            let _ = self
+            // MARK: NAGRAM
+            self.candidateBarTracker.stop()
         })
         
         if #available(iOSApplicationExtension 11.0, iOS 11.0, *) {

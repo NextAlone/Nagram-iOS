@@ -39,4 +39,30 @@ final class HardwareKeyboardBarTests: XCTestCase {
         XCTAssertFalse(isHardwareKeyboardBar(keyboardFrame: CGRect(x: 0.0, y: 874.0, width: 402.0, height: 0.0), deviceType: .phone, responderHasInputViews: false))
         XCTAssertFalse(isHardwareKeyboardBar(keyboardFrame: CGRect(x: 0.0, y: 805.5, width: 402.0, height: 68.5), deviceType: .phone, responderHasInputViews: false))
     }
+
+    // MARK: NAGRAM
+    func test_tablet_candidateBarOfAChineseInputMethod_isTheKeyboard() {
+        // Posted on an iPad mini (A20 Pro), iPadOS 27.3, hardware keyboard, Simplified Chinese Pinyin: the bar shows the
+        // candidates across the bottom for as long as the chat's text input is first responder.
+        let frame = CGRect(x: 0.0, y: 685.5, width: 1158.0, height: 70.5)
+        XCTAssertFalse(isHardwareKeyboardBar(keyboardFrame: frame, deviceType: .tablet, responderHasInputViews: false, inputLanguage: "zh-Hans"))
+        XCTAssertFalse(isHardwareKeyboardBar(keyboardFrame: frame, deviceType: .tablet, responderHasInputViews: false, inputLanguage: "zh-Hant"))
+        XCTAssertFalse(isHardwareKeyboardBar(keyboardFrame: frame, deviceType: .tablet, responderHasInputViews: false, inputLanguage: "ja-JP"))
+        XCTAssertFalse(isHardwareKeyboardBar(keyboardFrame: frame, deviceType: .tablet, responderHasInputViews: false, inputLanguage: "yue-Hant"))
+    }
+
+    func test_tablet_barOfAnInputMethodWithoutCandidates_isTheBar() {
+        let frame = CGRect(x: 0.0, y: 685.5, width: 1158.0, height: 70.5)
+        XCTAssertTrue(isHardwareKeyboardBar(keyboardFrame: frame, deviceType: .tablet, responderHasInputViews: false, inputLanguage: "en-US"))
+        XCTAssertTrue(isHardwareKeyboardBar(keyboardFrame: frame, deviceType: .tablet, responderHasInputViews: false, inputLanguage: "ko-KR"))
+        XCTAssertTrue(isHardwareKeyboardBar(keyboardFrame: frame, deviceType: .tablet, responderHasInputViews: false, inputLanguage: "dictation"))
+        XCTAssertTrue(isHardwareKeyboardBar(keyboardFrame: frame, deviceType: .tablet, responderHasInputViews: false, inputLanguage: nil))
+    }
+
+    func test_candidateBarDraggedIntoACorner_isCollapsed() {
+        // The bar's host view in the keyboard window, logged on an iPad mini (A20 Pro) in landscape (1158pt wide).
+        XCTAssertTrue(isCandidateBarCollapsed(hostWidth: 75.0, windowWidth: 1158.0))
+        XCTAssertFalse(isCandidateBarCollapsed(hostWidth: 1158.0, windowWidth: 1158.0))
+        XCTAssertFalse(isCandidateBarCollapsed(hostWidth: 0.0, windowWidth: 1158.0))
+    }
 }
