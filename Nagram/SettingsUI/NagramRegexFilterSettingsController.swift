@@ -424,7 +424,7 @@ private enum NagramRegexFilterEditEntry: ItemListNodeEntry {
                 arguments.updateAuthorPeerId(value)
             }, action: {})
         case let .pattern(_, section, text, placeholder):
-            return ItemListMultilineInputItem(presentationData: presentationData, systemStyle: .glass, text: text, placeholder: placeholder, maxLength: nil, sectionId: section, style: .blocks, capitalization: false, autocorrection: false, returnKeyType: .done, minimalHeight: 80.0, textUpdated: { value in
+            return ItemListMultilineInputItem(presentationData: presentationData, systemStyle: .glass, text: text, placeholder: placeholder, maxLength: nil, sectionId: section, style: .blocks, capitalization: false, autocorrection: false, returnKeyType: .done, minimalHeight: 80.0, maximalHeight: 240.0, textUpdated: { value in
                 arguments.updatePattern(value)
             }, tag: NagramRegexFilterEditInputTag(1))
         case let .error(_, section, text):
