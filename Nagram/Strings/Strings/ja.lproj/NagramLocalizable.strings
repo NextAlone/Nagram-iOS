@@ -620,3 +620,5 @@ iCloud キーチェーン同期を有効にすると、バックアップは他�
 "Nagram.MessageMenu.Item.addToRegexFilter" = "メッセージフィルタに追加";
 "Nagram.RegexFilters.AutoReadHidden" = "フィルタされたメッセージを既読にする";
 "Nagram.RegexFilters.AutoReadHidden.Footer" = "チャットの未読メッセージがすべてフィルタルールで非表示になったとき、そのチャットを既読にします。他のデバイスにも同期されます。伏せ字や置き換えだけのメッセージは対象外です。";
+"Nagram.HighRefreshRateScrolling" = "高リフレッシュレートのスクロール";
+"Nagram.HighRefreshRateScrolling.Footer" = "リストをドラッグしている間も、指を離した後だけでなく、画面の最高リフレッシュレートで描画します。ProMotion ディスプレイではより滑らかになりますが、バッテリーの消費が増えます。";

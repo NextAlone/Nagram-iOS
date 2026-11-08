@@ -106,6 +106,7 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
     // MARK: NAGRAM
     private var nagramTabBarSettingsDisposable: Disposable?
     private var nagramGlassTransparencyDisposable: Disposable?
+    private var nagramHighRefreshRateScrollingDisposable: Disposable? // MARK: NAGRAM
     private var presentationData: PresentationData
     // MARK: NAGRAM
     private var rootShowCallsTab: Bool = true
@@ -165,6 +166,12 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
             (strongSelf.rootTabController as? TabBarControllerImpl)?.updateLayout(transition: .immediate)
         })
         
+        // MARK: NAGRAM — the list view lives in Display, which cannot read Nagram settings itself.
+        self.nagramHighRefreshRateScrollingDisposable = (nagramBoolSignal("nagram.highRefreshRateScrolling", defaultValue: false)
+        |> deliverOnMainQueue).startStrict(next: { value in
+            nagramListViewHighFrameRateDragging = value
+        })
+        
         if context.sharedContext.applicationBindings.isMainApp {
             self.applicationInFocusDisposable = (context.sharedContext.applicationBindings.applicationIsActive
             |> distinctUntilChanged
@@ -192,6 +199,7 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         self.presentationDataDisposable?.dispose()
         self.nagramTabBarSettingsDisposable?.dispose() // MARK: NAGRAM
         self.nagramGlassTransparencyDisposable?.dispose() // MARK: NAGRAM
+        self.nagramHighRefreshRateScrollingDisposable?.dispose() // MARK: NAGRAM
         self.applicationInFocusDisposable?.dispose()
         self.storyUploadEventsDisposable?.dispose()
     }

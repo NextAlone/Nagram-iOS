@@ -620,3 +620,5 @@ With iCloud Keychain sync on, backups follow your other devices and appear on th
 "Nagram.MessageMenu.Item.addToRegexFilter" = "Add to Filters";
 "Nagram.RegexFilters.AutoReadHidden" = "Mark Filtered Messages as Read";
 "Nagram.RegexFilters.AutoReadHidden.Footer" = "When every unread message in a chat is hidden by a filter rule, the chat is marked as read, on your other devices too. Messages that are only masked or replaced do not count.";
+"Nagram.HighRefreshRateScrolling" = "High Refresh Rate Scrolling";
+"Nagram.HighRefreshRateScrolling.Footer" = "Keeps lists at the screen's highest refresh rate while you drag them, not only after you let go. Smoother on ProMotion displays, but uses more battery.";

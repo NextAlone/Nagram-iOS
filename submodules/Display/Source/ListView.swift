@@ -200,6 +200,10 @@ private func cancelContextGestures(view: UIView) {
     }
 }
 
+// MARK: NAGRAM — "High Refresh Rate Scrolling": also run lists at the display's highest rate while a finger drags
+// them, not only while they decelerate. Off by default because it costs battery; the app sets it from Nagram settings.
+public var nagramListViewHighFrameRateDragging: Bool = false
+
 open class ListViewImpl: ASDisplayNode, ListView, ASScrollViewDelegate, ASGestureRecognizerDelegate {
     public struct ScrollingIndicatorState {
         public struct Item {
@@ -929,6 +933,10 @@ open class ListViewImpl: ASDisplayNode, ListView, ASScrollViewDelegate, ASGestur
 
         self.scroller.forceDecelerating = false
         self.isDragging = true
+        // MARK: NAGRAM — turned off again when the drag ends without deceleration, or when deceleration ends.
+        if nagramListViewHighFrameRateDragging {
+            self.isAuxiliaryDisplayLinkEnabled = true
+        }
         
         self.beganInteractiveDragging(self.touchesPosition)
         

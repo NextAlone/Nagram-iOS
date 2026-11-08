@@ -620,3 +620,5 @@
 "Nagram.MessageMenu.Item.addToRegexFilter" = "添加到消息过滤";
 "Nagram.RegexFilters.AutoReadHidden" = "被过滤的消息自动已读";
 "Nagram.RegexFilters.AutoReadHidden.Footer" = "一个聊天的未读消息全部被过滤规则隐藏时，自动把这个聊天标为已读，其他设备上也会同步。只是遮挡或替换的消息不算在内。";
+"Nagram.HighRefreshRateScrolling" = "高刷新率滚动";
+"Nagram.HighRefreshRateScrolling.Footer" = "拖动列表时也保持屏幕的最高刷新率，而不只是松手后的滑动。在 ProMotion 屏幕上更流畅，但更耗电。";

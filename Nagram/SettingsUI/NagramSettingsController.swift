@@ -226,6 +226,8 @@ private func nagramRowDeepLinkAliases(titleKey: String) -> [String] {
         return ["ShowDC", "ShowDataCenter", "ShowIdAndDc"]
     case "Nagram.ControlHighlight":
         return ["ControlHighlight", "GlassHighlight", "LiquidGlassHighlight"]
+    case "Nagram.HighRefreshRateScrolling":
+        return ["HighRefreshRateScrolling", "HighFrameRateScrolling", "ProMotion", "120Hz"]
     case "Nagram.GlassTransparency":
         return ["GlassTransparency", "LiquidGlassTransparency", "GlassOpacity", "LiquidGlassOpacity", "LiquidGlass", "GlassTint"]
     case "Nagram.GlassTransparency.OverlayOpacity":
@@ -429,12 +431,13 @@ private func nagramGroups(
     }
     return [
         // 界面
-        NagramGroup(tab: .interface, headerKey: "Nagram.Section.Appearance", footerKeys: ["Nagram.GlassTransparency.Footer"], rows: [
+        NagramGroup(tab: .interface, headerKey: "Nagram.Section.Appearance", footerKeys: ["Nagram.GlassTransparency.Footer", "Nagram.HighRefreshRateScrolling.Footer"], rows: [
             .navigation(titleKey: "Nagram.BottomBarLayout", action: bottomBarLayoutAction),
             .toggle(titleKey: "Nagram.HideTabBarPermissionWarnings", get: { NagramSettings.shared.hideTabBarPermissionWarnings }, set: { NagramSettings.shared.hideTabBarPermissionWarnings = $0 }),
             .choice(titleKey: "Nagram.GlassTransparency", prefix: "Nagram.GlassTransparency", options: ["system", "custom"], current: { NagramSettings.shared.glassTransparencyModeValue.rawValue }, set: { NagramSettings.shared.glassTransparencyMode = $0 }),
             .slider(titleKey: "Nagram.GlassTransparency.OverlayOpacity", minValue: 0, maxValue: 100, get: { NagramSettings.shared.glassTransparencyPercent }, set: { NagramSettings.shared.glassTransparencyPercent = $0 }, isVisible: { NagramSettings.shared.glassTransparencyModeValue == .custom }),
             .toggle(titleKey: "Nagram.ControlHighlight", get: { NagramSettings.shared.controlHighlightEnabled }, set: { NagramSettings.shared.controlHighlightEnabled = $0 }),
+            .toggle(titleKey: "Nagram.HighRefreshRateScrolling", get: { NagramSettings.shared.highRefreshRateScrolling }, set: { NagramSettings.shared.highRefreshRateScrolling = $0 }),
         ]),
         NagramGroup(tab: .interface, headerKey: "Nagram.Section.OneHanded", footerKeys: ["Nagram.Section.OneHanded.Footer"], rows: [
             .toggle(titleKey: "Nagram.OneHanded.ChatSearchFieldAtBottom", get: { NagramSettings.shared.chatSearchFieldAtBottom }, set: { NagramSettings.shared.chatSearchFieldAtBottom = $0 }),

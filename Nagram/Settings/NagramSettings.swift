@@ -297,6 +297,9 @@ public final class NagramSettings {
     /// 资料页显示数据中心 DC
     @NagramDefault("nagram.showDC", false)
     public var showDC: Bool
+    /// 拖动列表时也以屏幕最高刷新率绘制（默认关：更耗电）。按设备保存，不经 iCloud 同步
+    @NagramDefault("nagram.highRefreshRateScrolling", false)
+    public var highRefreshRateScrolling: Bool
     /// 控件玻璃高亮（默认开 = 保持原生交互反馈）
     @NagramDefault("nagram.controlHighlightEnabled", true)
     public var controlHighlightEnabled: Bool
