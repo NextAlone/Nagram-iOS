@@ -365,9 +365,12 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<!-- MARK: NAGRAM — status bar appearance belongs to the scene root controller. -->
+	<!-- MARK: NAGRAM — the app, not the scene root controller, owns the status bar. With controller-based
+	     appearance, rotating an iPad several times in a row left the system status bar laid out for the previous
+	     orientation (iPadOS 27.3, iPad mini A20 Pro): in landscape its trailing icons stopped at the portrait width,
+	     in portrait they were off screen. -->
 	<key>UIViewControllerBasedStatusBarAppearance</key>
-	<true/>
+	<false/>
 	<key>UIViewEdgeAntialiasing</key>
 	<false/>
 	<key>UIViewGroupOpacity</key>
