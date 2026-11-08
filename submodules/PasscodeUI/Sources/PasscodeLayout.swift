@@ -100,7 +100,7 @@ struct PasscodeKeyboardLayout {
                 self.topOffset = 329.0
                 self.biometricsOffset = 30.0
                 self.deleteOffset = 20.0
-            case .iPad, .iPad102Inch, .iPadPro10Inch, .iPadPro11Inch, .iPadPro, .iPadPro3rdGen, .iPadMini, .iPadMini6thGen:
+            case .iPad, .iPad102Inch, .iPadPro10Inch, .iPadPro11Inch, .iPadPro, .iPadPro3rdGen, .iPadMini, .iPadMini6thGen, .iPadMini8thGen:
                 self.buttonSize = 81.0
                 self.horizontalSecond = 106.0
                 self.horizontalThird = 212.0
@@ -170,7 +170,7 @@ public struct PasscodeLayout {
                 self.titleOffset = 180.0
                 self.subtitleOffset = 0.0
                 self.inputFieldOffset = 226.0
-            case .iPad, .iPad102Inch, .iPadPro10Inch, .iPadPro11Inch, .iPadPro, .iPadPro3rdGen, .iPadMini, .iPadMini6thGen:
+            case .iPad, .iPad102Inch, .iPadPro10Inch, .iPadPro11Inch, .iPadPro, .iPadPro3rdGen, .iPadMini, .iPadMini6thGen, .iPadMini8thGen:
                 self.titleOffset = self.keyboard.topOffset - 120.0
                 self.subtitleOffset = -2.0
                 self.inputFieldOffset = self.keyboard.topOffset - 76.0
