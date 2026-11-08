@@ -33,6 +33,7 @@ private final class DataAndStorageControllerArguments {
     let togglePauseMusicOnRecording: (Bool) -> Void
     let toggleRaiseToListen: (Bool) -> Void
     let nagramToggleRaiseToRecord: (Bool) -> Void // MARK: NAGRAM
+    let nagramToggleSaveCapturedMedia: (Bool) -> Void // MARK: NAGRAM
     let toggleDownloadInBackground: (Bool) -> Void
     let openIntents: () -> Void
     let toggleSensitiveContent: (Bool) -> Void
@@ -49,6 +50,7 @@ private final class DataAndStorageControllerArguments {
         togglePauseMusicOnRecording: @escaping (Bool) -> Void,
         toggleRaiseToListen: @escaping (Bool) -> Void,
         nagramToggleRaiseToRecord: @escaping (Bool) -> Void, // MARK: NAGRAM
+        nagramToggleSaveCapturedMedia: @escaping (Bool) -> Void, // MARK: NAGRAM
         toggleDownloadInBackground: @escaping (Bool) -> Void,
         openIntents: @escaping () -> Void,
         toggleSensitiveContent: @escaping (Bool) -> Void
@@ -64,6 +66,7 @@ private final class DataAndStorageControllerArguments {
         self.togglePauseMusicOnRecording = togglePauseMusicOnRecording
         self.toggleRaiseToListen = toggleRaiseToListen
         self.nagramToggleRaiseToRecord = nagramToggleRaiseToRecord // MARK: NAGRAM
+        self.nagramToggleSaveCapturedMedia = nagramToggleSaveCapturedMedia // MARK: NAGRAM
         self.toggleDownloadInBackground = toggleDownloadInBackground
         self.openIntents = openIntents
         self.toggleSensitiveContent = toggleSensitiveContent
@@ -88,6 +91,7 @@ public enum DataAndStorageEntryTag: ItemListItemTag, Equatable {
     case pauseMusicOnRecording
     case raiseToListen
     case nagramRaiseToRecord // MARK: NAGRAM
+    case nagramSaveCapturedMedia // MARK: NAGRAM
     case autoSave(AutomaticSaveIncomingPeerType)
     case sensitiveContent
     case useLessVoiceData
@@ -124,6 +128,7 @@ private enum DataAndStorageEntry: ItemListNodeEntry {
     case pauseMusicOnRecording(PresentationTheme, String, Bool)
     case raiseToListen(PresentationTheme, String, Bool)
     case nagramRaiseToRecord(String, Bool) // MARK: NAGRAM
+    case nagramSaveCapturedMedia(String, Bool) // MARK: NAGRAM
     case raiseToListenInfo(PresentationTheme, String)
     
     case sensitiveContent(String, Bool)
@@ -144,7 +149,7 @@ private enum DataAndStorageEntry: ItemListNodeEntry {
                 return DataAndStorageSection.backgroundDownload.rawValue
             case .useLessVoiceData, .useLessVoiceDataInfo:
                 return DataAndStorageSection.voiceCalls.rawValue
-            case .otherHeader, .shareSheet, .saveEditedPhotos, .pauseMusicOnRecording, .raiseToListen, .nagramRaiseToRecord, .raiseToListenInfo: // MARK: NAGRAM
+            case .otherHeader, .shareSheet, .saveEditedPhotos, .nagramSaveCapturedMedia, .pauseMusicOnRecording, .raiseToListen, .nagramRaiseToRecord, .raiseToListenInfo: // MARK: NAGRAM
                 return DataAndStorageSection.other.rawValue
             case .sensitiveContent, .sensitiveContentInfo:
                 return DataAndStorageSection.sensitiveContent.rawValue
@@ -196,6 +201,8 @@ private enum DataAndStorageEntry: ItemListNodeEntry {
             // MARK: NAGRAM — 排序见 <，紧跟在 raiseToListen 之后。
             case .nagramRaiseToRecord:
                 return 1000
+            case .nagramSaveCapturedMedia:
+                return 1001
             case .sensitiveContent:
                 return 36
             case .sensitiveContentInfo:
@@ -312,6 +319,12 @@ private enum DataAndStorageEntry: ItemListNodeEntry {
                 } else {
                     return false
                 }
+            case let .nagramSaveCapturedMedia(lhsText, lhsValue):
+                if case .nagramSaveCapturedMedia(lhsText, lhsValue) = rhs {
+                    return true
+                } else {
+                    return false
+                }
             case let .raiseToListenInfo(lhsTheme, lhsText):
                 if case let .raiseToListenInfo(rhsTheme, rhsText) = rhs, lhsTheme === rhsTheme, lhsText == rhsText {
                     return true
@@ -362,6 +375,10 @@ private enum DataAndStorageEntry: ItemListNodeEntry {
         func sortKey(_ entry: DataAndStorageEntry) -> Double {
             if case .nagramRaiseToRecord = entry {
                 return 34.5
+            }
+            // nagramSaveCapturedMedia 紧跟在 saveEditedPhotos（32）之后。
+            if case .nagramSaveCapturedMedia = entry {
+                return 32.5
             }
             return Double(entry.stableId)
         }
@@ -445,6 +462,10 @@ private enum DataAndStorageEntry: ItemListNodeEntry {
                 return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
                     arguments.nagramToggleRaiseToRecord(value)
                 }, tag: DataAndStorageEntryTag.nagramRaiseToRecord)
+            case let .nagramSaveCapturedMedia(text, value):
+                return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+                    arguments.nagramToggleSaveCapturedMedia(value)
+                }, tag: DataAndStorageEntryTag.nagramSaveCapturedMedia)
             case let .raiseToListenInfo(_, text):
                 return ItemListTextItem(presentationData: presentationData, text: .markdown(text), sectionId: self.section)
             case let .sensitiveContent(text, value):
@@ -665,6 +686,7 @@ private func dataAndStorageControllerEntries(context: AccountContext, state: Dat
         entries.append(.shareSheet(presentationData.theme, presentationData.strings.ChatSettings_IntentsSettings))
     }
     entries.append(.saveEditedPhotos(presentationData.theme, presentationData.strings.Settings_SaveEditedPhotos, data.generatedMediaStoreSettings.storeEditedPhotos))
+    entries.append(.nagramSaveCapturedMedia(ngI18n("Nagram.SaveCapturedMedia", presentationData.strings.baseLanguageCode), data.generatedMediaStoreSettings.storeCapturedMedia)) // MARK: NAGRAM
     entries.append(.pauseMusicOnRecording(presentationData.theme, presentationData.strings.Settings_PauseMusicOnRecording, data.mediaInputSettings.pauseMusicOnRecording))
     entries.append(.raiseToListen(presentationData.theme, presentationData.strings.Settings_RaiseToListen, data.mediaInputSettings.enableRaiseToSpeak))
     entries.append(.nagramRaiseToRecord(ngI18n("Nagram.RaiseToRecord", presentationData.strings.baseLanguageCode), data.mediaInputSettings.nagramEnableRaiseToRecord)) // MARK: NAGRAM
@@ -907,6 +929,10 @@ public func dataAndStorageController(context: AccountContext, focusOnItemTag: Da
     }, nagramToggleRaiseToRecord: { value in // MARK: NAGRAM
         let _ = updateMediaInputSettingsInteractively(accountManager: context.sharedContext.accountManager, {
             $0.withUpdatedNagramEnableRaiseToRecord(value)
+        }).start()
+    }, nagramToggleSaveCapturedMedia: { value in // MARK: NAGRAM
+        let _ = updateGeneratedMediaStoreSettingsInteractively(accountManager: context.sharedContext.accountManager, {
+            $0.withUpdatedStoreCapturedMedia(value)
         }).start()
     }, toggleDownloadInBackground: { value in
         let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, { settings in

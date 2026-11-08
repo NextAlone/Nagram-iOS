@@ -36,6 +36,11 @@ public struct GeneratedMediaStoreSettings: Codable, Equatable {
     public func withUpdatedStoreEditedPhotos(_ storeEditedPhotos: Bool) -> GeneratedMediaStoreSettings {
         return GeneratedMediaStoreSettings(storeEditedPhotos: storeEditedPhotos, storeCapturedMedia: self.storeCapturedMedia)
     }
+
+    // MARK: NAGRAM — the in-app camera's photos and videos are saved to the photo library only while this is on.
+    public func withUpdatedStoreCapturedMedia(_ storeCapturedMedia: Bool) -> GeneratedMediaStoreSettings {
+        return GeneratedMediaStoreSettings(storeEditedPhotos: self.storeEditedPhotos, storeCapturedMedia: storeCapturedMedia)
+    }
 }
 
 public func updateGeneratedMediaStoreSettingsInteractively(accountManager: AccountManager<TelegramAccountManagerTypes>, _ f: @escaping (GeneratedMediaStoreSettings) -> GeneratedMediaStoreSettings) -> Signal<Void, NoError> {

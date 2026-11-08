@@ -609,6 +609,7 @@
 "Nagram.OneHanded.ChatSearchResults" = "聊天内搜索结果从底部开始";
 "Nagram.OneHanded.ChatSearchFieldAtBottom" = "聊天内搜索框放在底部";
 "Nagram.RaiseToRecord" = "贴耳语音";
+"Nagram.SaveCapturedMedia" = "保存拍摄的照片和视频";
 "Nagram.GroupDescriptionExternalLinks" = "群简介中的网址可点击";
 "Nagram.GroupDescriptionExternalLinks.Footer" = "Telegram 默认只让群简介里的 Telegram 链接可点击。打开后，其他网址也能点开，打开方式与频道简介里的链接相同。";
 "Nagram.MemberRequests.DismissAndBan" = "拒绝并封禁";

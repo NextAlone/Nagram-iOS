@@ -2843,7 +2843,8 @@ final class StoryItemSetContainerSendMessage: @unchecked(Sendable) {
                 enableVideo = false
             }
 
-            let storeCapturedMedia = peer.id.namespace != Namespaces.Peer.SecretChat
+            // MARK: NAGRAM — also off when the user turned off saving captured media (Data and Storage).
+            let storeCapturedMedia = peer.id.namespace != Namespaces.Peer.SecretChat && settings.storeCapturedMedia
 
             if opensChatCamera {
                 guard let modes = chatCameraModes(isPhotoBanned: bannedSendPhotos != nil, isVideoBanned: bannedSendVideos != nil, hasActiveCall: hasActiveCall) else {

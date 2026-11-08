@@ -2168,7 +2168,8 @@ extension ChatControllerImpl {
             var storeCapturedMedia = false
             var hasSchedule = false
             if let peer = strongSelf.presentationInterfaceState.renderedPeer?.peer {
-                storeCapturedMedia = peer.id.namespace != Namespaces.Peer.SecretChat
+                // MARK: NAGRAM — also off when the user turned off saving captured media (Data and Storage).
+                storeCapturedMedia = peer.id.namespace != Namespaces.Peer.SecretChat && settings.storeCapturedMedia
                 hasSchedule = chatCameraHasSchedule(isScheduledMessages: strongSelf.presentationInterfaceState.subject == .scheduledMessages, isSecretChat: peer.id.namespace == Namespaces.Peer.SecretChat, hasPaidMessageStars: strongSelf.presentationInterfaceState.sendPaidMessageStars != nil, isEditingMessage: isEditingMessage)
             }
             let inputText = strongSelf.presentationInterfaceState.interfaceState.effectiveInputState.inputText
