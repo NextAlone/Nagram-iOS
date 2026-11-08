@@ -708,7 +708,9 @@ public final class TabBarComponent: Component {
                     return false
                 }
                 
-                if let itemId = self.item(at: point) {
+                // MARK: NAGRAM — the gesture reports points in its container's coordinates, while item(at:) compares
+                // against frames in this view's; the container is offset whenever the tabs are not at x = 0.
+                if let itemId = self.item(at: self.convert(point, from: self.contextGestureContainerView)) {
                     guard let item = component.interactiveItems.first(where: { $0.id == itemId }) else {
                             return false
                         }
