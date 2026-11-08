@@ -29,3 +29,41 @@ public func nagramRepeatedMessages(_ messages: [EngineRawMessage], threadId: Int
         return .forward(source: message.id, threadId: threadId, grouping: .auto, attributes: attributes, correlationId: nil)
     }
 }
+
+/// Whether `nagramRepeatedMessages` can send `message` again: the context menu and the double-tap action both ask
+/// this. A protected message (the chat's or its own) qualifies only with force copy on, and is then sent as new content.
+public func nagramCanRepeatMessage(_ message: EngineRawMessage, chatCopyProtectionEnabled: Bool, forceCopyEnabled: Bool) -> Bool {
+    if Namespaces.Message.allScheduled.contains(message.id.namespace) {
+        return false
+    }
+    if message.flags.isSending || message.flags.contains(.Failed) {
+        return false
+    }
+    if message.id.peerId.namespace == Namespaces.Peer.SecretChat || message.containsSecretMedia {
+        return false
+    }
+    if message.id.peerId.isReplies {
+        return false
+    }
+    if (chatCopyProtectionEnabled || message.isCopyProtected()) && !forceCopyEnabled {
+        return false
+    }
+
+    for media in message.media {
+        if media is TelegramMediaAction || media is TelegramMediaExpiredContent {
+            return false
+        }
+        if let invoice = media as? TelegramMediaInvoice, let _ = invoice.extendedMedia {
+            return false
+        }
+        if let story = media as? TelegramMediaStory {
+            if let story = message.associatedStories[story.storyId], story.data.isEmpty {
+                return false
+            } else if story.isMention {
+                return false
+            }
+        }
+    }
+
+    return true
+}

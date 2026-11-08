@@ -11745,39 +11745,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
 
     // Keep double-tap repeat aligned with messages supported by the repeat send pipeline.
     private func nagramCanRepeatMessage(_ message: EngineRawMessage) -> Bool {
-        if Namespaces.Message.allScheduled.contains(message.id.namespace) {
-            return false
-        }
-        if message.flags.isSending || message.flags.contains(.Failed) {
-            return false
-        }
-        if message.id.peerId.namespace == Namespaces.Peer.SecretChat || message.containsSecretMedia {
-            return false
-        }
-        if message.id.peerId.isReplies {
-            return false
-        }
-        if (self.presentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !NagramSettings.shared.forceCopyEnabled {
-            return false
-        }
-
-        for media in message.media {
-            if media is TelegramMediaAction || media is TelegramMediaExpiredContent {
-                return false
-            }
-            if let invoice = media as? TelegramMediaInvoice, let _ = invoice.extendedMedia {
-                return false
-            }
-            if let story = media as? TelegramMediaStory {
-                if let story = message.associatedStories[story.storyId], story.data.isEmpty {
-                    return false
-                } else if story.isMention {
-                    return false
-                }
-            }
-        }
-
-        return true
+        return NagramMediaActions.nagramCanRepeatMessage(message, chatCopyProtectionEnabled: self.presentationInterfaceState.copyProtectionEnabled, forceCopyEnabled: NagramSettings.shared.forceCopyEnabled)
     }
     
     private func nagramPerformMessageDoubleTapAction(message: EngineRawMessage, actionRawValue: String) -> Bool {

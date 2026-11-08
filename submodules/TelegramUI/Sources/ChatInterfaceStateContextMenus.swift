@@ -26,6 +26,7 @@ import ReactionListContextMenuContent
 import TelegramUIPreferences
 // MARK: NAGRAM — force-copy 增强开关模块
 import NagramSettings
+import NagramMediaActions // MARK: NAGRAM
 import NagramStrings
 import NagramTranscription // MARK: NAGRAM
 import NagramSettingsUI // MARK: NAGRAM — 快捷添加消息过滤规则
@@ -1508,18 +1509,20 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         
         // MARK: NAGRAM force-copy — 原条件追加 && !forceCopyEnabled，开启后无视 content protection 允许复制
         let isCopyProtected = (chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !NagramSettings.shared.forceCopyEnabled
-        // MARK: NAGRAM — 复读：参考 Android Nagram 的 Repeat，按原消息转发回当前会话
-        if !isScheduled, data.messageActions.options.contains(.forward), !isCopyProtected, canSendMessagesToChat(chatPresentationInterfaceState), chatPresentationInterfaceState.chatLocation.peerId != nil {
+        // MARK: NAGRAM — 复读：参考 Android Nagram 的 Repeat，按原消息转发回当前会话。
+        // 与双击复读共用 nagramCanRepeatMessage：受保护消息不能转发，但开启强制复制后按新消息发送。
+        let repeatMessages = selectAll ? messages : [message]
+        if !isScheduled, repeatMessages.allSatisfy({ nagramCanRepeatMessage($0, chatCopyProtectionEnabled: chatPresentationInterfaceState.copyProtectionEnabled, forceCopyEnabled: NagramSettings.shared.forceCopyEnabled) }), canSendMessagesToChat(chatPresentationInterfaceState), chatPresentationInterfaceState.chatLocation.peerId != nil {
             actions.append(.repeat, .action(ContextMenuActionItem(text: ngI18n("Nagram.MessageMenu.Item.repeat", context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode), icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/RepeatPlusOne"), color: theme.actionSheet.primaryTextColor)
             }, action: { _, f in
-                let _ = controllerInteraction.nagramRepeatMessages(selectAll ? messages : [message], false)
+                let _ = controllerInteraction.nagramRepeatMessages(repeatMessages, false)
                 f(.dismissWithoutContent)
             })))
             actions.append(.repeatWithoutQuote, .action(ContextMenuActionItem(text: ngI18n("Nagram.MessageMenu.Item.repeatWithoutQuote", context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode), icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/RepeatPlusOne"), color: theme.actionSheet.primaryTextColor)
             }, action: { _, f in
-                let _ = controllerInteraction.nagramRepeatMessages(selectAll ? messages : [message], true)
+                let _ = controllerInteraction.nagramRepeatMessages(repeatMessages, true)
                 f(.dismissWithoutContent)
             })))
         }
