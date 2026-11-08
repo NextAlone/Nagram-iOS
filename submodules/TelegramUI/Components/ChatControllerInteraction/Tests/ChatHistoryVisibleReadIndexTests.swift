@@ -90,4 +90,39 @@ final class ChatHistoryVisibleReadIndexTests: XCTestCase {
         ]
         XCTAssertEqual(self.maxIndex(rows, isThread: true), self.index(27))
     }
+
+    // MARK: NAGRAM — reading past messages hidden by regex filters.
+
+    private func candidate(_ id: Int32, hidden: Bool, namespace: EngineMessage.Id.Namespace = Namespaces.Message.Cloud) -> ChatHistoryReadCandidate {
+        return ChatHistoryReadCandidate(index: self.index(id, namespace: namespace), isHiddenByFilter: hidden)
+    }
+
+    private func readPastHidden(_ readIndex: EngineMessage.Index, _ newer: [ChatHistoryReadCandidate], loadedToEnd: Bool = true, isThread: Bool = false) -> EngineMessage.Index {
+        return chatHistoryReadIndexPastHiddenMessages(readIndex: readIndex, newerMessages: newer, isHistoryLoadedToEnd: loadedToEnd, isThread: isThread)
+    }
+
+    func testHiddenNewestMessagesAreRead() {
+        XCTAssertEqual(self.readPastHidden(self.index(10), [self.candidate(12, hidden: true), self.candidate(11, hidden: true)]), self.index(12))
+    }
+
+    func testNothingNewerKeepsTheReadIndex() {
+        XCTAssertEqual(self.readPastHidden(self.index(10), []), self.index(10))
+    }
+
+    func testAShownNewerMessageKeepsTheReadIndex() {
+        XCTAssertEqual(self.readPastHidden(self.index(10), [self.candidate(12, hidden: true), self.candidate(11, hidden: false)]), self.index(10))
+    }
+
+    func testHiddenMessagesAreNotReadBeforeTheHistoryIsLoadedToItsEnd() {
+        XCTAssertEqual(self.readPastHidden(self.index(10), [self.candidate(11, hidden: true)], loadedToEnd: false), self.index(10))
+    }
+
+    func testOlderCandidatesAreIgnored() {
+        XCTAssertEqual(self.readPastHidden(self.index(10), [self.candidate(9, hidden: false), self.candidate(11, hidden: true)]), self.index(11))
+    }
+
+    func testAThreadDoesNotReadPastALocalMessage() {
+        XCTAssertEqual(self.readPastHidden(self.index(10), [self.candidate(11, hidden: true, namespace: Namespaces.Message.Local)], isThread: true), self.index(10))
+        XCTAssertEqual(self.readPastHidden(self.index(10), [self.candidate(11, hidden: true, namespace: Namespaces.Message.Local)]), self.index(11, namespace: Namespaces.Message.Local))
+    }
 }

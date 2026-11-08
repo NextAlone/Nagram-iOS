@@ -4149,9 +4149,43 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 rows.append(ChatHistoryVisibleReadRow(frame: itemFrame, messages: item.content.map { $0.0.index }))
             }
         }
-        if let maxMessage = chatHistoryMaxVisibleReadIndex(rows: rows, topInset: self.insets.top, lastMessageId: lastMessageId, isThread: self.chatLocation.threadId != nil) {
+        if var maxMessage = chatHistoryMaxVisibleReadIndex(rows: rows, topInset: self.insets.top, lastMessageId: lastMessageId, isThread: self.chatLocation.threadId != nil) {
+            // MARK: NAGRAM — messages hidden by regex filters have no row: read past them when they are the newest.
+            if let historyView = (self.listView.opaqueTransactionState as? ChatHistoryTransactionOpaqueState)?.historyView {
+                maxMessage = self.nagramReadIndexPastHiddenMessages(maxMessage, originalView: historyView.originalView)
+            }
             self.updateMaxVisibleReadIncomingMessageIndex(maxMessage)
         }
+    }
+
+    // MARK: NAGRAM — matches the hiding in chatHistoryEntriesForView; with no filter in effect the index is unchanged.
+    private func nagramReadIndexPastHiddenMessages(_ readIndex: MessageIndex, originalView: MessageHistoryView) -> MessageIndex {
+        let isHistoryLoadedToEnd = originalView.laterId == nil && !originalView.holeLater
+        guard isHistoryLoadedToEnd, let lastEntry = originalView.entries.last, lastEntry.message.index > readIndex else {
+            return readIndex
+        }
+        let peerId = self.chatLocation.peerId?.toInt64()
+        let incomingMatcher = NagramSettings.shared.regexFilterMatcher(peerId: peerId, isOutgoing: false)
+        let outgoingMatcher = NagramSettings.shared.regexFilterMatcher(peerId: peerId, isOutgoing: true)
+        if incomingMatcher == nil && outgoingMatcher == nil {
+            return readIndex
+        }
+        var newerMessages: [ChatHistoryReadCandidate] = []
+        for entry in originalView.entries.reversed() {
+            let message = entry.message.withAppliedEphemeralReplacementMessage()
+            if message.index <= readIndex {
+                break
+            }
+            var isHidden = false
+            if let matcher = message.effectivelyIncoming(self.context.account.peerId) ? incomingMatcher : outgoingMatcher, case .hidden = matcher.apply(to: message.text, authorPeerId: message.author?.id.id._internalGetInt64Value()) {
+                isHidden = true
+            }
+            if !isHidden {
+                return readIndex
+            }
+            newerMessages.append(ChatHistoryReadCandidate(index: message.index, isHiddenByFilter: isHidden))
+        }
+        return chatHistoryReadIndexPastHiddenMessages(readIndex: readIndex, newerMessages: newerMessages, isHistoryLoadedToEnd: isHistoryLoadedToEnd, isThread: self.chatLocation.threadId != nil)
     }
     
     // Call right before the chat stops reading because it is leaving the screen (`canReadHistory` turning false, or the
