@@ -487,6 +487,9 @@ jobs:
           # so BETA_CONTRACT_MISSING or group misconfig cannot abort the upload step.
           # The build gets the release notes as its What to Test text and is
           # submitted to Beta App Review, which adding it to the group does not do.
+          # An earlier build of the version that never reached the testers is
+          # expired, since it would hold the review: the notes of the version
+          # should then cover both builds.
           python3 scripts/ci-testflight-group.py \
             --app "$APPSTORE_ID" --group "$TESTFLIGHT_GROUPS" --build "$BUILD_NUMBER" \
             --notes "docs/nagram/releases/$APP_VERSION.md"

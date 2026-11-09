@@ -8,9 +8,15 @@ Adding a build to a group through the API does not submit it, unlike the web
 page: without the submission the build stays Ready to Submit and no tester
 gets it.
 
-Without --build nothing is changed: the script reports the group and where
-the notes of the latest build are, and fails when the group cannot be found,
-so the lookup can be tried without a release.
+TestFlight reviews one build of a version at a time and refuses the next
+submission while an earlier one waits. The API cannot withdraw a submission,
+so an earlier build of the same version that never reached the testers is
+expired first: the new build replaces it, and its notes should cover both.
+
+Without --build nothing is changed: the script reports the group, where the
+notes of the latest build are and which earlier builds a release of it would
+expire, and fails when the group cannot be found, so the lookup can be tried
+without a release.
 
 --print-notes writes the What to Test text of --notes and contacts nobody.
 
@@ -214,6 +220,63 @@ def enable_auto_notify(client, detail):
     print("Testers are notified automatically")
 
 
+# externalBuildState values of a build that has not reached the testers yet.
+UNRELEASED_STATES = {
+    "READY_FOR_BETA_SUBMISSION",
+    "WAITING_FOR_BETA_REVIEW",
+    "IN_BETA_REVIEW",
+}
+# The code of a submission refused because another build of the version waits.
+ANOTHER_BUILD_IN_REVIEW = "ANOTHER_BUILD_IN_REVIEW"
+
+
+def unreleased_builds(client, build_id, build_number):
+    """The earlier builds of the version of the build that never reached the testers."""
+    status, response = client.request(
+        "GET", f"/v1/builds/{build_id}/preReleaseVersion", {"fields[preReleaseVersions]": "version"}
+    )
+    if status != 200:
+        fail(f"Reading the version of the build returned {status}: {response.get('_body', '')}")
+    version_id = response["data"]["id"]
+    status, response = client.request("GET", "/v1/builds", {
+        "filter[preReleaseVersion]": version_id,
+        "filter[expired]": "false",
+        "include": "buildBetaDetail",
+        "fields[builds]": "version,buildBetaDetail",
+        "fields[buildBetaDetails]": "externalBuildState",
+        "limit": 200,
+    })
+    if status != 200:
+        fail(f"Listing the builds of the version returned {status}: {response.get('_body', '')}")
+    states = {
+        item["id"]: item["attributes"]["externalBuildState"]
+        for item in response.get("included", [])
+        if item["type"] == "buildBetaDetails"
+    }
+    builds = []
+    for build in response["data"]:
+        number = build["attributes"]["version"]
+        if build["id"] == build_id or int(number) >= int(build_number):
+            continue
+        detail = build.get("relationships", {}).get("buildBetaDetail", {}).get("data")
+        state = states.get(detail["id"]) if detail else None
+        if state in UNRELEASED_STATES:
+            builds.append((build["id"], number, state))
+    return builds
+
+
+def expire_unreleased_builds(client, build_id, build_number):
+    for earlier_id, number, state in unreleased_builds(client, build_id, build_number):
+        status, response = client.request(
+            "PATCH",
+            f"/v1/builds/{earlier_id}",
+            body={"data": {"type": "builds", "id": earlier_id, "attributes": {"expired": True}}},
+        )
+        if status != 200:
+            fail(f"Expiring build {number} ({state}) returned {status}: {response.get('_body', '')}")
+        print(f"Expired build {number}, which was {state} and never reached the testers")
+
+
 def submit_for_beta_review(client, build_id):
     detail = settled_beta_detail(client, build_id)
     state = detail["attributes"]["externalBuildState"]
@@ -222,14 +285,20 @@ def submit_for_beta_review(client, build_id):
         return
     if state != "READY_FOR_BETA_SUBMISSION":
         fail(f"The build cannot be submitted to Beta App Review: it is {state}.")
-    status, response = client.request(
-        "POST",
-        "/v1/betaAppReviewSubmissions",
-        body={"data": {
-            "type": "betaAppReviewSubmissions",
-            "relationships": {"build": {"data": {"type": "builds", "id": build_id}}},
-        }},
-    )
+    # An expired build can hold the review of its version for a short while.
+    for attempt in range(10):
+        status, response = client.request(
+            "POST",
+            "/v1/betaAppReviewSubmissions",
+            body={"data": {
+                "type": "betaAppReviewSubmissions",
+                "relationships": {"build": {"data": {"type": "builds", "id": build_id}}},
+            }},
+        )
+        if status != 422 or ANOTHER_BUILD_IN_REVIEW not in response.get("_body", ""):
+            break
+        print(f"Another build of the version is still in review, waiting ({attempt + 1}/10)...", flush=True)
+        time.sleep(30)
     if status != 201:
         # A run started again may find the build submitted in the meantime.
         state = beta_detail(client, build_id)["attributes"]["externalBuildState"]
@@ -346,6 +415,10 @@ def main():
                 for item in build_localizations(client, build_id)
             )
             print(f"What to Test of the latest build {version}: {locales or 'none'}")
+            earlier = unreleased_builds(client, build_id, version)
+            print("A release of a later build would expire: " + (
+                ", ".join(f"{number} ({state})" for _, number, state in earlier) or "none"
+            ))
         return
 
     if group_id is None:
@@ -363,6 +436,7 @@ def main():
     if text is not None:
         set_what_to_test(client, arguments.app, build_id, text)
     enable_auto_notify(client, beta_detail(client, build_id))
+    expire_unreleased_builds(client, build_id, arguments.build)
     status, response = client.request(
         "POST",
         f"/v1/betaGroups/{group_id}/relationships/builds",
