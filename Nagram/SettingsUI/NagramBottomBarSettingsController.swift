@@ -18,17 +18,26 @@ private final class NagramBottomBarArguments {
     let update: ((inout NagramBottomBarSettings) -> Void) -> Void
     let option: (NagramBottomBarOption) -> Void
     let reset: () -> Void
+    let setHeaderButtonVisible: (NagramBottomBarSwitchOption, Bool) -> Void
+    let setTitle: (String) -> Void
+    let appWindow: () -> UIWindow?
 
-    init(update: @escaping ((inout NagramBottomBarSettings) -> Void) -> Void, option: @escaping (NagramBottomBarOption) -> Void, reset: @escaping () -> Void) {
+    init(update: @escaping ((inout NagramBottomBarSettings) -> Void) -> Void, option: @escaping (NagramBottomBarOption) -> Void, reset: @escaping () -> Void, setHeaderButtonVisible: @escaping (NagramBottomBarSwitchOption, Bool) -> Void, setTitle: @escaping (String) -> Void, appWindow: @escaping () -> UIWindow?) {
         self.update = update
         self.option = option
         self.reset = reset
+        self.setHeaderButtonVisible = setHeaderButtonVisible
+        self.setTitle = setTitle
+        self.appWindow = appWindow
     }
 }
 
 private enum NagramBottomBarSwitchOption: Int32 {
     case topSearch
     case labels
+    case editButton
+    case composeButton
+    case settingsButton
 }
 
 private enum NagramBottomBarOption: Int32 {
@@ -45,6 +54,7 @@ private enum NagramBottomBarEntry: ItemListNodeEntry {
     case disclosure(stableId: Int32, section: Int32, title: String, label: String, option: NagramBottomBarOption)
     case reset(stableId: Int32, section: Int32, title: String)
     case footer(stableId: Int32, section: Int32, text: String)
+    case title(stableId: Int32, section: Int32, title: String, text: String, placeholder: String)
 
     var section: ItemListSectionId {
         switch self {
@@ -63,6 +73,8 @@ private enum NagramBottomBarEntry: ItemListNodeEntry {
         case let .reset(_, section, _):
             return section
         case let .footer(_, section, _):
+            return section
+        case let .title(_, section, _, _, _):
             return section
         }
     }
@@ -84,6 +96,8 @@ private enum NagramBottomBarEntry: ItemListNodeEntry {
         case let .reset(stableId, _, _):
             return stableId
         case let .footer(stableId, _, _):
+            return stableId
+        case let .title(stableId, _, _, _, _):
             return stableId
         }
     }
@@ -130,6 +144,11 @@ private enum NagramBottomBarEntry: ItemListNodeEntry {
                 return lId == rId && lSection == rSection && lText == rText
             }
             return false
+        case let .title(lId, lSection, lTitle, lText, lPlaceholder):
+            if case let .title(rId, rSection, rTitle, rText, rPlaceholder) = rhs {
+                return lId == rId && lSection == rSection && lTitle == rTitle && lText == rText && lPlaceholder == rPlaceholder
+            }
+            return false
         }
     }
 
@@ -145,7 +164,15 @@ private enum NagramBottomBarEntry: ItemListNodeEntry {
                 return NagramSettingsFocusTag("TopSearch")
             case .labels:
                 return NagramSettingsFocusTag("ShowLabels")
+            case .editButton:
+                return NagramSettingsFocusTag("EditButton")
+            case .composeButton:
+                return NagramSettingsFocusTag("ComposeButton")
+            case .settingsButton:
+                return NagramSettingsFocusTag("SettingsButton")
             }
+        case .title:
+            return NagramSettingsFocusTag("ChatListTitle")
         case .visibility:
             return NagramSettingsFocusTag("Visibility")
         case .slider:
@@ -177,21 +204,26 @@ private enum NagramBottomBarEntry: ItemListNodeEntry {
                 bottomBarTitle: bottomBarTitle,
                 emptyBottomTitle: emptyBottomTitle,
                 sectionId: self.section,
-                update: arguments.update
+                update: arguments.update,
+                appWindow: arguments.appWindow
             )
         case let .header(_, section, text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: section)
         case let .toggle(_, section, title, value, option):
             return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, sectionId: section, style: .blocks, updated: { value in
-                arguments.update { settings in
-                    switch option {
-                    case .topSearch:
-                        settings.topSearchVisible = value
-                    case .labels:
-                        settings.showLabels = value
-                    }
+                switch option {
+                case .topSearch:
+                    arguments.update { $0.topSearchVisible = value }
+                case .labels:
+                    arguments.update { $0.showLabels = value }
+                case .editButton, .composeButton, .settingsButton:
+                    arguments.setHeaderButtonVisible(option, value)
                 }
             }, tag: self.tag)
+        case let .title(_, section, title, text, placeholder):
+            return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(string: title, textColor: presentationData.theme.list.itemPrimaryTextColor), text: text, placeholder: placeholder, type: .regular(capitalization: true, autocorrection: false), spacing: 8.0, clearType: .onFocus, tag: self.tag, sectionId: section, textUpdated: { value in
+                arguments.setTitle(value)
+            }, action: {})
         case let .visibility(_, section, title, settings, itemTitles):
             let visibleBottomItems = Set(settings.visibleBottomItems)
             let chips = NagramBottomBarItemId.allCases.map { id in
@@ -333,7 +365,27 @@ public func nagramBottomBarSettingsController(context: AccountContext, focusOnRo
         presentControllerImpl?(actionSheet, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
     }, reset: {
         saveSettings(NagramBottomBarSettings())
+        NagramSettings.shared.hideChatListEditButton = false
+        NagramSettings.shared.hideChatListComposeButton = false
+        NagramSettings.shared.hideChatListSettingsButton = false
+        NagramSettings.shared.chatListTitle = ""
         bump()
+    }, setHeaderButtonVisible: { option, visible in
+        switch option {
+        case .editButton:
+            NagramSettings.shared.hideChatListEditButton = !visible
+        case .composeButton:
+            NagramSettings.shared.hideChatListComposeButton = !visible
+        case .settingsButton:
+            NagramSettings.shared.hideChatListSettingsButton = !visible
+        case .topSearch, .labels:
+            return
+        }
+        bump()
+    }, setTitle: { value in
+        NagramSettings.shared.chatListTitle = value
+    }, appWindow: {
+        return context.sharedContext.mainWindow?.viewController?.view.window
     })
 
     let signal = combineLatest(queue: .mainQueue(),
@@ -373,7 +425,9 @@ public func nagramBottomBarSettingsController(context: AccountContext, focusOnRo
             alignmentLabel = ngI18n("Nagram.BottomBarLayout.Alignment.center", lang)
         }
 
-        let entries: [NagramBottomBarEntry] = [
+        // The fallback settings button only exists while the bottom bar has no Settings entry.
+        let showsSettingsButtonOption = !settings.isBottomBarVisible || !settings.isVisible(.settings)
+        var entries: [NagramBottomBarEntry] = [
             .preview(
                 section: 0,
                 settings: settings,
@@ -385,17 +439,26 @@ public func nagramBottomBarSettingsController(context: AccountContext, focusOnRo
                 bottomBarTitle: ngI18n("Nagram.BottomBarLayout.BottomBar", lang),
                 emptyBottomTitle: ngI18n("Nagram.BottomBarLayout.EmptyBottom", lang)
             ),
-            .header(stableId: 1, section: 1, text: ngI18n("Nagram.BottomBarLayout.State", lang)),
-            .toggle(stableId: 2, section: 1, title: ngI18n("Nagram.BottomBarLayout.TopSearch", lang), value: settings.topSearchVisible, option: .topSearch),
-            .visibility(stableId: 3, section: 1, title: ngI18n("Nagram.BottomBarLayout.Visibility", lang), settings: settings, itemTitles: itemTitles),
-            .header(stableId: 4, section: 2, text: ngI18n("Nagram.BottomBarLayout.Options", lang)),
-            .disclosure(stableId: 5, section: 2, title: ngI18n("Nagram.BottomBarLayout.SearchStyle", lang), label: settings.searchMode == .bar ? ngI18n("Nagram.BottomBarLayout.SearchStyle.bar", lang) : ngI18n("Nagram.BottomBarLayout.SearchStyle.button", lang), option: .searchMode),
-            .toggle(stableId: 6, section: 2, title: ngI18n("Nagram.BottomBarLayout.ShowLabels", lang), value: settings.showLabels, option: .labels),
-            .slider(stableId: 7, section: 2, title: ngI18n("Nagram.BottomBarLayout.ButtonWidth", lang), value: settings.buttonWidthFillRatio),
-            .disclosure(stableId: 8, section: 2, title: ngI18n("Nagram.BottomBarLayout.Alignment", lang), label: settings.buttonWidthFillRatio >= 100 ? ngI18n("Nagram.BottomBarLayout.Alignment.disabled", lang) : alignmentLabel, option: .alignment),
-            .reset(stableId: 9, section: 3, title: ngI18n("Nagram.BottomBarLayout.Reset", lang)),
-            .footer(stableId: 10, section: 3, text: ngI18n("Nagram.BottomBarLayout.Footer", lang))
+            .header(stableId: 1, section: 1, text: ngI18n("Nagram.BottomBarLayout.TopBar", lang)),
+            .title(stableId: 2, section: 1, title: ngI18n("Nagram.BottomBarLayout.ChatListTitle", lang), text: NagramSettings.shared.chatListTitle, placeholder: presentationData.strings.DialogList_Title),
+            .toggle(stableId: 3, section: 1, title: ngI18n("Nagram.BottomBarLayout.TopSearch", lang), value: settings.topSearchVisible, option: .topSearch),
+            .toggle(stableId: 4, section: 1, title: ngI18n("Nagram.BottomBarLayout.EditButton", lang), value: !NagramSettings.shared.hideChatListEditButton, option: .editButton),
+            .toggle(stableId: 5, section: 1, title: ngI18n("Nagram.BottomBarLayout.ComposeButton", lang), value: !NagramSettings.shared.hideChatListComposeButton, option: .composeButton),
         ]
+        if showsSettingsButtonOption {
+            entries.append(.toggle(stableId: 6, section: 1, title: ngI18n("Nagram.BottomBarLayout.SettingsButton", lang), value: !NagramSettings.shared.hideChatListSettingsButton, option: .settingsButton))
+            entries.append(.footer(stableId: 7, section: 1, text: ngI18n("Nagram.BottomBarLayout.SettingsButton.Footer", lang)))
+        }
+        entries.append(contentsOf: [
+            .header(stableId: 10, section: 2, text: ngI18n("Nagram.BottomBarLayout.BottomBar", lang)),
+            .visibility(stableId: 11, section: 2, title: ngI18n("Nagram.BottomBarLayout.Visibility", lang), settings: settings, itemTitles: itemTitles),
+            .disclosure(stableId: 12, section: 2, title: ngI18n("Nagram.BottomBarLayout.SearchStyle", lang), label: settings.searchMode == .bar ? ngI18n("Nagram.BottomBarLayout.SearchStyle.bar", lang) : ngI18n("Nagram.BottomBarLayout.SearchStyle.button", lang), option: .searchMode),
+            .toggle(stableId: 13, section: 2, title: ngI18n("Nagram.BottomBarLayout.ShowLabels", lang), value: settings.showLabels, option: .labels),
+            .slider(stableId: 14, section: 2, title: ngI18n("Nagram.BottomBarLayout.ButtonWidth", lang), value: settings.buttonWidthFillRatio),
+            .disclosure(stableId: 15, section: 2, title: ngI18n("Nagram.BottomBarLayout.Alignment", lang), label: settings.buttonWidthFillRatio >= 100 ? ngI18n("Nagram.BottomBarLayout.Alignment.disabled", lang) : alignmentLabel, option: .alignment),
+            .reset(stableId: 20, section: 3, title: ngI18n("Nagram.BottomBarLayout.Reset", lang)),
+            .footer(stableId: 21, section: 3, text: ngI18n("Nagram.BottomBarLayout.Footer", lang))
+        ])
 
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(ngI18n("Nagram.BottomBarLayout", lang)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, initialScrollToItem: nagramFocusScrollToItem(entries: entries, focusOnRow: focusOnRow), animateChanges: false)
@@ -624,8 +687,9 @@ private final class NagramBottomBarPreviewItem: ListViewItem, ItemListItem {
     let emptyBottomTitle: String
     let sectionId: ItemListSectionId
     let update: ((inout NagramBottomBarSettings) -> Void) -> Void
+    let appWindow: () -> UIWindow?
 
-    init(theme: PresentationTheme, settings: NagramBottomBarSettings, strings: PresentationStrings, itemTitles: [NagramBottomBarItemId: String], topSearchTitle: String, topSearchVisibleHint: String, topSearchHiddenHint: String, bottomBarTitle: String, emptyBottomTitle: String, sectionId: ItemListSectionId, update: @escaping ((inout NagramBottomBarSettings) -> Void) -> Void) {
+    init(theme: PresentationTheme, settings: NagramBottomBarSettings, strings: PresentationStrings, itemTitles: [NagramBottomBarItemId: String], topSearchTitle: String, topSearchVisibleHint: String, topSearchHiddenHint: String, bottomBarTitle: String, emptyBottomTitle: String, sectionId: ItemListSectionId, update: @escaping ((inout NagramBottomBarSettings) -> Void) -> Void, appWindow: @escaping () -> UIWindow?) {
         self.theme = theme
         self.settings = settings
         self.strings = strings
@@ -637,6 +701,7 @@ private final class NagramBottomBarPreviewItem: ListViewItem, ItemListItem {
         self.emptyBottomTitle = emptyBottomTitle
         self.sectionId = sectionId
         self.update = update
+        self.appWindow = appWindow
     }
 
     var selectable: Bool {
@@ -774,10 +839,10 @@ private final class NagramBottomBarPreviewItemNode: ListViewItemNode, ItemListIt
         self.emptyBottomLabel.layer.cornerRadius = 16.0
         self.emptyBottomLabel.layer.masksToBounds = true
 
-        self.updateTabBarPreview(theme: theme, contentWidth: params.width)
+        self.updateTabBarPreview(theme: theme, params: params)
     }
 
-    private func updateTabBarPreview(theme: PresentationTheme, contentWidth: CGFloat) {
+    private func updateTabBarPreview(theme: PresentationTheme, params: ListViewItemLayoutParams) {
         guard let item = self.item else {
             return
         }
@@ -835,20 +900,28 @@ private final class NagramBottomBarPreviewItemNode: ListViewItemNode, ItemListIt
 
         let selectedId = self.componentIdsByItemId[.chats] ?? visibleBottomItems.compactMap { self.componentIdsByItemId[$0] }.first ?? previewSettings.externalItem.flatMap { self.componentIdsByItemId[$0] }
         let layoutItemCount = max(visibleComponentItems.count, NagramBottomBarSettings.defaultBottomItems.count)
+        // Lists on iPad and in split view inset their content; keep the bar inside those insets or it gets clipped.
         let previewSideInset: CGFloat = 12.0
-        let availableWidth = max(120.0, contentWidth - previewSideInset * 2.0)
+        let previewLeft = params.leftInset + previewSideInset
+        let availableWidth = max(120.0, params.width - params.leftInset - params.rightInset - previewSideInset * 2.0)
         let allButtonsHidden = visibleComponentItems.isEmpty && externalComponentItem == nil && !searchIsVisible
         if allButtonsHidden {
             self.emptyBottomLabel.isHidden = false
-            self.emptyBottomLabel.frame = CGRect(x: previewSideInset, y: 130.0, width: availableWidth, height: 64.0)
+            self.emptyBottomLabel.frame = CGRect(x: previewLeft, y: 130.0, width: availableWidth, height: 64.0)
             self.tabBarComponentView.view?.isHidden = true
             self.bottomFrame = self.emptyBottomLabel.frame
-            self.externalFrame = CGRect(x: previewSideInset + availableWidth - 64.0, y: 130.0, width: 64.0, height: 64.0)
+            self.externalFrame = CGRect(x: previewLeft + availableWidth - 64.0, y: 130.0, width: 64.0, height: 64.0)
             self.externalDropView.isHidden = true
             return
         } else {
             self.emptyBottomLabel.isHidden = true
         }
+        // Match the real bar (TabBarControllerNode): a regular-width window (iPad) lays it out compact, without titles,
+        // and a landscape window at least 568pt wide keeps the custom layout instead of the system one.
+        let window = item.appWindow()
+        let isCompact = window?.traitCollection.horizontalSizeClass == .regular
+        let windowSize = window?.bounds.size ?? .zero
+        let isWide = windowSize.width > windowSize.height && windowSize.width >= 568.0
         let tabBarSize = self.tabBarComponentView.update(
             transition: .immediate,
             component: AnyComponent(TabBarComponent(
@@ -859,6 +932,8 @@ private final class NagramBottomBarPreviewItemNode: ListViewItemNode, ItemListIt
                 search: search,
                 selectedId: selectedId,
                 outerInsets: .zero,
+                isCompact: isCompact,
+                usesSystemLayout: !isWide,
                 layoutItemCount: layoutItemCount,
                 isAdaptiveWidth: false,
                 alignItemsToLeft: previewSettings.alignment == .spaceBetween,
@@ -880,11 +955,11 @@ private final class NagramBottomBarPreviewItemNode: ListViewItemNode, ItemListIt
             let fillsAvailableWidth = !onlySearchButton && (previewSettings.buttonWidthFillRatio >= 100 || externalComponentItem != nil || searchIsVisible)
             let tabBarX: CGFloat
             if onlySearchButton {
-                tabBarX = previewSideInset + availableWidth - tabBarSize.width
+                tabBarX = previewLeft + availableWidth - tabBarSize.width
             } else if previewSettings.alignment == .spaceBetween && !fillsAvailableWidth {
-                tabBarX = previewSideInset
+                tabBarX = previewLeft
             } else {
-                tabBarX = previewSideInset + floor((availableWidth - tabBarSize.width) * 0.5)
+                tabBarX = previewLeft + floor((availableWidth - tabBarSize.width) * 0.5)
             }
             let tabBarFrame = CGRect(origin: CGPoint(x: tabBarX, y: 130.0), size: tabBarSize)
             tabBarView.frame = tabBarFrame
@@ -905,7 +980,7 @@ private final class NagramBottomBarPreviewItemNode: ListViewItemNode, ItemListIt
                 self.bottomFrame = CGRect(x: tabBarFrame.minX, y: tabBarFrame.minY, width: max(48.0, tabBarFrame.width - 72.0), height: 64.0)
             }
 
-            let fixedExternalFrame = CGRect(x: previewSideInset + availableWidth - 64.0, y: tabBarFrame.minY, width: 64.0, height: 64.0)
+            let fixedExternalFrame = CGRect(x: previewLeft + availableWidth - 64.0, y: tabBarFrame.minY, width: 64.0, height: 64.0)
             if let externalItem = previewSettings.externalItem, externalItem != .search, let frame = self.itemFrames[externalItem] {
                 self.externalFrame = frame
             } else if searchIsVisible {

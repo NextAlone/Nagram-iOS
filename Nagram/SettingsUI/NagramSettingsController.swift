@@ -111,7 +111,7 @@ private func nagramRowDeepLinkAliases(titleKey: String) -> [String] {
     case "Nagram.HideTabBar":
         return ["MainTabsStyle", "TabStyle"]
     case "Nagram.BottomBarLayout":
-        return ["MainTabsStyle", "TabStyle", "HideTabBar", "HideCallsTab", "HideCallTab", "HideContactsTab", "HideContactTab", "HideChatsTab", "HideChatListTab", "HideSettingsTab", "ShowSearchTab", "SearchTab", "WideTabBar"]
+        return ["MainTabsStyle", "TabStyle", "HideTabBar", "HideCallsTab", "HideCallTab", "HideContactsTab", "HideContactTab", "HideChatsTab", "HideChatListTab", "HideSettingsTab", "ShowSearchTab", "SearchTab", "WideTabBar", "HideChatListComposeButton"]
     case "Nagram.HideTabBarCalls":
         return ["HideCallsTab", "HideCallTab"]
     case "Nagram.HideTabBarContacts":
@@ -409,6 +409,7 @@ private func nagramGroups(
     sensitiveContentConfiguration: @escaping () -> ContentSettingsConfiguration?,
     setSensitiveContentEnabled: @escaping (Bool) -> Void,
     bottomBarLayoutAction: @escaping () -> Void,
+    settingsPageItemsAction: @escaping () -> Void,
     messageMenuAction: @escaping () -> Void,
     chatToolsAction: @escaping () -> Void,
     textStyleToolbarAction: @escaping () -> Void,
@@ -433,6 +434,7 @@ private func nagramGroups(
         // 界面
         NagramGroup(tab: .interface, headerKey: "Nagram.Section.Appearance", footerKeys: ["Nagram.GlassTransparency.Footer", "Nagram.HighRefreshRateScrolling.Footer"], rows: [
             .navigation(titleKey: "Nagram.BottomBarLayout", action: bottomBarLayoutAction),
+            .navigation(titleKey: "Nagram.SettingsPageItems", action: settingsPageItemsAction),
             .toggle(titleKey: "Nagram.HideTabBarPermissionWarnings", get: { NagramSettings.shared.hideTabBarPermissionWarnings }, set: { NagramSettings.shared.hideTabBarPermissionWarnings = $0 }),
             .choice(titleKey: "Nagram.GlassTransparency", prefix: "Nagram.GlassTransparency", options: ["system", "custom"], current: { NagramSettings.shared.glassTransparencyModeValue.rawValue }, set: { NagramSettings.shared.glassTransparencyMode = $0 }),
             .slider(titleKey: "Nagram.GlassTransparency.OverlayOpacity", minValue: 0, maxValue: 100, get: { NagramSettings.shared.glassTransparencyPercent }, set: { NagramSettings.shared.glassTransparencyPercent = $0 }, isVisible: { NagramSettings.shared.glassTransparencyModeValue == .custom }),
@@ -470,7 +472,6 @@ private func nagramGroups(
                 }
             }),
             .toggle(titleKey: "Nagram.HideSavedAndArchivedMessagesInList", get: { NagramSettings.shared.hideSavedAndArchivedMessagesInList }, set: { NagramSettings.shared.hideSavedAndArchivedMessagesInList = $0 }),
-            .toggle(titleKey: "Nagram.HideChatListComposeButton", get: { NagramSettings.shared.hideChatListComposeButton }, set: { NagramSettings.shared.hideChatListComposeButton = $0 }),
             .toggle(titleKey: "Nagram.KeepNewChatsVisibleAtTop", get: { NagramSettings.shared.keepNewChatsVisibleAtTop }, set: { NagramSettings.shared.keepNewChatsVisibleAtTop = $0 }),
             .toggle(titleKey: "Nagram.DisableCommunityChatGrouping", get: { NagramSettings.shared.disableCommunityChatGrouping }, set: { NagramSettings.shared.disableCommunityChatGrouping = $0 }),
             .choice(titleKey: "Nagram.CommunityAvatarTapAction", prefix: "Nagram.CommunityAvatarTapAction", options: NagramCommunityAvatarTapAction.allCases.map { $0.rawValue }, current: { NagramSettings.shared.communityAvatarTapActionValue.rawValue }, set: { NagramSettings.shared.communityAvatarTapAction = $0 }),
@@ -643,7 +644,7 @@ private struct NagramSubpageSearchRows {
 private func nagramSubpageSearchRows(parentTitleKey: String) -> NagramSubpageSearchRows? {
     switch parentTitleKey {
     case "Nagram.BottomBarLayout":
-        return NagramSubpageSearchRows(rows: ["TopSearch", "Visibility", "SearchStyle", "ShowLabels", "ButtonWidth", "Alignment"].map { (key: $0, titleKey: "Nagram.BottomBarLayout.\($0)") }, makeController: { context, key in
+        return NagramSubpageSearchRows(rows: ["ChatListTitle", "TopSearch", "EditButton", "ComposeButton", "SettingsButton", "Visibility", "SearchStyle", "ShowLabels", "ButtonWidth", "Alignment"].map { (key: $0, titleKey: "Nagram.BottomBarLayout.\($0)") }, makeController: { context, key in
             return nagramBottomBarSettingsController(context: context, focusOnRow: key)
         })
     case "Nagram.MessageMenu":
@@ -702,6 +703,7 @@ public func nagramSettingsSearchEntries(lang: String) -> [NagramSettingsSearchEn
         sensitiveContentConfiguration: { nil },
         setSensitiveContentEnabled: { _ in },
         bottomBarLayoutAction: {},
+        settingsPageItemsAction: {},
         messageMenuAction: {},
         chatToolsAction: {},
         textStyleToolbarAction: {},
@@ -944,6 +946,8 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
         }
     }, bottomBarLayoutAction: {
         pushControllerImpl?(nagramBottomBarSettingsController(context: context))
+    }, settingsPageItemsAction: {
+        pushControllerImpl?(nagramSettingsPageItemsController(context: context))
     }, messageMenuAction: {
         pushControllerImpl?(nagramMessageMenuSettingsController(context: context))
     }, chatToolsAction: {

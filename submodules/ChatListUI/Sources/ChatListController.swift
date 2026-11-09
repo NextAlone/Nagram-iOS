@@ -45,6 +45,7 @@ import ChatTitleView
 import PeerInfoUI
 import ComponentDisplayAdapters
 import ChatListHeaderComponent
+import StoryPeerListComponent // MARK: NAGRAM — 长按首页标题时读取动态栏绘制的标题位置
 import NavigationBarComponent
 import ChatListTitleView
 import InviteLinksUI
@@ -3324,6 +3325,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             self.chatListDisplayNode.scrollToTop()
         }
         
+        self.nagramInstallTitleSettingsGesture() // MARK: NAGRAM
+        
         if case .chatList = self.location, let componentView = self.chatListHeaderView() {
             componentView.storyComposeAction = { [weak self] offset in
                 guard let self else {
@@ -3726,6 +3729,40 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         }
     }
     
+    // MARK: NAGRAM — 底栏和顶栏都没有设置入口时，长按首页标题进入设置，避免无法再进入设置。
+    // 标题可能由动态栏绘制并先于标题视图命中，所以手势挂在整个头部上，再按标题区域过滤。
+    private func nagramInstallTitleSettingsGesture() {
+        guard case .chatList(.root) = self.location, let headerView = self.chatListHeaderView() else {
+            return
+        }
+        if headerView.gestureRecognizers?.contains(where: { $0 is NagramTitleSettingsGestureRecognizer }) == true {
+            return
+        }
+        headerView.addGestureRecognizer(NagramTitleSettingsGestureRecognizer(target: self, action: #selector(self.nagramTitleLongPressed(_:))))
+    }
+
+    @objc private func nagramTitleLongPressed(_ recognizer: UILongPressGestureRecognizer) {
+        guard recognizer.state == .began, let headerView = recognizer.view as? ChatListHeaderComponent.View else {
+            return
+        }
+        let settings = NagramSettings.shared
+        guard (settings.hideTabBar || settings.hideTabBarSettings) && settings.hideChatListSettingsButton else {
+            return
+        }
+        var titleFrames: [CGRect] = []
+        if let storyPeerListView = headerView.storyPeerListView() {
+            titleFrames.append(storyPeerListView.convert(storyPeerListView.titleFrame(), to: headerView))
+        }
+        if let titleView = headerView.findTitleView() {
+            titleFrames.append(titleView.convert(titleView.bounds, to: headerView))
+        }
+        let location = recognizer.location(in: headerView)
+        guard titleFrames.contains(where: { !$0.isEmpty && $0.insetBy(dx: -12.0, dy: -12.0).contains(location) }) else {
+            return
+        }
+        self.settingsPressed()
+    }
+
     // MARK: NAGRAM — hideTabBar 时 header「⋯」入口:push 完整系统设置页。
     @objc fileprivate func settingsPressed() {
         if let rootController = self.context.sharedContext.mainWindow?.viewController as? TelegramRootControllerInterface, let settingsController = rootController.getSettingsController() {
@@ -7236,7 +7273,7 @@ private final class ChatListLocationContext {
                     peerStatus,
                     parentController.updatedPresentationData.1,
                     // MARK: NAGRAM — 合并 Nagram 设置 signal，使 header 入口显隐即时重算。
-                    combineLatest(storyPostingAvailable, nagramBoolSignal("nagram.hideStories", defaultValue: false), nagramBottomBarSettingsSignal(), nagramBoolSignal("nagram.hideChatListComposeButton", defaultValue: false))
+                    combineLatest(storyPostingAvailable, nagramBoolSignal("nagram.hideStories", defaultValue: false), nagramBottomBarSettingsSignal(), combineLatest(nagramBoolSignal("nagram.hideChatListComposeButton", defaultValue: false), nagramBoolSignal("nagram.hideChatListEditButton", defaultValue: false), nagramBoolSignal("nagram.hideChatListSettingsButton", defaultValue: false)), nagramStringSignal("nagram.chatListTitle", defaultValue: ""))
                 ).startStrict(next: { [weak self] networkState, proxy, passcode, stateAndFilterId, isReorderingTabs, peerStatus, presentationData, storyPostingAvailableAndHideStories in
                     guard let self else {
                         return
@@ -7526,7 +7563,9 @@ private final class ChatListLocationContext {
         switch location {
         case let .chatList(groupId):
             if groupId == .root {
-                defaultTitle = presentationData.strings.DialogList_Title
+                // MARK: NAGRAM — 首页布局里的自定义首页标题，留空时用原生标题。
+                let customTitle = NagramSettings.shared.chatListTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                defaultTitle = customTitle.isEmpty ? presentationData.strings.DialogList_Title : customTitle
             } else {
                 defaultTitle = presentationData.strings.ChatList_ArchivedChatsTitle
             }
@@ -7625,6 +7664,8 @@ private final class ChatListLocationContext {
                                 self?.parentController?.donePressed()
                             }
                         )
+                    } else if NagramSettings.shared.hideChatListEditButton { // MARK: NAGRAM
+                        self.leftButton = nil
                     } else {
                         self.leftButton = NavigationBarComponent.Button(id: "edit",
                             content: .text(title: presentationData.strings.Common_Edit, isBold: false),
@@ -7654,7 +7695,7 @@ private final class ChatListLocationContext {
                     self.storyButton = nil
                 }
                 // MARK: NAGRAM — hideTabBar / hide settings tab 时补 header 设置入口,防锁死。
-                if NagramSettings.shared.hideTabBar || NagramSettings.shared.hideTabBarSettings {
+                if (NagramSettings.shared.hideTabBar || NagramSettings.shared.hideTabBarSettings) && !NagramSettings.shared.hideChatListSettingsButton {
                     self.settingsButton = NavigationBarComponent.Button(id: "settings",
                         content: .more,
                         action: { [weak self] _ in
@@ -8072,4 +8113,8 @@ private func chatListSideListTitleView(in view: UIView) -> ChatTitleComponent.Vi
         }
     }
     return nil
+}
+
+// MARK: NAGRAM — 标记首页头部上的设置兜底手势，避免每次布局重复添加。
+private final class NagramTitleSettingsGestureRecognizer: UILongPressGestureRecognizer {
 }

@@ -95,6 +95,42 @@ public enum NagramRoundVideoCamera: String {
     case back
 }
 
+/// 系统设置页可隐藏的条目，按设置页分区顺序排列。Nagram 入口不在其中，以免隐藏后无法再进入。
+public enum NagramSettingsPageItem: String, CaseIterable, Hashable {
+    case emojiStatus
+    case profileColor
+    case setAvatar
+    case setUsername
+    case suggestions
+    case accounts
+    case addAccount
+    case myProfile
+    case wallet
+    case proxy
+    case miniApps
+    case savedMessages
+    case recentCalls
+    case contacts
+    case devices
+    case chatFolders
+    case notifications
+    case privacy
+    case dataAndStorage
+    case appearance
+    case powerSaving
+    case language
+    case premium
+    case stars
+    case ton
+    case business
+    case sendGift
+    case passport
+    case appleWatch
+    case support
+    case faq
+    case tips
+}
+
 public enum NagramGroupProfileSettingItem: String, CaseIterable, Hashable {
     case groupType
     case inviteLinks
@@ -458,6 +494,15 @@ public final class NagramSettings {
     /// 隐藏首页右上角的新建对话按钮（默认关 = 原生）
     @NagramDefault("nagram.hideChatListComposeButton", false)
     public var hideChatListComposeButton: Bool
+    /// 隐藏首页左上角的编辑按钮（默认关 = 原生）
+    @NagramDefault("nagram.hideChatListEditButton", false)
+    public var hideChatListEditButton: Bool
+    /// 底栏没有设置入口时，隐藏首页顶部补上的设置按钮（默认关）
+    @NagramDefault("nagram.hideChatListSettingsButton", false)
+    public var hideChatListSettingsButton: Bool
+    /// 自定义首页标题；留空 = 原生「聊天」。
+    @NagramDefault("nagram.chatListTitle", "")
+    public var chatListTitle: String
     @NagramDefault("nagram.hideFolderUnreadCount", false)
     public var hideFolderUnreadCount: Bool
     /// 隐藏首页的“全部会话”分组（至少存在一个自定义分组时生效）
@@ -624,6 +669,9 @@ public final class NagramSettings {
     /// 群组资料页直接展示的设置项；默认不展示，用户需逐项启用。
     @NagramDefault("nagram.groupProfileSettingItems", "")
     private var groupProfileSettingItems: String
+    /// 系统设置页隐藏的条目；默认为空 = 原生设置页。
+    @NagramDefault("nagram.hiddenSettingsPageItems", "")
+    public var hiddenSettingsPageItemsValue: String
     /// 设置/资料页隐藏手机号（默认关 = 保持原生）
     @NagramDefault("nagram.hidePhoneInSettings", false)
     public var hidePhoneInSettings: Bool
@@ -657,6 +705,29 @@ public final class NagramSettings {
             .filter { items.contains($0) }
             .map(\.rawValue)
             .joined(separator: ",")
+    }
+
+    public var hiddenSettingsPageItems: Set<NagramSettingsPageItem> {
+        return NagramSettings.settingsPageItems(from: self.hiddenSettingsPageItemsValue)
+    }
+
+    public func setSettingsPageItemHidden(_ item: NagramSettingsPageItem, hidden: Bool) {
+        var items = self.hiddenSettingsPageItems
+        if hidden {
+            items.insert(item)
+        } else {
+            items.remove(item)
+        }
+        self.hiddenSettingsPageItemsValue = NagramSettingsPageItem.allCases
+            .filter { items.contains($0) }
+            .map(\.rawValue)
+            .joined(separator: ",")
+    }
+
+    public static func settingsPageItems(from value: String) -> Set<NagramSettingsPageItem> {
+        return Set(value.split(separator: ",").compactMap {
+            NagramSettingsPageItem(rawValue: String($0))
+        })
     }
 
     private var visibleGroupProfileSettingItems: Set<NagramGroupProfileSettingItem> {

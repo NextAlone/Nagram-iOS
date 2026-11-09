@@ -489,7 +489,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
     let addMemberDisposable = MetaDisposable()
     let preloadHistoryDisposable = MetaDisposable()
     let nagramProfileSettingsDisposable = MetaDisposable() // MARK: NAGRAM
-    // MARK: NAGRAM — 设置页联系人 / 通话记录入口随底栏设置刷新
+    // MARK: NAGRAM — 设置页联系人 / 通话记录入口随底栏设置、设置页隐藏项刷新
     private var nagramShowCallsTab: Bool = CallListSettings.defaultSettings.showTab
     private var nagramTabEntriesDisposable: Disposable?
     var shareStatusDisposable: MetaDisposable?
@@ -2786,8 +2786,9 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             self.nagramTabEntriesDisposable = combineLatest(
                 queue: Queue.mainQueue(),
                 showCallsTab,
-                nagramBottomBarSettingsSignal()
-            ).startStrict(next: { [weak self] showCallsTab, _ in
+                nagramBottomBarSettingsSignal(),
+                nagramStringSignal("nagram.hiddenSettingsPageItems", defaultValue: "") // MARK: NAGRAM — 设置页隐藏项即时刷新
+            ).startStrict(next: { [weak self] showCallsTab, _, _ in
                 guard let self else {
                     return
                 }
