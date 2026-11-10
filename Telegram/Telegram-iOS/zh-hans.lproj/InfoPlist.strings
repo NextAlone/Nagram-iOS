@@ -1,0 +1,3 @@
+/* Localized versions of Info.plist keys */
+
+"NSSpeechRecognitionUsageDescription" = "仅在你要求转写语音或圆视频消息时，在本设备上使用语音识别。";

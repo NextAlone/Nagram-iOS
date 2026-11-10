@@ -15,7 +15,14 @@ public enum NagramTranscriptionState: Equatable {
 
 public final class NagramTranscriptionService {
     public static let shared = NagramTranscriptionService()
-    public static var isEnabled: Bool { NagramSettings.shared.sttProvider == "openAICompatible" }
+    public static let openAICompatibleProvider = "openAICompatible"
+    public static let systemSpeechProvider = "systemSpeech"
+
+    /// A Nagram-managed provider is selected: transcription bypasses Telegram Premium, trials and cooldowns.
+    public static var isEnabled: Bool {
+        let provider = NagramSettings.shared.sttProvider
+        return provider == Self.openAICompatibleProvider || provider == Self.systemSpeechProvider
+    }
 
     private struct Key: Hashable {
         let accountId: AccountRecordId
@@ -92,8 +99,11 @@ public final class NagramTranscriptionService {
     private func start(job: Job, force: Bool) {
         let context = job.context
         let messageId = job.key.messageId
-        let external = Self.isEnabled
-        let local = !external && context.sharedContext.immediateExperimentalUISettings.localTranscription
+        let provider = NagramSettings.shared.sttProvider
+        let external = provider == Self.openAICompatibleProvider
+        let systemSpeech = provider == Self.systemSpeechProvider
+        let local = systemSpeech || (!external && context.sharedContext.immediateExperimentalUISettings.localTranscription)
+        let appLanguageCode = context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode
         job.source = external ? .external : (local ? .local : .telegram)
         let configuration: NagramSTTConfiguration?
         do {
@@ -115,6 +125,9 @@ public final class NagramTranscriptionService {
             if !force, let attribute = message.attributes.first(where: { $0 is AudioTranscriptionMessageAttribute }) as? AudioTranscriptionMessageAttribute, !attribute.isPending, !attribute.text.isEmpty {
                 return .single(())
             }
+            if systemSpeech, let duration = file.duration, duration > NagramSystemSpeechTranscriptionProvider.maximumDuration {
+                return .fail(.tooLong(Int(NagramSystemSpeechTranscriptionProvider.maximumDuration)))
+            }
             if !external && !local {
                 // Telegram remains authoritative for Premium, boost and trial eligibility.
                 return context.engine.messages.transcribeAudio(messageId: messageId)
@@ -126,52 +139,70 @@ public final class NagramTranscriptionService {
                     }
                 }
             }
-            let begin = external
-                ? context.engine.messages.beginExternalAudioTranscription(messageId: messageId, requestId: job.requestId)
-                : context.engine.messages.beginLocalAudioTranscription(messageId: messageId, requestId: job.requestId)
-            return begin
-            |> castError(NagramTranscriptionError.self)
-            |> mapToSignal { started -> Signal<String, NagramTranscriptionError> in
-                guard started else { return .fail(.cancelled) }
-                return self.download(context: context, message: message, file: file)
-            }
-            |> mapToSignal { path in nagramPrepareTranscriptionAudio(path: path) }
-            |> mapToSignal { audio -> Signal<String, NagramTranscriptionError> in
-                let recognition: Signal<String, NagramTranscriptionError>
-                if let configuration {
-                    recognition = NagramOpenAITranscriptionProvider.transcribe(configuration: configuration, audioURL: audio.url)
-                } else {
-                    recognition = transcribeAudio(path: audio.url.path, appLocale: context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode)
-                    |> castError(NagramTranscriptionError.self)
-                    |> mapToSignal { result -> Signal<String, NagramTranscriptionError> in
-                        guard let result else { return .fail(.noSpeech) }
-                        guard result.isFinal else { return .complete() }
-                        guard !result.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .fail(.noSpeech) }
-                        return .single(result.text)
-                    }
-                    |> take(1)
-                }
-                return Signal { subscriber in
-                    let disposable = recognition.start(next: subscriber.putNext, error: subscriber.putError, completed: subscriber.putCompletion)
-                    return ActionDisposable {
-                        disposable.dispose()
-                        withExtendedLifetime(audio) {}
+            // Permission and language are checked before the message is marked pending or any audio is fetched.
+            let preflight: Signal<Locale?, NagramTranscriptionError>
+            if systemSpeech {
+                preflight = NagramSystemSpeechTranscriptionProvider.authorize()
+                |> mapToSignal { _ -> Signal<Locale?, NagramTranscriptionError> in
+                    switch NagramSystemSpeechTranscriptionProvider.resolveLocale(setting: NagramSettings.shared.sttSystemLanguage, appLanguageCode: appLanguageCode) {
+                    case let .success(locale): return .single(locale)
+                    case let .failure(error): return .fail(error)
                     }
                 }
+            } else {
+                preflight = .single(nil)
             }
-            |> mapToSignal { text -> Signal<Void, NagramTranscriptionError> in
-                if external {
-                    return context.engine.messages.storeExternalAudioTranscription(messageId: messageId, requestId: job.requestId, text: text, error: nil)
-                    |> castError(NagramTranscriptionError.self)
-                    |> mapToSignal { stored in stored ? .single(()) : .fail(.cancelled) }
-                } else {
-                    return context.engine.messages.storeLocalAudioTranscription(messageId: messageId, requestId: job.requestId, text: text, isFinal: true, error: nil)
-                    |> castError(NagramTranscriptionError.self)
-                    |> mapToSignal { stored in stored ? .single(()) : .fail(.cancelled) }
+            return preflight
+            |> mapToSignal { systemLocale -> Signal<Void, NagramTranscriptionError> in
+                let begin = external
+                    ? context.engine.messages.beginExternalAudioTranscription(messageId: messageId, requestId: job.requestId)
+                    : context.engine.messages.beginLocalAudioTranscription(messageId: messageId, requestId: job.requestId)
+                return begin
+                |> castError(NagramTranscriptionError.self)
+                |> mapToSignal { started -> Signal<String, NagramTranscriptionError> in
+                    guard started else { return .fail(.cancelled) }
+                    return self.download(context: context, message: message, file: file)
+                }
+                |> mapToSignal { path in nagramPrepareTranscriptionAudio(path: path) }
+                |> mapToSignal { audio -> Signal<String, NagramTranscriptionError> in
+                    let recognition: Signal<String, NagramTranscriptionError>
+                    if let configuration {
+                        recognition = NagramOpenAITranscriptionProvider.transcribe(configuration: configuration, audioURL: audio.url)
+                    } else if let systemLocale {
+                        recognition = NagramSystemSpeechTranscriptionProvider.transcribe(audioURL: audio.url, locale: systemLocale)
+                    } else {
+                        recognition = transcribeAudio(path: audio.url.path, appLocale: context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode)
+                        |> castError(NagramTranscriptionError.self)
+                        |> mapToSignal { result -> Signal<String, NagramTranscriptionError> in
+                            guard let result else { return .fail(.noSpeech) }
+                            guard result.isFinal else { return .complete() }
+                            guard !result.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .fail(.noSpeech) }
+                            return .single(result.text)
+                        }
+                        |> take(1)
+                    }
+                    return Signal { subscriber in
+                        let disposable = recognition.start(next: subscriber.putNext, error: subscriber.putError, completed: subscriber.putCompletion)
+                        return ActionDisposable {
+                            disposable.dispose()
+                            withExtendedLifetime(audio) {}
+                        }
+                    }
+                }
+                |> mapToSignal { text -> Signal<Void, NagramTranscriptionError> in
+                    if external {
+                        return context.engine.messages.storeExternalAudioTranscription(messageId: messageId, requestId: job.requestId, text: text, error: nil)
+                        |> castError(NagramTranscriptionError.self)
+                        |> mapToSignal { stored in stored ? .single(()) : .fail(.cancelled) }
+                    } else {
+                        return context.engine.messages.storeLocalAudioTranscription(messageId: messageId, requestId: job.requestId, text: text, isFinal: true, error: nil)
+                        |> castError(NagramTranscriptionError.self)
+                        |> mapToSignal { stored in stored ? .single(()) : .fail(.cancelled) }
+                    }
                 }
             }
         }
-        |> timeout(300, queue: Queue.mainQueue(), alternate: .fail(.timeout))
+        |> timeout(systemSpeech ? NagramSystemSpeechTranscriptionProvider.jobTimeout : 300, queue: Queue.mainQueue(), alternate: .fail(.timeout))
         |> deliverOnMainQueue
 
         // Install the holder first: Signal.start may synchronously reenter fail() or finish().
@@ -232,28 +263,7 @@ public final class NagramTranscriptionService {
     }
 
     private func errorText(_ error: Error, context: AccountContext) -> String {
-        let language = context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode
-        if let error = error as? NagramSTTConfigurationError {
-            return ngI18n(error.localizationKey, language)
-        }
-        if let error = error as? NagramSTTKeychainError {
-            return "\(ngI18n("Nagram.STT.Error.Keychain", language)) (\(error.status))"
-        }
-        guard let error = error as? NagramTranscriptionError else {
-            return error.localizedDescription
-        }
-        let key: String
-        switch error {
-        case .download: key = "Nagram.STT.Error.Download"
-        case .invalidAudio: key = "Nagram.STT.Error.InvalidAudio"
-        case .fileTooLarge: key = "Nagram.STT.Error.FileTooLarge"
-        case .cancelled: key = "Nagram.STT.Error.Cancelled"
-        case .timeout: key = "Nagram.STT.Error.Timeout"
-        case .invalidResponse: key = "Nagram.STT.Error.InvalidResponse"
-        case .noSpeech: key = "Nagram.STT.Error.NoSpeech"
-        case .configuration, .http, .network: return error.localizedDescription
-        }
-        return ngI18n(key, language)
+        return nagramTranscriptionErrorText(error, language: context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode)
     }
 
     private func finish(job: Job, state: NagramTranscriptionState) {
@@ -263,4 +273,36 @@ public final class NagramTranscriptionService {
         job.lifecycle.dispose()
         job.state.set(state)
     }
+}
+
+/// Localized, user-facing text for a transcription, configuration or Keychain error.
+public func nagramTranscriptionErrorText(_ error: Error, language: String) -> String {
+    if let error = error as? NagramSTTConfigurationError {
+        return ngI18n(error.localizationKey, language)
+    }
+    if let error = error as? NagramSTTKeychainError {
+        return "\(ngI18n("Nagram.STT.Error.Keychain", language)) (\(error.status))"
+    }
+    guard let error = error as? NagramTranscriptionError else {
+        return error.localizedDescription
+    }
+    let key: String
+    switch error {
+    case .download: key = "Nagram.STT.Error.Download"
+    case .invalidAudio: key = "Nagram.STT.Error.InvalidAudio"
+    case .fileTooLarge: key = "Nagram.STT.Error.FileTooLarge"
+    case .cancelled: key = "Nagram.STT.Error.Cancelled"
+    case .timeout: key = "Nagram.STT.Error.Timeout"
+    case .invalidResponse: key = "Nagram.STT.Error.InvalidResponse"
+    case .noSpeech: key = "Nagram.STT.Error.NoSpeech"
+    case let .tooLong(seconds): return String(format: ngI18n("Nagram.STT.Error.TooLong", language), "\(seconds / 60)")
+    case .speechPermissionDenied: key = "Nagram.STT.Error.SpeechPermissionDenied"
+    case .speechPermissionRestricted: key = "Nagram.STT.Error.SpeechPermissionRestricted"
+    case let .speechLanguageUnsupported(locale): return String(format: ngI18n("Nagram.STT.Error.SpeechLanguageUnsupported", language), locale)
+    case let .speechOnDeviceUnavailable(locale): return String(format: ngI18n("Nagram.STT.Error.SpeechOnDeviceUnavailable", language), locale)
+    case .speechRecognizerUnavailable: key = "Nagram.STT.Error.SpeechUnavailable"
+    case let .speechFailed(message): return "\(ngI18n("Nagram.STT.Error.SpeechFailed", language)) \(message)"
+    case .configuration, .http, .network: return error.localizedDescription
+    }
+    return ngI18n(key, language)
 }

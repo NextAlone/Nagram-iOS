@@ -114,38 +114,6 @@ private enum NagramSTTSettingsEntry: ItemListNodeEntry {
     }
 }
 
-private func nagramSTTSettingsErrorText(_ error: Error, language: String) -> String {
-    if let error = error as? NagramSTTConfigurationError {
-        return ngI18n(error.localizationKey, language)
-    }
-    if let error = error as? NagramSTTKeychainError {
-        return "\(ngI18n("Nagram.STT.Error.Keychain", language)) (\(error.status))"
-    }
-    if let error = error as? NagramTranscriptionError {
-        let key: String
-        switch error {
-        case .download:
-            key = "Nagram.STT.Error.Download"
-        case .invalidAudio:
-            key = "Nagram.STT.Error.InvalidAudio"
-        case .fileTooLarge:
-            key = "Nagram.STT.Error.FileTooLarge"
-        case .cancelled:
-            key = "Nagram.STT.Error.Cancelled"
-        case .timeout:
-            key = "Nagram.STT.Error.Timeout"
-        case .invalidResponse:
-            key = "Nagram.STT.Error.InvalidResponse"
-        case .noSpeech:
-            key = "Nagram.STT.Error.NoSpeech"
-        case .configuration, .http, .network:
-            return error.localizedDescription
-        }
-        return ngI18n(key, language)
-    }
-    return error.localizedDescription
-}
-
 private func nagramSTTSettingsEntries(presentationData: PresentationData, apiKey: String, isTesting: Bool) -> [NagramSTTSettingsEntry] {
     let settings = NagramSettings.shared
     let lang = presentationData.strings.baseLanguageCode
@@ -185,7 +153,7 @@ public func nagramSTTSettingsController(context: AccountContext, focusOnRow: Str
     }
     let presentError: (String, Error) -> Void = { titleKey, error in
         let lang = context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode
-        presentResult(titleKey, nagramSTTSettingsErrorText(error, language: lang))
+        presentResult(titleKey, nagramTranscriptionErrorText(error, language: lang))
     }
 
     let arguments = NagramSTTSettingsArguments(inputUpdated: { field, value in

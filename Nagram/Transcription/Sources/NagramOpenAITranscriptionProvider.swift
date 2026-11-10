@@ -13,6 +13,13 @@ public enum NagramTranscriptionError: LocalizedError {
     case network(String)
     case invalidResponse
     case noSpeech
+    case tooLong(Int)
+    case speechPermissionDenied
+    case speechPermissionRestricted
+    case speechLanguageUnsupported(String)
+    case speechOnDeviceUnavailable(String)
+    case speechRecognizerUnavailable
+    case speechFailed(String)
 
     public var errorDescription: String? {
         switch self {
@@ -34,6 +41,20 @@ public enum NagramTranscriptionError: LocalizedError {
             return "The API response does not contain a valid transcription."
         case .noSpeech:
             return "No speech was recognized."
+        case let .tooLong(seconds):
+            return "On-device recognition accepts messages up to \(seconds / 60) minutes."
+        case .speechPermissionDenied:
+            return "Speech Recognition access is off. Turn it on in iOS Settings > Nagram."
+        case .speechPermissionRestricted:
+            return "Speech Recognition is restricted on this device."
+        case let .speechLanguageUnsupported(language):
+            return "Apple speech recognition does not support \(language)."
+        case let .speechOnDeviceUnavailable(language):
+            return "No on-device speech model is available for \(language)."
+        case .speechRecognizerUnavailable:
+            return "Apple speech recognition is currently unavailable."
+        case let .speechFailed(message):
+            return message
         }
     }
 }

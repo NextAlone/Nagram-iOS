@@ -617,6 +617,10 @@ public final class NagramSettings {
     public var sttLanguage: String
     @NagramDefault("nagram.sttPrompt", "")
     public var sttPrompt: String
+    /// 本机识别（系统）的语言：auto = 系统首选语言，app = 应用界面语言，其余为 Apple 语音识别的 locale 标识。
+    @NagramDefault("nagram.sttSystemLanguage", "auto")
+    public var sttSystemLanguage: String
+    public static let sttSystemLanguageOptions = ["auto", "app", "zh-CN", "zh-TW", "zh-HK", "en-US", "ja-JP", "ko-KR"]
 
     public static let sttSettingsDidChangeNotification = Notification.Name("NagramSTTSettingsDidChange")
 

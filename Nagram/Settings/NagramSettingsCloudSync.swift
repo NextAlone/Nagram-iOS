@@ -95,6 +95,7 @@ enum NagramSettingsSyncKeys {
         "nagram.sttModel",
         "nagram.sttLanguage",
         "nagram.sttPrompt",
+        "nagram.sttSystemLanguage",
         "nagram.sendWithReturnKey",
         "nagram.showTextStyleToolbar",
         "nagram.textStyleToolbarMode",

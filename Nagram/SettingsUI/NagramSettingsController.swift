@@ -569,7 +569,14 @@ private func nagramGroups(
             .choice(titleKey: "Nagram.TranslateBeforeSendTargetLang", prefix: "Nagram.TranslateBeforeSendTargetLang", options: ["en", "ar", "zh", "fr", "de", "it", "ja", "ko", "pt-BR", "ru", "es", "uk"], current: { NagramSettings.shared.translateBeforeSendTargetLang }, set: { NagramSettings.shared.translateBeforeSendTargetLang = $0 }),
         ]),
         NagramGroup(tab: .messages, headerKey: "Nagram.Section.STT", footerKeys: ["Nagram.Section.STT.Footer"], rows: [
-            .choice(titleKey: "Nagram.STTProvider", prefix: "Nagram.STTProvider", options: ["default", "openAICompatible"], current: { NagramSettings.shared.sttProvider == "openAICompatible" ? "openAICompatible" : "default" }, set: { NagramSettings.shared.sttProvider = $0 }),
+            .choice(titleKey: "Nagram.STTProvider", prefix: "Nagram.STTProvider", options: ["default", "systemSpeech", "openAICompatible"], current: {
+                let provider = NagramSettings.shared.sttProvider
+                return ["systemSpeech", "openAICompatible"].contains(provider) ? provider : "default"
+            }, set: { NagramSettings.shared.sttProvider = $0 }),
+            .choice(titleKey: "Nagram.STTSystemLanguage", prefix: "Nagram.STTSystemLanguage", options: NagramSettings.sttSystemLanguageOptions, current: {
+                let language = NagramSettings.shared.sttSystemLanguage
+                return NagramSettings.sttSystemLanguageOptions.contains(language) ? language : "auto"
+            }, set: { NagramSettings.shared.sttSystemLanguage = $0 }),
             .navigation(titleKey: "Nagram.STTSettings", action: sttSettingsAction),
         ]),
         NagramGroup(tab: .messages, headerKey: "Nagram.Section.Pangu", footerKeys: ["Nagram.PanguInfo"], rows: [

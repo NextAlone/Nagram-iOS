@@ -10,3 +10,4 @@
 "NSMicrophoneUsageDescription" = "We need this so that you can record and share voice messages and videos with sound.";
 "NSSiriUsageDescription" = "You can use Siri to send messages.";
 "NSFaceIDUsageDescription" = "You can use Face ID to unlock the app.";
+"NSSpeechRecognitionUsageDescription" = "Nagram uses speech recognition only when you ask it to transcribe a voice or video message on this device.";

@@ -1,0 +1,3 @@
+/* Localized versions of Info.plist keys */
+
+"NSSpeechRecognitionUsageDescription" = "音声やビデオメッセージの文字起こしを求めたときだけ、このデバイスで音声認識を使用します。";
