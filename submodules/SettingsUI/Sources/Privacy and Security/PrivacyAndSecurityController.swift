@@ -21,6 +21,8 @@ import AuthenticationServices
 import ChatTimerScreen
 import PasskeysScreen
 import ContextUI
+import NagramStrings // MARK: NAGRAM
+import NagramInAppSafari // MARK: NAGRAM
 
 private final class PrivacyAndSecurityControllerArguments {
     let account: Account
@@ -1622,7 +1624,10 @@ public func privacyAndSecurityController(
 
         let options = availableOpenInOptions(context: context, item: .url(url: "https://telegram.org"))
         let defaultWebBrowser: String
-        if accountWebBrowserSettings.openExternalBrowser {
+        if accountWebBrowserSettings.openExternalBrowser, localWebBrowserSettings.defaultWebBrowser == nagramInAppSafariBrowserIdentifier {
+            // MARK: NAGRAM — "Safari (In-App)".
+            defaultWebBrowser = ngI18n("Nagram.WebBrowser.InAppSafari", presentationData.strings.baseLanguageCode)
+        } else if accountWebBrowserSettings.openExternalBrowser {
             var defaultExternalBrowser = localWebBrowserSettings.defaultWebBrowser
             if defaultExternalBrowser == nil || defaultExternalBrowser == "inApp" || defaultExternalBrowser == "inAppSafari" {
                 defaultExternalBrowser = "safari"

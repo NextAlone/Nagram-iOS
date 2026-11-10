@@ -13,6 +13,8 @@ import ItemListPeerActionItem
 import UndoUI
 import WebKit
 import PersistentStringHash
+import NagramStrings // MARK: NAGRAM
+import NagramInAppSafari // MARK: NAGRAM
 
 private final class WebBrowserSettingsControllerArguments {
     let context: AccountContext
@@ -332,6 +334,9 @@ private func webBrowserSettingsControllerEntries(context: AccountContext, presen
     entries.append(.browser(presentationData.theme, presentationData.strings.WebBrowser_Telegram, nil, nil, !accountSettings.openExternalBrowser, 0))
         
     var index: Int32 = 1
+    // MARK: NAGRAM — "Safari (In-App)": links open in SFSafariViewController.
+    entries.append(.browser(presentationData.theme, ngI18n("Nagram.WebBrowser.InAppSafari", presentationData.strings.baseLanguageCode), .safari, nagramInAppSafariBrowserIdentifier, accountSettings.openExternalBrowser && defaultExternalBrowser == nagramInAppSafariBrowserIdentifier, index))
+    index += 1
     for option in options {
         entries.append(.browser(presentationData.theme, option.title, option.application, option.identifier, accountSettings.openExternalBrowser && option.identifier == defaultExternalBrowser, index))
         index += 1

@@ -16,6 +16,7 @@ import PresentationDataUtils
 import UrlWhitelist
 import OpenUserGeneratedUrl
 import DebugCompanionScreen
+import NagramInAppSafari // MARK: NAGRAM
 
 public struct ParsedSecureIdUrl {
     public let peerId: EnginePeer.Id
@@ -307,6 +308,8 @@ private func handleInternetUrl(
                 if shouldOpenInApp {
                     let controller = BrowserScreen(context: context, subject: .webPage(url: parsedUrl.absoluteString))
                     navigationController?.pushViewController(controller)
+                } else if localSettings.defaultWebBrowser == nagramInAppSafariBrowserIdentifier, nagramPresentInAppSafari(url: parsedUrl, window: navigationController?.view.window, barTintColor: presentationData.theme.rootController.navigationBar.opaqueBackgroundColor, controlTintColor: presentationData.theme.rootController.navigationBar.accentTextColor) {
+                    // MARK: NAGRAM — "Safari (In-App)"; other schemes fall through to the external browser below.
                 } else {
                     // MARK: NAGRAM — hand external browsers the scheme-normalized URL; a bare
                     // "example.com" becomes "googlechrome:example.com" / "firefox://open-url?url=example.com".

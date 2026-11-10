@@ -634,3 +634,4 @@
 "Nagram.RegexFilters.AutoReadHidden.Footer" = "一個聊天的未讀訊息全部被過濾規則隱藏時，自動將這個聊天標為已讀，其他裝置上也會同步。只是遮擋或替換的訊息不算在內。";
 "Nagram.HighRefreshRateScrolling" = "高更新率捲動";
 "Nagram.HighRefreshRateScrolling.Footer" = "拖動列表時也保持螢幕的最高更新率，而不只是放手後的滑動。在 ProMotion 螢幕上更流暢，但更耗電。";
+"Nagram.WebBrowser.InAppSafari" = "Safari（App 內）";

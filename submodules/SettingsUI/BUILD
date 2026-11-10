@@ -87,6 +87,7 @@ swift_library(
         # MARK: NAGRAM — Nagram 设置项加入设置搜索
         "//Nagram/SettingsUI:NagramSettingsUI",
         "//Nagram/Strings:NagramStrings",
+        "//Nagram/InAppSafari:NagramInAppSafari", # MARK: NAGRAM
         "//submodules/DeleteChatPeerActionSheetItem:DeleteChatPeerActionSheetItem",
         "//submodules/PhoneNumberFormat:PhoneNumberFormat",
         "//submodules/OpenInExternalAppUI:OpenInExternalAppUI",
