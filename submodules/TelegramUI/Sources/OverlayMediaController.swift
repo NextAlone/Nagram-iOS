@@ -17,6 +17,13 @@ public final class OverlayMediaControllerImpl: ViewController, OverlayMediaContr
     private var pictureInPictureContainer: ASDisplayNode?
     private var pictureInPictureContent: PictureInPictureContent?
     
+    // MARK: NAGRAM - Reads the bars of the screens under the overlay; set by the app for its root navigation controller.
+    public var barObstructionProvider: (() -> NagramOverlayObstruction?)? {
+        didSet {
+            self.updateBarObstruction(transition: .immediate)
+        }
+    }
+    
     public init() {
         super.init(navigationBarPresentationData: nil)
         
@@ -41,11 +48,37 @@ public final class OverlayMediaControllerImpl: ViewController, OverlayMediaContr
     }
     
     public func addNode(_ node: OverlayMediaItemNode, customTransition: Bool) {
+        // MARK: NAGRAM - Read the bars before the first item is placed.
+        if !self.controllerNode.hasNodes {
+            self.updateBarObstruction(transition: .immediate)
+        }
         self.controllerNode.addNode(node, customTransition: customTransition)
+        self.updateBarTracking() // MARK: NAGRAM
     }
     
     public func removeNode(_ node: OverlayMediaItemNode, customTransition: Bool) {
         self.controllerNode.removeNode(node, customTransition: customTransition)
+        self.updateBarTracking() // MARK: NAGRAM
+    }
+    
+    // MARK: NAGRAM - Follow the bars only while an item is shown.
+    private func updateBarTracking() {
+        let tracker = NagramOverlayBarTracker.shared
+        let isActive = self.controllerNode.hasNodes
+        if isActive {
+            tracker.invalidated = { [weak self] transition in
+                self?.updateBarObstruction(transition: transition)
+            }
+        }
+        tracker.isActive = isActive
+    }
+    
+    // MARK: NAGRAM
+    private func updateBarObstruction(transition: ContainedViewLayoutTransition) {
+        guard self.isNodeLoaded else {
+            return
+        }
+        self.controllerNode.updateBarObstruction(self.barObstructionProvider?(), transition: transition)
     }
 
     public func setPictureInPictureContent(content: PictureInPictureContent, absoluteRect: CGRect) {
@@ -77,6 +110,10 @@ public final class OverlayMediaControllerImpl: ViewController, OverlayMediaContr
         super.containerLayoutUpdated(layout, transition: transition)
         
         let updatedLayout = ContainerViewLayout(size: layout.size, metrics: layout.metrics, deviceMetrics: layout.deviceMetrics, intrinsicInsets: UIEdgeInsets(top: (layout.statusBarHeight ?? 0.0) + 44.0, left: layout.intrinsicInsets.left, bottom: layout.intrinsicInsets.bottom, right: layout.intrinsicInsets.right), safeInsets: layout.safeInsets, reservedCorners: layout.reservedCorners, division: layout.division, additionalInsets: layout.additionalInsets, statusBarHeight: layout.statusBarHeight, inputHeight: layout.inputHeight, inputHeightIsInteractivellyChanging: layout.inputHeightIsInteractivellyChanging, inVoiceOver: layout.inVoiceOver, presentedInFormSheet: layout.presentedInFormSheet)
+        // MARK: NAGRAM - The window lays out the root controller first, so its bars are already where this layout goes.
+        if self.controllerNode.hasNodes {
+            self.controllerNode.barObstruction = self.barObstructionProvider?()
+        }
         self.controllerNode.containerLayoutUpdated(updatedLayout, transition: transition)
     }
 }

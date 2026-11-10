@@ -1485,6 +1485,8 @@ open class NavigationController: UINavigationController, ContainableController, 
 
         self.isUpdatingContainers = false
         
+        NagramOverlayBarTracker.shared.invalidate(transition: transition) // MARK: NAGRAM
+        
         if notifyGlobalOverlayControllersUpdated {
             self.internalGlobalOverlayControllersUpdated()
         }
@@ -1537,6 +1539,62 @@ open class NavigationController: UINavigationController, ContainableController, 
         if let rootNode, rootNode.accessibilityElementsHidden != isRootHidden {
             rootNode.accessibilityElementsHidden = isRootHidden
         }
+    }
+    
+    // MARK: NAGRAM - The bars of the screens the in-app picture-in-picture is over, in this controller's coordinates.
+    // That is the topmost opaque overlay (a gallery), else the topmost modal that spans the width (an iPad form sheet
+    // leaves the corners to the screens below it), else the root stack: its top screen, or the master and detail
+    // columns' top screens for the left and right halves of a split view.
+    public func nagramOverlayObstruction() -> NagramOverlayObstruction? {
+        guard self.isViewLoaded else {
+            return nil
+        }
+        let width = self.view.bounds.width
+        func spansWidth(_ controller: ViewController) -> Bool {
+            guard controller.isViewLoaded, controller.view.window != nil else {
+                return false
+            }
+            let frame = controller.view.convert(controller.view.bounds, to: self.view)
+            return frame.minX <= 1.0 && frame.maxX >= width - 1.0
+        }
+        for container in self.overlayContainers.reversed() {
+            let controller = container.controller
+            if (controller.isOpaqueWhenInOverlay || controller.blocksBackgroundWhenInOverlay) && spansWidth(controller) {
+                return NagramOverlayObstruction(both: self.nagramOverlayBarInsets(of: controller))
+            }
+        }
+        if let modalContainer = self.modalContainers.last(where: { $0.supernode != nil }), let controller = modalContainer.container.controllers.last, spansWidth(controller) {
+            return NagramOverlayObstruction(both: self.nagramOverlayBarInsets(of: controller))
+        }
+        switch self.rootContainer {
+        case let .flat(container):
+            if let controller = container.controllers.last {
+                return NagramOverlayObstruction(both: self.nagramOverlayBarInsets(of: controller))
+            }
+        case let .split(container):
+            let master = container.masterControllers.last.flatMap { self.nagramOverlayBarInsets(of: $0) }
+            let detail = container.detailControllers.last.flatMap { self.nagramOverlayBarInsets(of: $0) }
+            if master != nil || detail != nil {
+                let unreported = NagramOverlayBarInsets(top: nil, bottom: nil)
+                return NagramOverlayObstruction(left: master ?? detail ?? unreported, right: detail ?? master ?? unreported)
+            }
+        case .none:
+            break
+        }
+        return nil
+    }
+    
+    // MARK: NAGRAM
+    private func nagramOverlayBarInsets(of controller: ViewController) -> NagramOverlayBarInsets {
+        guard controller.isViewLoaded else {
+            return NagramOverlayBarInsets(top: nil, bottom: nil)
+        }
+        let bars = controller.nagramOverlayBarInsets
+        let frame = controller.view.convert(controller.view.bounds, to: self.view)
+        return NagramOverlayBarInsets(
+            top: bars.top.flatMap { max(0.0, frame.minY + $0) },
+            bottom: bars.bottom.flatMap { max(0.0, self.view.bounds.height - (frame.maxY - $0)) }
+        )
     }
     
     private func controllerRemoved(_ controller: ViewController) {

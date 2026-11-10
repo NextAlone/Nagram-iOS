@@ -8630,6 +8630,27 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         self.chatDisplayNode.isScrollingLockedAtTop = isScrollingLockedAtTop
     }
     
+    // MARK: NAGRAM - The in-app picture-in-picture keeps clear of the panels floating under the navigation bar, and of
+    // the input panels (and the keyboard under them): the input panel background starts at the top of the panels and
+    // runs to the bottom of the screen.
+    override public var nagramOverlayBarInsets: NagramOverlayBarInsets {
+        var bars = super.nagramOverlayBarInsets
+        guard self.isNodeLoaded, case .standard = self.presentationInterfaceState.mode else {
+            return bars
+        }
+        let node = self.chatDisplayNode
+        if let headerPanelsFrame = node.nagramOverlayHeaderPanelsFrame {
+            bars.top = max(bars.top ?? 0.0, node.view.convert(headerPanelsFrame, to: self.view).maxY)
+        }
+        let backgroundNode = node.inputPanelBackgroundNode
+        var bottomPanelsMinY = backgroundNode.view.convert(backgroundNode.bounds, to: self.view).minY
+        if let footerPanelsFrame = node.nagramOverlayFooterPanelsFrame {
+            bottomPanelsMinY = min(bottomPanelsMinY, node.view.convert(footerPanelsFrame, to: self.view).minY)
+        }
+        bars.bottom = max(0.0, self.view.bounds.height - min(bottomPanelsMinY, self.view.bounds.height))
+        return bars
+    }
+    
     override public func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
         self.sideListFullLayout = layout
         // A docked side list takes the right of the screen: the chat lays out in what is left.

@@ -1535,6 +1535,10 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                         })
                     }
                     self.mainWindow.topLevelOverlayControllers = [context.sharedApplicationContext.overlayMediaController, context.notificationController]
+                    // MARK: NAGRAM - The in-app picture-in-picture keeps clear of the bars of the screens it is over.
+                    (context.sharedApplicationContext.overlayMediaController as? OverlayMediaControllerImpl)?.barObstructionProvider = { [weak mainWindow = self.mainWindow] in
+                        return (mainWindow?.viewController as? NavigationController)?.nagramOverlayObstruction()
+                    }
                     (context.context.sharedContext as? SharedAccountContextImpl)?.notificationController = context.notificationController
                     var authorizeNotifications = true
                     if #available(iOS 10.0, *) {

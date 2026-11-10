@@ -350,6 +350,21 @@ public protocol CustomViewControllerNavigationDataSummary: AnyObject {
         return 0.0
     }
     
+    // MARK: NAGRAM - The bars the in-app picture-in-picture keeps clear of, measured from this controller's view edges.
+    // A shown navigation bar is the top bar; a hidden one leaves only the status bar. Without a navigation bar the
+    // controller draws its own header, and the top is not reported. The bottom is reported only by controllers that
+    // know their bottom panels.
+    open var nagramOverlayBarInsets: NagramOverlayBarInsets {
+        guard self.isViewLoaded, let navigationBar = self.navigationBar else {
+            return NagramOverlayBarInsets(top: nil, bottom: nil)
+        }
+        if !self.displayNavigationBar || navigationBar.isHidden || navigationBar.alpha.isZero || navigationBar.supernode == nil {
+            return NagramOverlayBarInsets(top: 0.0, bottom: nil)
+        }
+        let barFrame = navigationBar.view.convert(navigationBar.bounds, to: self.view)
+        return NagramOverlayBarInsets(top: max(0.0, barFrame.maxY), bottom: nil)
+    }
+    
     public var additionalSideInsets: UIEdgeInsets = UIEdgeInsets()
     
     private let _ready = Promise<Bool>(true)
@@ -541,6 +556,8 @@ public protocol CustomViewControllerNavigationDataSummary: AnyObject {
         if self.automaticallyControlPresentationContextLayout {
             self.presentationContext.containerLayoutUpdated(layout, transition: transition)
         }
+        
+        NagramOverlayBarTracker.shared.invalidate(transition: transition) // MARK: NAGRAM
     }
     
     open func navigationStackConfigurationUpdated(next: [ViewController]) {

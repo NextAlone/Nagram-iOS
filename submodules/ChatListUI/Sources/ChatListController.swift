@@ -135,6 +135,15 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         return super.displayNode as! ChatListControllerNode
     }
     
+    // MARK: NAGRAM - The in-app picture-in-picture keeps clear of the header's panels (folder tabs, banners, the
+    // player). Without them the header is the title row, which the overlay's own top inset already covers.
+    override public var nagramOverlayBarInsets: NagramOverlayBarInsets {
+        guard self.isNodeLoaded, let navigationBarView = self.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View, navigationBarView.superview != nil, let headerPanels = navigationBarView.headerPanels, headerPanels.superview != nil, headerPanels.alpha > 0.0 else {
+            return NagramOverlayBarInsets(top: nil, bottom: nil)
+        }
+        return NagramOverlayBarInsets(top: max(0.0, headerPanels.convert(headerPanels.bounds, to: self.view).maxY), bottom: nil)
+    }
+    
     fileprivate private(set) var primaryContext: ChatListLocationContext?
     private let primaryInfoReady = Promise<Bool>()
     private let mainReady = Promise<Bool>()

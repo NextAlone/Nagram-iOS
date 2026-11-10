@@ -398,6 +398,7 @@ open class TabBarControllerImpl: ViewController, TabBarController {
         self.validLayout = layout
         
         let bottomInset = self.tabBarControllerNode.containerLayoutUpdated(layout, toolbar: self.currentController?.toolbar, transition: transition)
+        self.nagramBottomBarInset = bottomInset // MARK: NAGRAM
         
         if let currentController = self.currentController {
             currentController.view.frame = CGRect(origin: CGPoint(), size: layout.size)
@@ -409,6 +410,21 @@ open class TabBarControllerImpl: ViewController, TabBarController {
             
             currentController.containerLayoutUpdated(updatedLayout, transition: transition)
         }
+    }
+    
+    // MARK: NAGRAM - The bottom bar (or edit toolbar) the in-app picture-in-picture keeps clear of: the inset the tab
+    // bar gives the current tab, 0 for a hidden or vertical bar, whose strip the window's side insets already cover.
+    private var nagramBottomBarInset: CGFloat?
+    
+    override open var nagramOverlayBarInsets: NagramOverlayBarInsets {
+        let currentBars = self.currentController?.nagramOverlayBarInsets
+        let bottom: CGFloat?
+        if self.tabBarControllerNode.tabBarHidden && self.currentController?.toolbar == nil {
+            bottom = currentBars?.bottom ?? 0.0
+        } else {
+            bottom = max(self.nagramBottomBarInset ?? 0.0, currentBars?.bottom ?? 0.0)
+        }
+        return NagramOverlayBarInsets(top: currentBars?.top ?? super.nagramOverlayBarInsets.top, bottom: bottom)
     }
     
     public func updateControllerLayout(controller: ViewController) {

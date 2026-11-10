@@ -309,6 +309,22 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
     private var headerPanelsView: ComponentView<Empty>?
     private var footerPanelsView: ComponentView<Empty>?
     
+    // MARK: NAGRAM - The floating panels under the navigation bar (pinned message, player, toolbar) and above the input
+    // panel, in this node's coordinates, for the in-app picture-in-picture to keep clear of.
+    var nagramOverlayHeaderPanelsFrame: CGRect? {
+        guard let view = self.headerPanelsView?.view, view.superview != nil, view.alpha > 0.0 else {
+            return nil
+        }
+        return view.convert(view.bounds, to: self.view)
+    }
+    
+    var nagramOverlayFooterPanelsFrame: CGRect? {
+        guard let view = self.footerPanelsView?.view, view.superview != nil, view.alpha > 0.0 else {
+            return nil
+        }
+        return view.convert(view.bounds, to: self.view)
+    }
+    
     private var topBackgroundEdgeEffectNode: WallpaperEdgeEffectNode?
     private var bottomBackgroundEdgeEffectNode: WallpaperEdgeEffectNode?
     

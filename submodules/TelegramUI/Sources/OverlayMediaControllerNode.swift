@@ -44,6 +44,10 @@ final class OverlayMediaControllerNode: ASDisplayNode, ASGestureRecognizerDelega
     private var pinchingNode: OverlayMediaItemNode?
     private var pinchingNodeInitialSize: CGSize?
     
+    // MARK: NAGRAM - The bars of the screens under the overlay, nil while no screen reports them. Setting it places
+    // nothing; `updateBarObstruction` also moves the items.
+    var barObstruction: NagramOverlayObstruction?
+    
     init(updatePossibleEmbeddingItem: @escaping (OverlayMediaControllerEmbeddingItem?) -> Void, embedPossibleEmbeddingItem: @escaping (OverlayMediaControllerEmbeddingItem) -> Bool) {
         self.updatePossibleEmbeddingItem = updatePossibleEmbeddingItem
         self.embedPossibleEmbeddingItem = embedPossibleEmbeddingItem
@@ -96,18 +100,39 @@ final class OverlayMediaControllerNode: ASDisplayNode, ASGestureRecognizerDelega
         self.validLayout = layout
         
         for item in self.videoNodes {
+            // MARK: NAGRAM - A dragged item stays under the finger; it is placed when it is let go.
+            if item.node === self.draggingNode && item.node !== self.pinchingNode {
+                continue
+            }
             let nodeSize = item.currentSize
             transition.updateFrame(node: item.node, frame: CGRect(origin: self.nodePosition(layout: layout, size: nodeSize, location: item.location, hidden: !item.node.customTransition && !item.node.hasAttachedContext, isMinimized: item.isMinimized, tempExtendedTopInset: item.node.tempExtendedTopInset), size: nodeSize))
             item.node.updateLayout(nodeSize)
         }
     }
     
-    private func nodePosition(layout: ContainerViewLayout, size: CGSize, location: CGPoint, hidden: Bool, isMinimized: Bool, tempExtendedTopInset: Bool) -> CGPoint {
-        var layoutInsets = layout.insets(options: [.input])
-        layoutInsets.bottom += 48.0
-        if tempExtendedTopInset {
-            layoutInsets.top += 38.0
+    // MARK: NAGRAM - Moves the items when the bars under them change: a screen pushed or popped, the tab bar shown or
+    // hidden, the input panel growing. A change that comes without an animation of its own (a push lays the new screen
+    // out at once) still moves the items smoothly.
+    func updateBarObstruction(_ barObstruction: NagramOverlayObstruction?, transition: ContainedViewLayoutTransition) {
+        if self.barObstruction == barObstruction {
+            return
         }
+        self.barObstruction = barObstruction
+        guard let validLayout = self.validLayout else {
+            return
+        }
+        self.containerLayoutUpdated(validLayout, transition: transition.isAnimated ? transition : .animated(duration: 0.3, curve: .spring))
+    }
+    
+    // MARK: NAGRAM
+    private func verticalInsets(layout: ContainerViewLayout, isRightSide: Bool, tempExtendedTopInset: Bool) -> (top: CGFloat, bottom: CGFloat) {
+        let bars = self.barObstruction.flatMap { isRightSide ? $0.right : $0.left }
+        return nagramOverlayVerticalInsets(layout: layout, bars: bars, tempExtendedTopInset: tempExtendedTopInset)
+    }
+    
+    private func nodePosition(layout: ContainerViewLayout, size: CGSize, location: CGPoint, hidden: Bool, isMinimized: Bool, tempExtendedTopInset: Bool) -> CGPoint {
+        // MARK: NAGRAM - Keep clear of the actual bars of the screens below.
+        let layoutInsets = self.verticalInsets(layout: layout, isRightSide: !location.x.isZero, tempExtendedTopInset: tempExtendedTopInset)
         let inset: CGFloat = 4.0 + layout.safeInsets.left
         // The right edge keeps the right safe inset: beside iPhone Duo's side strip the two differ.
         let rightInset: CGFloat = 4.0 + layout.safeInsets.right
@@ -129,30 +154,30 @@ final class OverlayMediaControllerNode: ASDisplayNode, ASGestureRecognizerDelega
                 result.x = layout.size.width - rightInset - size.width
             }
         }
+        // MARK: NAGRAM - The vertical margin is 4pt; upstream added the left safe inset here too, which in landscape
+        // (62pt beside the Dynamic Island) pushed a bottom item above a top one once the bars were measured.
+        let verticalInset: CGFloat = 4.0
         if location.y.isZero {
-            result.y = layoutInsets.top + inset
+            result.y = layoutInsets.top + verticalInset
             if !location.x.isZero, let island = layout.topBarStatusIsland {
                 // Top right: below a status island in that corner (iPhone Duo, unfolded portrait).
                 result.y = max(result.y, island.height + 4.0)
             }
         } else {
-            result.y = layout.size.height - layoutInsets.bottom - inset - size.height
+            result.y = layout.size.height - layoutInsets.bottom - verticalInset - size.height
         }
         return result
     }
     
     private func nodeLocationForPosition(layout: ContainerViewLayout, position: CGPoint, velocity: CGPoint, size: CGSize, tempExtendedTopInset: Bool) -> (CGPoint, Bool) {
-        var layoutInsets = layout.insets(options: [.input])
-        layoutInsets.bottom += 48.0
-        if tempExtendedTopInset {
-            layoutInsets.top += 38.0
-        }
         var result = CGPoint()
         if position.x < layout.size.width / 2.0 {
             result.x = 0.0
         } else {
             result.x = 1.0
         }
+        // MARK: NAGRAM - The same insets as `nodePosition`, for the side the item is let go on.
+        let layoutInsets = self.verticalInsets(layout: layout, isRightSide: !result.x.isZero, tempExtendedTopInset: tempExtendedTopInset)
         if position.y < layoutInsets.top + (layout.size.height - layoutInsets.bottom - layoutInsets.top) / 2.0 {
             result.y = 0.0
         } else {
