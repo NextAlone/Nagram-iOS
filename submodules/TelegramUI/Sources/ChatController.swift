@@ -6174,6 +6174,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         controllerInteraction.enableFullTranslucency = context.sharedContext.energyUsageSettings.fullTranslucency
         
         self.controllerInteraction = controllerInteraction
+        self.nagramSetupMessageTranslationButton() // MARK: NAGRAM
         controllerInteraction.requestWalletTransferArrival = { [weak self] message in
             self?.walletTransferAnimationCoordinator().requestArrival(message)
         }

@@ -456,7 +456,12 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                         messageEntities = updatingMedia.entities?.entities ?? []
                     }
                     
-                    let translateToLanguage = item.associatedData.translateToLanguage
+                    var translateToLanguage = item.associatedData.translateToLanguage
+                    // MARK: NAGRAM — a message translated from its translate button shows its translation like a
+                    // translated chat does.
+                    if translateToLanguage == nil, item.controllerInteraction.nagramTranslatedMessageIds.contains(item.message.id) {
+                        translateToLanguage = item.controllerInteraction.nagramMessageTranslationLanguage
+                    }
                     var isSummarized = false
                     if item.controllerInteraction.summarizedMessageIds.contains(item.message.id) {
                         isSummarized = true

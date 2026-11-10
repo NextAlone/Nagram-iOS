@@ -449,6 +449,8 @@
 "Nagram.TranslationProvider.yandex" = "Yandex";
 "Nagram.TranslationProvider.transmart" = "TranSmart";
 "Nagram.TranslationKeepFormatting" = "書式を保持";
+"Nagram.MessageTranslateButton" = "メッセージの横に翻訳ボタン";
+"Nagram.MessageTranslation.Failed" = "このメッセージを翻訳できませんでした。";
 "Nagram.TranslateBeforeSend" = "送信前に翻訳";
 "Nagram.TranslateBeforeSend.Failed" = "翻訳に失敗しました";
 "Nagram.TranslateBeforeSendTargetLang" = "翻訳先の言語";

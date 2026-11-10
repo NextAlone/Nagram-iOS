@@ -88,6 +88,7 @@ enum NagramSettingsSyncKeys {
         "nagram.translationLLMUseContext",
         "nagram.translationLLMTemperatureTenths",
         "nagram.translationKeepFormatting",
+        "nagram.messageTranslateButton",
         "nagram.sttProvider",
         "nagram.sttBaseURL",
         "nagram.sttEndpoint",

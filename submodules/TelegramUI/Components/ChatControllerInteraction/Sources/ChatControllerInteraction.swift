@@ -378,6 +378,12 @@ public final class ChatControllerInteraction: ChatControllerInteractionProtocol 
     public var chatIsRotated: Bool = true
     public var canReadHistory: Bool = false
     public var summarizedMessageIds: Set<EngineMessage.Id> = Set()
+    // MARK: NAGRAM — the translate button beside messages: the language it translates to (nil while the setting is
+    // off), the languages it is not offered for, the messages shown translated, and what pressing it does.
+    public var nagramMessageTranslationLanguage: String?
+    public var nagramMessageTranslationIgnoredLanguages: Set<String> = Set()
+    public var nagramTranslatedMessageIds: Set<EngineMessage.Id> = Set()
+    public var nagramToggleMessageTranslation: ((EngineMessage.Id) -> Void)?
     public var focusedTextInputIsMedia: Bool = false
     public var focusedPollAddOptionMessageId: EngineMessage.Id?
     public var isAwaitingWalletTransferFlight: ((EngineRawMessage) -> Bool)?

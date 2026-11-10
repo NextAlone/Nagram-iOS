@@ -110,7 +110,7 @@ public class ChatMessageShareButton: ASDisplayNode {
         self.morePressed?()
     }
     
-    public func update(presentationData: ChatPresentationData, controllerInteraction: ChatControllerInteraction, chatLocation: ChatLocation, subject: ChatControllerSubject?, message: EngineMessage, accountPeerId: EnginePeer.Id, disableComments: Bool = false, isSummarize: Bool = false) -> CGSize {
+    public func update(presentationData: ChatPresentationData, controllerInteraction: ChatControllerInteraction, chatLocation: ChatLocation, subject: ChatControllerSubject?, message: EngineMessage, accountPeerId: EnginePeer.Id, disableComments: Bool = false, isSummarize: Bool = false, nagramTranslate: Bool = false /* MARK: NAGRAM */) -> CGSize {
         let isGlass = !presentationData.chatBubbleCorners.bubbleMode
         var isReplies = false
         var isNavigate = false
@@ -143,7 +143,9 @@ public class ChatMessageShareButton: ASDisplayNode {
         }
         
         var isExpand = false
-        if controllerInteraction.summarizedMessageIds.contains(message.id) {
+        if nagramTranslate { // MARK: NAGRAM — the translate button's state is whether the message shows its translation.
+            isExpand = controllerInteraction.nagramTranslatedMessageIds.contains(message.id)
+        } else if controllerInteraction.summarizedMessageIds.contains(message.id) {
             isExpand = true
         }
         
@@ -156,7 +158,16 @@ public class ChatMessageShareButton: ASDisplayNode {
             var updatedIconImage: UIImage?
             var updatedBottomIconImage: UIImage?
             var updatedIconOffset = CGPoint()
-            if isSummarize {
+            if nagramTranslate {
+                // MARK: NAGRAM — translate glyph; once translated, the close glyph returns to the original.
+                let iconColor = bubbleVariableColor(variableColor: presentationData.theme.theme.chat.message.shareButtonForegroundColor, wallpaper: presentationData.theme.wallpaper)
+                if isExpand {
+                    updatedIconImage = PresentationResourcesChat.chatFreeCloseButtonIcon(presentationData.theme.theme, wallpaper: presentationData.theme.wallpaper)
+                    updatedIconOffset = CGPoint(x: UIScreenPixel, y: UIScreenPixel)
+                } else if let image = UIImage(bundleImageName: "Chat/Context Menu/Translate") {
+                    updatedIconImage = generateTintedImage(image: image, color: iconColor)
+                }
+            } else if isSummarize {
                 if isExpand {
                     updatedIconImage = PresentationResourcesChat.chatFreeExpandButtonIcon(presentationData.theme.theme, wallpaper: presentationData.theme.wallpaper)
                 } else {
@@ -203,7 +214,9 @@ public class ChatMessageShareButton: ASDisplayNode {
             
             // VoiceOver: the icon-only button is named by what it does (it was an unlabelled element).
             var topLabel: String?
-            if isSummarize || message.adAttribute != nil {
+            if nagramTranslate { // MARK: NAGRAM
+                topLabel = nil
+            } else if isSummarize || message.adAttribute != nil {
                 topLabel = nil
             } else if case let .customChatContents(contents) = subject, case .hashTagSearch = contents.kind {
                 topLabel = presentationData.strings.SharedMedia_ViewInChat

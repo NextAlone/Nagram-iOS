@@ -90,6 +90,7 @@ import AvatarNode
 import ChatMessageSuggestedPostInfoNode
 import PremiumAlertController
 import NagramSettings // MARK: NAGRAM
+import NagramTranslate // MARK: NAGRAM
 
 /// Without bubbles, the time after the author's name (and a post's views after it), as offsets from the end of the name.
 private struct BubblelessHeaderTime {
@@ -887,6 +888,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
     private var mediaInfoNode: ChatMessageStarsMediaInfoNode?
     
     private var summarizeButtonNode: ChatMessageShareButton?
+    private var nagramTranslateButtonNode: ChatMessageShareButton? // MARK: NAGRAM
     private var shareButtonNode: ChatMessageShareButton?
     
     private let messageAccessibilityArea: AccessibilityAreaNode
@@ -1452,6 +1454,9 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                 }
                 
                 if let summarizeButtonNode = strongSelf.summarizeButtonNode, summarizeButtonNode.frame.contains(point) {
+                    return .fail
+                }
+                if let translateButtonNode = strongSelf.nagramTranslateButtonNode, translateButtonNode.frame.contains(point) { // MARK: NAGRAM
                     return .fail
                 }
                 
@@ -2218,17 +2223,28 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
             needsShareButton = false
         }
 
+        // MARK: NAGRAM — the translate button beside an incoming text message in a language the user does not read.
+        var nagramNeedsTranslateButton = false
+        if incoming, !isPreview, !isAd, !isUnsupportedContent, !isEphemeralMessage, !needsSummarizeButton, !bubbleStyle.isBubbleless, item.associatedData.translateToLanguage == nil, let nagramTranslateToLanguage = item.controllerInteraction.nagramMessageTranslationLanguage, !item.message.text.isEmpty, item.message.id.peerId.namespace != Namespaces.Peer.SecretChat, !Namespaces.Message.allNonRegular.contains(item.message.id.namespace) {
+            if case .messageOptions = item.associatedData.subject {
+            } else if item.controllerInteraction.nagramTranslatedMessageIds.contains(item.message.id) {
+                nagramNeedsTranslateButton = true
+            } else if let language = NagramMessageLanguage.dominantLanguage(key: "\(item.message.stableId)-\(item.message.text.hashValue)", text: item.message.text), language != nagramTranslateToLanguage, !item.controllerInteraction.nagramMessageTranslationIgnoredLanguages.contains(language) {
+                nagramNeedsTranslateButton = true
+            }
+        }
+
         var tmpWidth: CGFloat
         if allowFullWidth {
             tmpWidth = baseWidth
-            if (needsShareButton && !isSidePanelOpen) || isAd {
+            if ((needsShareButton || nagramNeedsTranslateButton) && !isSidePanelOpen) || isAd { // MARK: NAGRAM — translate button
                 tmpWidth -= 45.0
             } else {
                 tmpWidth -= 3.0
             }
         } else {
             tmpWidth = layoutConstants.bubble.maximumWidthFill.widthFor(baseWidth)
-            if ((needsShareButton && !isSidePanelOpen) || isAd) && tmpWidth + 32.0 > baseWidth {
+            if (((needsShareButton || nagramNeedsTranslateButton) && !isSidePanelOpen) || isAd) && tmpWidth + 32.0 > baseWidth { // MARK: NAGRAM — translate button
                 tmpWidth = baseWidth - 32.0
             }
         }
@@ -4315,6 +4331,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                 mediaInfoOrigin: mediaInfoOrigin,
                 mediaInfoSizeAndApply: mediaInfoSizeApply,
                 needsSummarizeButton: needsSummarizeButton,
+                nagramNeedsTranslateButton: nagramNeedsTranslateButton, // MARK: NAGRAM
                 needsShareButton: needsShareButton,
                 shareButtonOffset: shareButtonOffset,
                 avatarOffset: avatarOffset,
@@ -4397,6 +4414,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         mediaInfoOrigin: CGPoint?,
         mediaInfoSizeAndApply: (CGSize, (Bool) -> ChatMessageStarsMediaInfoNode?),
         needsSummarizeButton: Bool,
+        nagramNeedsTranslateButton: Bool, // MARK: NAGRAM
         needsShareButton: Bool,
         shareButtonOffset: CGPoint?,
         avatarOffset: CGFloat?,
@@ -6117,6 +6135,24 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
             summarizeButtonNode.removeFromSupernode()
         }
         
+        // MARK: NAGRAM — the translate button beside the message.
+        if nagramNeedsTranslateButton {
+            if strongSelf.nagramTranslateButtonNode == nil {
+                let translateButtonNode = ChatMessageShareButton()
+                strongSelf.nagramTranslateButtonNode = translateButtonNode
+                strongSelf.insertSubnode(translateButtonNode, belowSubnode: strongSelf.messageAccessibilityArea)
+                translateButtonNode.pressed = { [weak strongSelf] in
+                    guard let strongSelf, let item = strongSelf.item else {
+                        return
+                    }
+                    item.controllerInteraction.nagramToggleMessageTranslation?(item.message.id)
+                }
+            }
+        } else if let translateButtonNode = strongSelf.nagramTranslateButtonNode {
+            strongSelf.nagramTranslateButtonNode = nil
+            translateButtonNode.removeFromSupernode()
+        }
+        
         if needsShareButton {
             if strongSelf.shareButtonNode == nil {
                 let shareButtonNode = ChatMessageShareButton()
@@ -6392,6 +6428,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                 animation.animator.updateAlpha(layer: shareButtonNode.layer, alpha: (isCurrentlyPlayingMedia || isSidePanelOpen) ? 0.0 : 1.0, completion: nil)
                 animation.animator.updateScale(layer: shareButtonNode.layer, scale: (isCurrentlyPlayingMedia || isSidePanelOpen) ? 0.001 : 1.0, completion: nil)
             }
+            strongSelf.nagramUpdateTranslateButtonFrame(item: item, backgroundFrame: backgroundFrame, incoming: incoming, bubblelessSideButtonsX: bubblelessSideButtonsX, shareButtonOffset: shareButtonOffset, disablesComments: disablesComments, isHidden: isCurrentlyPlayingMedia || isSidePanelOpen, isSidePanelOpen: isSidePanelOpen, animation: animation) // MARK: NAGRAM
         } else {
             /*if let _ = strongSelf.backgroundFrameTransition {
                 strongSelf.animateFrameTransition(1.0, backgroundFrame.size.height)
@@ -6450,6 +6487,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                 animation.animator.updateAlpha(layer: shareButtonNode.layer, alpha: (isCurrentlyPlayingMedia || isSidePanelOpen) ? 0.0 : 1.0, completion: nil)
                 animation.animator.updateScale(layer: shareButtonNode.layer, scale: (isCurrentlyPlayingMedia || isSidePanelOpen) ? 0.001 : 1.0, completion: nil)
             }
+            strongSelf.nagramUpdateTranslateButtonFrame(item: item, backgroundFrame: backgroundFrame, incoming: incoming, bubblelessSideButtonsX: bubblelessSideButtonsX, shareButtonOffset: shareButtonOffset, disablesComments: disablesComments, isHidden: isCurrentlyPlayingMedia || isSidePanelOpen, isSidePanelOpen: isSidePanelOpen, animation: animation) // MARK: NAGRAM
             
             // The non-animated path. The enclosing `else` already establishes that `animation` is not
             // `.System`, so every write here is immediate. This used to branch first on `.System` +
@@ -7600,6 +7638,9 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         if let summarizeButtonNode = self.summarizeButtonNode, summarizeButtonNode.frame.contains(point) {
             return summarizeButtonNode.view.hitTest(self.view.convert(point, to: summarizeButtonNode.view), with: event)
         }
+        if let translateButtonNode = self.nagramTranslateButtonNode, translateButtonNode.frame.contains(point) { // MARK: NAGRAM
+            return translateButtonNode.view.hitTest(self.view.convert(point, to: translateButtonNode.view), with: event)
+        }
         
         if let shareButtonNode = self.shareButtonNode, shareButtonNode.frame.contains(point) {
             return shareButtonNode.view.hitTest(self.view.convert(point, to: shareButtonNode.view), with: event)
@@ -8442,6 +8483,12 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
             
             summarizeButtonNode.updateAbsoluteRect(summarizeButtonNodeFrame, within: containerSize)
         }
+        if let translateButtonNode = self.nagramTranslateButtonNode { // MARK: NAGRAM
+            var translateButtonNodeFrame = translateButtonNode.frame
+            translateButtonNodeFrame.origin.x += rect.minX
+            translateButtonNodeFrame.origin.y += rect.minY
+            translateButtonNode.updateAbsoluteRect(translateButtonNodeFrame, within: containerSize)
+        }
         
         if let shareButtonNode = self.shareButtonNode {
             var shareButtonNodeFrame = shareButtonNode.frame
@@ -8935,6 +8982,33 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         self.updateVisibility(isScroll: false)
     }
     
+    // MARK: NAGRAM — the translate button sits where the summarize button does, at the bubble's top, and above the
+    // share button when a short bubble leaves no room between them.
+    private func nagramUpdateTranslateButtonFrame(item: ChatMessageItem, backgroundFrame: CGRect, incoming: Bool, bubblelessSideButtonsX: CGFloat?, shareButtonOffset: CGPoint?, disablesComments: Bool, isHidden: Bool, isSidePanelOpen: Bool, animation: ListViewItemUpdateAnimation) {
+        guard let translateButtonNode = self.nagramTranslateButtonNode else {
+            return
+        }
+        let buttonSize = translateButtonNode.update(presentationData: item.presentationData, controllerInteraction: item.controllerInteraction, chatLocation: item.chatLocation, subject: item.associatedData.subject, message: EngineMessage(item.message), accountPeerId: item.context.account.peerId, disableComments: disablesComments, nagramTranslate: true)
+
+        var buttonFrame = CGRect(origin: CGPoint(x: !incoming ? backgroundFrame.minX - buttonSize.width - 8.0 : (bubblelessSideButtonsX ?? backgroundFrame.maxX + 8.0), y: backgroundFrame.minY + 1.0), size: buttonSize)
+        if let shareButtonOffset, incoming {
+            buttonFrame.origin.x = shareButtonOffset.x
+        }
+        if let shareButtonNode = self.shareButtonNode {
+            let shareButtonMinY = shareButtonNode.position.y - shareButtonNode.bounds.height / 2.0
+            buttonFrame.origin.y = min(buttonFrame.origin.y, shareButtonMinY - buttonSize.height - 6.0)
+        }
+        if isSidePanelOpen {
+            buttonFrame.origin.x -= buttonFrame.width * 0.5
+            buttonFrame.origin.y += buttonFrame.height * 0.5
+        }
+
+        animation.animator.updatePosition(layer: translateButtonNode.layer, position: buttonFrame.center, completion: nil)
+        animation.animator.updateBounds(layer: translateButtonNode.layer, bounds: CGRect(origin: CGPoint(), size: buttonFrame.size), completion: nil)
+        animation.animator.updateAlpha(layer: translateButtonNode.layer, alpha: isHidden ? 0.0 : 1.0, completion: nil)
+        animation.animator.updateScale(layer: translateButtonNode.layer, scale: isHidden ? 0.001 : 1.0, completion: nil)
+    }
+
     private func toggleSummarization() {
         guard let item = self.item else {
             return

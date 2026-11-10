@@ -101,6 +101,7 @@ swift_library(
         "//submodules/TelegramUI/Components/Chat/ChatMessageRichDataBubbleContentNode",
         # MARK: NAGRAM
         "//Nagram/Settings:NagramSettings",
+        "//Nagram/Translate:NagramTranslate", # MARK: NAGRAM
     ],
     visibility = [
         "//visibility:public",

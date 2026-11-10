@@ -595,6 +595,9 @@ public final class NagramSettings {
     @NagramDefault("nagram.translationLLMTemperatureTenths", 7)
     public var translationLLMTemperatureTenths: Int32
     /// 发送前翻译:长按发送按钮菜单显示「翻译」项,译文回填输入框(NAG-75)。
+    /// 消息旁显示翻译按钮：点一下在气泡里显示译文，再点回到原文（只在本地显示）
+    @NagramDefault("nagram.messageTranslateButton", false)
+    public var messageTranslateButton: Bool
     @NagramDefault("nagram.translateBeforeSend", false)
     public var translateBeforeSend: Bool
     /// 发送前翻译的目标语言代码(popularTranslationLanguages 短列表)。

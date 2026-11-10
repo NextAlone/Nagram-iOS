@@ -564,6 +564,7 @@ private func nagramGroups(
             .choice(titleKey: "Nagram.TranslationProvider", prefix: "Nagram.TranslationProvider", options: NagramTranslationProvider.allCases.map { $0.rawValue }, current: { NagramSettings.shared.translationProviderValue.rawValue }, set: { NagramSettings.shared.translationProvider = $0 }),
             .navigation(titleKey: "Nagram.TranslationLLMSettings", action: llmTranslationSettingsAction),
             .toggle(titleKey: "Nagram.TranslationKeepFormatting", get: { NagramSettings.shared.translationKeepFormatting }, set: { NagramSettings.shared.translationKeepFormatting = $0 }),
+            .toggle(titleKey: "Nagram.MessageTranslateButton", get: { NagramSettings.shared.messageTranslateButton }, set: { NagramSettings.shared.messageTranslateButton = $0 }),
             .toggle(titleKey: "Nagram.TranslateBeforeSend", get: { NagramSettings.shared.translateBeforeSend }, set: { NagramSettings.shared.translateBeforeSend = $0 }),
             .choice(titleKey: "Nagram.TranslateBeforeSendTargetLang", prefix: "Nagram.TranslateBeforeSendTargetLang", options: ["en", "ar", "zh", "fr", "de", "it", "ja", "ko", "pt-BR", "ru", "es", "uk"], current: { NagramSettings.shared.translateBeforeSendTargetLang }, set: { NagramSettings.shared.translateBeforeSendTargetLang = $0 }),
         ]),
