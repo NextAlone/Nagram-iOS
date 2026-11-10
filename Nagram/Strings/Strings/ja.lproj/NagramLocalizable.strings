@@ -130,6 +130,8 @@
 "Nagram.PanguInfo" = "文字を読みやすくするため、CJK（中国語、日本語、韓国語）、半角英数字、記号の間に自動でスペースを挿入します。";
 "Nagram.HideReactions" = "リアクションを非表示";
 "Nagram.DisableSendAsButton" = "「チャンネルとして送信」ボタンを非表示";
+"Nagram.ShowAccountAvatarInInput" = "入力欄にアカウントのアイコンを表示";
+"Nagram.ShowAccountAvatarInInputOnlyWithMultipleAccounts" = "複数アカウント時のみ";
 "Nagram.SendWithReturnKey" = "Returnキーで送信";
 "Nagram.TextStyleToolbar" = "文字スタイルツールバー";
 "Nagram.TextStyleToolbar.off" = "オフ";

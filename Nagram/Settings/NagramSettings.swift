@@ -262,6 +262,12 @@ public final class NagramSettings {
     /// 隐藏「以频道身份发送」按钮
     @NagramDefault("nagram.disableSendAsButton", false)
     public var disableSendAsButton: Bool
+    /// 输入框左侧显示当前账号头像（有「以…身份发送」头像的聊天保持原样）
+    @NagramDefault("nagram.showAccountAvatarInInput", false)
+    public var showAccountAvatarInInput: Bool
+    /// 账号头像只在登录了多个账号时显示
+    @NagramDefault("nagram.showAccountAvatarInInputOnlyWithMultipleAccounts", true)
+    public var showAccountAvatarInInputOnlyWithMultipleAccounts: Bool
     /// 隐藏语音录制按钮
     @NagramDefault("nagram.hideRecordingButton", false)
     public var hideRecordingButton: Bool

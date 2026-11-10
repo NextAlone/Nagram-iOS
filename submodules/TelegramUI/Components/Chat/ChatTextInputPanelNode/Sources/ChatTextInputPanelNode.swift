@@ -751,7 +751,11 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
     public let sendAsAvatarContainerNode: ContextControllerSourceNode
     private let sendAsAvatarNode: AvatarNode
     private let sendAsCloseIconView: UIImageView
-    
+    // MARK: NAGRAM — the account's own avatar in the send-as slot ("Show Account Avatar in Input Field").
+    private var nagramAccountAvatarDisposable: Disposable?
+    private var nagramAccountPeer: EnginePeer?
+    private var nagramHasMultipleAccounts = false
+
     public let attachmentButton: HighlightTrackingButton
     public let attachmentButtonBackground: GlassBackgroundView
     private let attachmentButtonIcon: UIImageView
@@ -1415,6 +1419,11 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
             guard let strongSelf = self else {
                 return
             }
+            // MARK: NAGRAM — the account's own avatar has no send-as menu.
+            if let interfaceState = strongSelf.presentationInterfaceState, strongSelf.nagramDisplaysAccountAvatar(interfaceState) {
+                gesture.cancel()
+                return
+            }
             strongSelf.interfaceInteraction?.openSendAsPeer(strongSelf.sendAsAvatarReferenceNode, gesture)
         }
         
@@ -1676,8 +1685,74 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         self.agentMenuCooldown.cancel()
         self.tooltipController?.dismiss()
         self.currentEmojiSuggestion?.disposable.dispose()
+        self.nagramAccountAvatarDisposable?.dispose() // MARK: NAGRAM
     }
-    
+
+    // MARK: NAGRAM — whether the send-as slot shows the account's own avatar. Only where upstream puts nothing
+    // there: no send-as peers, no bot menu button, not while editing.
+    private func nagramDisplaysAccountAvatar(_ interfaceState: ChatPresentationInterfaceState) -> Bool {
+        guard NagramSettings.shared.showAccountAvatarInInput, !self.isAgentLayout, interfaceState.editMessageState == nil else {
+            return false
+        }
+        if let sendAsPeers = interfaceState.sendAsPeers, !sendAsPeers.isEmpty {
+            return false
+        }
+        if let peer = interfaceState.renderedPeer?.peer as? TelegramUser, peer.botInfo != nil {
+            if interfaceState.hasBotCommands {
+                return false
+            }
+            if case .webView = interfaceState.botMenuButton {
+                return false
+            }
+        }
+        self.nagramObserveAccountAvatarIfNeeded()
+        if NagramSettings.shared.showAccountAvatarInInputOnlyWithMultipleAccounts && !self.nagramHasMultipleAccounts {
+            return false
+        }
+        return true
+    }
+
+    private func nagramObserveAccountAvatarIfNeeded() {
+        guard self.nagramAccountAvatarDisposable == nil, let context = self.context else {
+            return
+        }
+        let hasMultipleAccounts = context.sharedContext.activeAccountContexts
+        |> map { accounts -> Bool in
+            return accounts.accounts.count > 1
+        }
+        |> distinctUntilChanged
+        self.nagramAccountAvatarDisposable = (combineLatest(
+            context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId)),
+            hasMultipleAccounts
+        )
+        |> deliverOnMainQueue).startStrict(next: { [weak self] peer, hasMultipleAccounts in
+            guard let self else {
+                return
+            }
+            self.nagramAccountPeer = peer
+            self.nagramHasMultipleAccounts = hasMultipleAccounts
+            self.requestLayout(transition: .animated(duration: 0.2, curve: .easeInOut))
+        })
+    }
+
+    private func nagramOpenAccountProfile() {
+        guard let context = self.context, let peer = self.nagramAccountPeer, let navigationController = self.interfaceInteraction?.getNavigationController() else {
+            return
+        }
+        guard let controller = context.sharedContext.makePeerInfoController(
+            context: context,
+            updatedPresentationData: nil,
+            peer: peer,
+            mode: .myProfile,
+            avatarInitiallyExpanded: false,
+            fromChat: false,
+            requestsContext: nil
+        ) else {
+            return
+        }
+        navigationController.pushViewController(controller)
+    }
+
     override public func didLoad() {
         super.didLoad()
     }
@@ -2051,6 +2126,8 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         
         var hasSendAsButton = false
         if let sendAsPeers = interfaceState.sendAsPeers, !sendAsPeers.isEmpty && interfaceState.editMessageState == nil {
+            hasSendAsButton = true
+        } else if self.nagramDisplaysAccountAvatar(interfaceState) { // MARK: NAGRAM
             hasSendAsButton = true
         }
         
@@ -2533,6 +2610,11 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
                 default:
                     break
                 }
+            }
+        } else if self.nagramDisplaysAccountAvatar(interfaceState) { // MARK: NAGRAM
+            displaySendAsAvatarButton = true
+            if let context = self.context, let peer = self.nagramAccountPeer {
+                self.sendAsAvatarNode.setPeer(context: context, theme: interfaceState.theme, peer: peer, emptyColor: interfaceState.theme.list.mediaPlaceholderColor)
             }
         }
         if mediaRecordingState != nil || interfaceState.interfaceState.mediaDraftState != nil {
@@ -3923,6 +4005,8 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         
         var hasSendAsButton = false
         if let sendAsPeers = interfaceState.sendAsPeers, !sendAsPeers.isEmpty && interfaceState.editMessageState == nil {
+            hasSendAsButton = true
+        } else if self.nagramDisplaysAccountAvatar(interfaceState) { // MARK: NAGRAM
             hasSendAsButton = true
         }
         
@@ -7186,6 +7270,11 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
     }
     
     @objc func sendAsAvatarButtonPressed() {
+        // MARK: NAGRAM — the account's own avatar opens the account's profile.
+        if let interfaceState = self.presentationInterfaceState, self.nagramDisplaysAccountAvatar(interfaceState) {
+            self.nagramOpenAccountProfile()
+            return
+        }
         self.interfaceInteraction?.openSendAsPeer(self.sendAsAvatarReferenceNode, nil)
     }
     

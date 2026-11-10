@@ -130,6 +130,8 @@
 "Nagram.PanguInfo" = "Paranoid text spacing for good readability, automatically inserting spaces between CJK, half-width English, digits, and symbols.";
 "Nagram.HideReactions" = "Hide Reactions";
 "Nagram.DisableSendAsButton" = "Hide \"Send as Channel\" Button";
+"Nagram.ShowAccountAvatarInInput" = "Show Account Avatar in Input Field";
+"Nagram.ShowAccountAvatarInInputOnlyWithMultipleAccounts" = "Only with Multiple Accounts";
 "Nagram.SendWithReturnKey" = "Send with Return Key";
 "Nagram.TextStyleToolbar" = "Text Style Toolbar";
 "Nagram.TextStyleToolbar.off" = "Off";

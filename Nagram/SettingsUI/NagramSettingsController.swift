@@ -530,6 +530,8 @@ private func nagramGroups(
         ]),
         NagramGroup(tab: .messages, headerKey: "Nagram.Section.Sending", footerKeys: ["Nagram.ForwardHideSenderNamesByDefault.Footer"], rows: [
             .toggle(titleKey: "Nagram.DisableSendAsButton", get: { NagramSettings.shared.disableSendAsButton }, set: { NagramSettings.shared.disableSendAsButton = $0 }),
+            .toggle(titleKey: "Nagram.ShowAccountAvatarInInput", get: { NagramSettings.shared.showAccountAvatarInInput }, set: { NagramSettings.shared.showAccountAvatarInInput = $0 }),
+            .toggle(titleKey: "Nagram.ShowAccountAvatarInInputOnlyWithMultipleAccounts", get: { NagramSettings.shared.showAccountAvatarInInputOnlyWithMultipleAccounts }, set: { NagramSettings.shared.showAccountAvatarInInputOnlyWithMultipleAccounts = $0 }, isVisible: { NagramSettings.shared.showAccountAvatarInInput }),
             .toggle(titleKey: "Nagram.ForwardHideSenderNamesByDefault", get: { NagramSettings.shared.forwardHideSenderNamesByDefault }, set: { NagramSettings.shared.forwardHideSenderNamesByDefault = $0 }),
             .toggle(titleKey: "Nagram.SendWithReturnKey", get: { NagramSettings.shared.sendWithReturnKey }, set: { NagramSettings.shared.sendWithReturnKey = $0 }),
             .navigation(titleKey: "Nagram.TextStyleToolbar", action: textStyleToolbarAction),

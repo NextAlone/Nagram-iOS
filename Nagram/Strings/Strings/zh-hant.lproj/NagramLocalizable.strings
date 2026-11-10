@@ -130,6 +130,8 @@
 "Nagram.PanguInfo" = "使文字更具可讀性。在 CJK（中文、日文、韓文）、半形英文、數字和符號字元之間自動插入空格。";
 "Nagram.HideReactions" = "隱藏訊息反應";
 "Nagram.DisableSendAsButton" = "隱藏「以頻道身分傳送」";
+"Nagram.ShowAccountAvatarInInput" = "輸入框顯示目前帳號頭像";
+"Nagram.ShowAccountAvatarInInputOnlyWithMultipleAccounts" = "僅多帳號時顯示";
 "Nagram.SendWithReturnKey" = "Enter 鍵傳送";
 "Nagram.TextStyleToolbar" = "文字樣式工具列";
 "Nagram.TextStyleToolbar.off" = "關閉";

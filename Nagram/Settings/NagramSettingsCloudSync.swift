@@ -13,6 +13,8 @@ enum NagramSettingsSyncKeys {
         "nagram.disableGalleryCameraPreview",
         "nagram.roundVideoCamera",
         "nagram.disableSendAsButton",
+        "nagram.showAccountAvatarInInput",
+        "nagram.showAccountAvatarInInputOnlyWithMultipleAccounts",
         "nagram.hideRecordingButton",
         "nagram.secondsInMessages",
         "nagram.showForwardedMessageDate",
