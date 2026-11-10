@@ -980,11 +980,15 @@ private final class NagramBottomBarPreviewItemNode: ListViewItemNode, ItemListIt
                 self.bottomFrame = CGRect(x: tabBarFrame.minX, y: tabBarFrame.minY, width: max(48.0, tabBarFrame.width - 72.0), height: 64.0)
             }
 
-            let fixedExternalFrame = CGRect(x: previewLeft + availableWidth - 64.0, y: tabBarFrame.minY, width: 64.0, height: 64.0)
+            // The alignment can move the standalone slot away from the trailing edge; follow the bar's own slot.
+            let fixedExternalFrame: CGRect
+            if !onlySearchButton, let componentView = tabBarView as? TabBarComponent.View, let slotFrame = componentView.standaloneSlotFrame {
+                fixedExternalFrame = self.backgroundView.convert(slotFrame, from: componentView)
+            } else {
+                fixedExternalFrame = CGRect(x: previewLeft + availableWidth - 64.0, y: tabBarFrame.minY, width: 64.0, height: 64.0)
+            }
             if let externalItem = previewSettings.externalItem, externalItem != .search, let frame = self.itemFrames[externalItem] {
                 self.externalFrame = frame
-            } else if searchIsVisible {
-                self.externalFrame = fixedExternalFrame
             } else {
                 self.externalFrame = fixedExternalFrame
             }

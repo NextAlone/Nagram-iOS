@@ -320,20 +320,6 @@ public final class NavigationSearchView: UIView {
 
 /// An unselected item's icon and title: UIKit's `labelColor` (iOS 27's `-[UITabBar _effectiveUnselectedLabelTintColor]`
 /// with the glass's monochromatic treatment), black in light mode and white in dark.
-// MARK: NAGRAM — the bottom-bar width setting over iOS 27's portrait tab bar. At 0 the bar is exactly the official
-// one (`tabBarSystemItemsLayout`); a larger ratio lengthens it towards `availableLength`, the items sharing the
-// extra length as the official flexible layout shares a full-length bar. Hidden slots reserve nothing here: the
-// official bar hugs its items, so a hidden tab never widens the others.
-func nagramTabBarSystemItemsLayout(fittedItemWidths: [CGFloat], availableLength: CGFloat, hasAccessory: Bool, fillRatio: CGFloat) -> TabBarItemsLayout {
-    let official = tabBarSystemItemsLayout(fittedItemWidths: fittedItemWidths, availableLength: availableLength, hasAccessory: hasAccessory)
-    let ratio = max(0.0, min(1.0, fillRatio))
-    if fittedItemWidths.isEmpty || ratio <= 0.0 || official.size.width >= availableLength {
-        return official
-    }
-    let length = official.size.width + (availableLength - official.size.width) * ratio
-    return tabBarSystemItemsLayout(fittedItemWidths: fittedItemWidths, availableLength: length, hasAccessory: true)
-}
-
 private func tabBarUnselectedItemColor(theme: PresentationTheme) -> UIColor {
     return theme.overallDarkAppearance ? .white : .black
 }
@@ -659,6 +645,8 @@ public final class TabBarComponent: Component {
         private var selectedItemViews: [AnyHashable: ComponentView<Empty>] = [:]
 
         private var searchView: NavigationSearchView?
+        // MARK: NAGRAM — the standalone slot (search button or external item) in this view, nil without one.
+        public private(set) var standaloneSlotFrame: CGRect?
         private var accessibilityItemElements: [AnyHashable: ItemAccessibilityElement] = [:]
         
         private var tabSelectionRecognizer: TabSelectionRecognizer?
@@ -1116,13 +1104,31 @@ public final class TabBarComponent: Component {
                 }
                 itemsLayout = TabBarItemsLayout(size: CGSize(width: min(availableSize.width, contentWidth), height: itemHeight + innerInset * 2.0), itemFrames: itemFrames)
             } else if isSystemLayout {
-                // MARK: NAGRAM — iOS 27's layout with the bottom-bar settings on top: the standalone slot is the
-                // accessory, and the width slider stretches the official bar up to the available length.
-                itemsLayout = nagramTabBarSystemItemsLayout(fittedItemWidths: titleWidths, availableLength: availableLength, hasAccessory: hasStandaloneSlot, fillRatio: component.buttonWidthFillRatio ?? 0.0)
+                // MARK: NAGRAM — iOS 27's layout with the bottom-bar settings on top: the width slider runs from the
+                // compact bar to the length the standalone slot leaves.
+                if let buttonWidthFillRatio = component.buttonWidthFillRatio {
+                    itemsLayout = nagramTabBarSystemItemsLayout(fittedItemWidths: titleWidths, availableLength: availableLength, fillRatio: buttonWidthFillRatio)
+                } else {
+                    itemsLayout = tabBarSystemItemsLayout(fittedItemWidths: titleWidths, availableLength: availableLength, hasAccessory: hasStandaloneSlot)
+                }
             } else {
                 itemsLayout = tabBarItemsLayout(axis: component.axis, isCompact: component.isCompact, unboundItemWidths: unboundItemWidths, availableLength: availableLength)
             }
             let tabsSize = itemsLayout.size
+            // MARK: NAGRAM — the alignment setting places the items and the standalone slot together, so no
+            // alignment can push the items under the slot.
+            let usesRowAlignment = component.axis == .horizontal && (component.isAdaptiveWidth || component.buttonWidthFillRatio != nil)
+            let rowAlignment: NagramTabBarRowAlignment
+            if component.alignItemsToLeft {
+                rowAlignment = .leading
+            } else if component.centerItemsInAvailableWidth {
+                rowAlignment = .centeredWithSlot
+            } else {
+                rowAlignment = .centeredBesideSlot
+            }
+            let rowOrigins = nagramTabBarRowOrigins(tabsLength: tabsSize.width, slotLength: usesRowAlignment && hasStandaloneSlot ? barHeight : nil, availableLength: availableSize.width, alignment: rowAlignment)
+            let standaloneSlotX = rowOrigins.slot ?? (availableSize.width - barHeight)
+            self.standaloneSlotFrame = hasExternalItem || (hasSearchButton && component.layoutItemCount != nil) ? CGRect(x: standaloneSlotX, y: 0.0, width: barHeight, height: barHeight) : nil
             let hasItems = !component.items.isEmpty
             // MARK: NAGRAM — an external item remains tappable even when all bottom items are hidden.
             let hasInteractiveItems = hasItems || hasExternalItem
@@ -1259,7 +1265,7 @@ public final class TabBarComponent: Component {
                 validIds.append(externalItem.id)
 
                 let externalSize = CGSize(width: barHeight, height: barHeight)
-                let externalFrame = CGRect(origin: CGPoint(x: availableSize.width - externalSize.width, y: 0.0), size: externalSize)
+                let externalFrame = CGRect(origin: CGPoint(x: standaloneSlotX, y: 0.0), size: externalSize) // MARK: NAGRAM
 
                 let itemView: ComponentView<Empty>
                 var itemTransition = transition
@@ -1351,19 +1357,8 @@ public final class TabBarComponent: Component {
             
             var tabsFrame = CGRect(origin: CGPoint(), size: tabsSize)
             // MARK: NAGRAM — align adaptive bottom items inside the area left of the standalone slot.
-            if component.axis == .horizontal && (component.isAdaptiveWidth || component.buttonWidthFillRatio != nil) {
-                if hasStandaloneSlot {
-                    let availableTabsWidth = max(0.0, availableSize.width - (barHeight + 8.0))
-                    if component.alignItemsToLeft {
-                        tabsFrame.origin.x = 0.0
-                    } else if component.centerItemsInAvailableWidth {
-                        tabsFrame.origin.x = floor((availableSize.width - tabsFrame.width) * 0.5)
-                    } else {
-                        tabsFrame.origin.x = floor((availableTabsWidth - tabsFrame.width) * 0.5)
-                    }
-                } else {
-                    tabsFrame.origin.x = 0.0
-                }
+            if usesRowAlignment {
+                tabsFrame.origin.x = rowOrigins.tabs
             }
             if let search, search.isActive {
                 tabsFrame.size = CGSize(width: 48.0, height: 48.0)
@@ -1437,7 +1432,7 @@ public final class TabBarComponent: Component {
                     searchSize = CGSize(width: barHeight, height: barHeight)
                     if component.layoutItemCount != nil {
                         size.width = availableSize.width // MARK: NAGRAM — keep right-side search anchored.
-                        searchFrame = CGRect(origin: CGPoint(x: availableSize.width - searchSize.width, y: 0.0), size: searchSize)
+                        searchFrame = CGRect(origin: CGPoint(x: standaloneSlotX, y: 0.0), size: searchSize)
                     } else {
                         size.width += barHeight + 8.0
                         searchFrame = CGRect(origin: CGPoint(x: tabBarSearchButtonOrigin(tabsLength: tabsSize.width, availableLength: availableSize.width, buttonLength: searchSize.width, isCompact: component.isCompact && component.axis == .horizontal), y: 0.0), size: searchSize)

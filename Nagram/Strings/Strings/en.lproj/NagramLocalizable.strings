@@ -398,7 +398,7 @@
 "Nagram.BottomBarLayout.Alignment.center" = "Center All";
 "Nagram.BottomBarLayout.Alignment.disabled" = "Not used in full width";
 "Nagram.BottomBarLayout.Reset" = "Reset Home Layout";
-"Nagram.BottomBarLayout.Footer" = "Use the preview to reorder buttons and adjust the right standalone button. Toggle actual visibility under Bottom Buttons. Search can switch between button and bar; the bar is available only when other bottom buttons are hidden. Button width 0% matches four buttons; 100% fills the current bottom bar width. Resetting also restores the top bar.";
+"Nagram.BottomBarLayout.Footer" = "Use the preview to reorder buttons and adjust the right standalone button. Toggle actual visibility under Bottom Buttons. Search can switch between button and bar; the bar is available only when other bottom buttons are hidden. Button width 0% keeps the bar as narrow as its buttons; 100% fills the width beside the right standalone button. Alignment: Space Between puts the buttons at the left and the standalone button at the right; Center Left Side centers the buttons in the space left of the standalone button; Center All centers the buttons and the standalone button together. Resetting also restores the top bar.";
 "Nagram.BottomBarLayout.Item.contacts" = "Contacts";
 "Nagram.BottomBarLayout.Item.calls" = "Calls";
 "Nagram.BottomBarLayout.Item.chats" = "Chats";

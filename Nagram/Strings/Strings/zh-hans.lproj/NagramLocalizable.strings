@@ -398,7 +398,7 @@
 "Nagram.BottomBarLayout.Alignment.center" = "整体居中";
 "Nagram.BottomBarLayout.Alignment.disabled" = "占满时不适用";
 "Nagram.BottomBarLayout.Reset" = "重置首页布局";
-"Nagram.BottomBarLayout.Footer" = "预览区用于拖动排序和右侧独立按钮调整；真实显示隐藏在「底栏开关」中切换。搜索可在按钮和搜索条间切换，搜索条仅在其他底栏按钮隐藏时可用。按钮宽度 0% 为四按钮宽度，100% 为填满当前底栏宽度。重置会同时恢复顶栏设置。";
+"Nagram.BottomBarLayout.Footer" = "预览区用于拖动排序和右侧独立按钮调整；真实显示隐藏在「底栏开关」中切换。搜索可在按钮和搜索条间切换，搜索条仅在其他底栏按钮隐藏时可用。按钮宽度 0% 时底栏贴合按钮，100% 时填满右侧独立按钮以外的宽度。对齐：两端对齐把按钮放在左侧、独立按钮放在右侧；左侧居中让按钮在独立按钮左边的区域内居中；整体居中让按钮和独立按钮作为一组居中。重置会同时恢复顶栏设置。";
 "Nagram.BottomBarLayout.Item.contacts" = "联系人";
 "Nagram.BottomBarLayout.Item.calls" = "通话";
 "Nagram.BottomBarLayout.Item.chats" = "聊天";

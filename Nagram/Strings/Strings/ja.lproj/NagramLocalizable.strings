@@ -398,7 +398,7 @@
 "Nagram.BottomBarLayout.Alignment.center" = "全体中央";
 "Nagram.BottomBarLayout.Alignment.disabled" = "全幅では使用しません";
 "Nagram.BottomBarLayout.Reset" = "ホームのレイアウトをリセット";
-"Nagram.BottomBarLayout.Footer" = "プレビューでは並べ替えと右側の独立ボタン調整を行います。実際の表示切り替えは「下部ボタン」で行います。検索はボタンと検索バーを切り替えられ、検索バーは他の下部ボタンが非表示の場合のみ使用できます。ボタン幅 0% は4ボタン幅、100% は現在の下部バー幅いっぱいです。リセットすると上部バーの設定も元に戻ります。";
+"Nagram.BottomBarLayout.Footer" = "プレビューでは並べ替えと右側の独立ボタン調整を行います。実際の表示切り替えは「下部ボタン」で行います。検索はボタンと検索バーを切り替えられ、検索バーは他の下部ボタンが非表示の場合のみ使用できます。ボタン幅 0% はボタンに合わせた最小の幅、100% は右側の独立ボタンを除いた幅いっぱいです。配置：両端揃えはボタンを左、独立ボタンを右に置き、左側中央は独立ボタンの左側の領域でボタンを中央に置き、全体中央はボタンと独立ボタンをまとめて中央に置きます。リセットすると上部バーの設定も元に戻ります。";
 "Nagram.BottomBarLayout.Item.contacts" = "連絡先";
 "Nagram.BottomBarLayout.Item.calls" = "通話";
 "Nagram.BottomBarLayout.Item.chats" = "チャット";
