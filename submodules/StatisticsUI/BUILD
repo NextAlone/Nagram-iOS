@@ -20,6 +20,7 @@ swift_library(
         "//submodules/TelegramUIPreferences",
         "//submodules/AccountContext",
         "//submodules/ItemListUI",
+        "//Nagram/Strings:NagramStrings", # MARK: NAGRAM
         "//submodules/AvatarNode",
         "//submodules/TelegramStringFormatting",
         "//submodules/AlertUI",

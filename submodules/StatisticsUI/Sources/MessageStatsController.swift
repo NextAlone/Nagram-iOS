@@ -16,6 +16,7 @@ import AppBundle
 import GraphUI
 import StoryContainerScreen
 import ContextUI
+import NagramStrings // MARK: NAGRAM
 
 private final class MessageStatsControllerArguments {
     let context: AccountContext
@@ -44,6 +45,8 @@ private enum StatsSection: Int32 {
 private enum StatsEntry: ItemListNodeEntry {
     case overviewTitle(PresentationTheme, String)
     case overview(PresentationTheme, PostStats, EngineStoryItem.Views?, Int32?)
+    // MARK: NAGRAM — the server gave no detailed statistics; only the message's own counts are shown.
+    case nagramBasicDataInfo(PresentationTheme, String)
     
     case votesTitle(PresentationTheme, String)
     case votesGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType, Bool)
@@ -59,7 +62,7 @@ private enum StatsEntry: ItemListNodeEntry {
     
     var section: ItemListSectionId {
         switch self {
-            case .overviewTitle, .overview:
+            case .overviewTitle, .overview, .nagramBasicDataInfo: // MARK: NAGRAM
                 return StatsSection.overview.rawValue
             case .votesTitle, .votesGraph:
                 return StatsSection.votes.rawValue
@@ -78,6 +81,8 @@ private enum StatsEntry: ItemListNodeEntry {
                 return 0
             case .overview:
                 return 1
+            case .nagramBasicDataInfo: // MARK: NAGRAM — sorted by section first, see `<`.
+                return Int32.max
             case .votesTitle:
                 return 2
             case .votesGraph:
@@ -101,6 +106,12 @@ private enum StatsEntry: ItemListNodeEntry {
         switch lhs {
             case let .overviewTitle(lhsTheme, lhsText):
                 if case let .overviewTitle(rhsTheme, rhsText) = rhs, lhsTheme === rhsTheme, lhsText == rhsText{
+                    return true
+                } else {
+                    return false
+                }
+            case let .nagramBasicDataInfo(lhsTheme, lhsText): // MARK: NAGRAM
+                if case let .nagramBasicDataInfo(rhsTheme, rhsText) = rhs, lhsTheme === rhsTheme, lhsText == rhsText {
                     return true
                 } else {
                     return false
@@ -169,6 +180,11 @@ private enum StatsEntry: ItemListNodeEntry {
     }
     
     static func <(lhs: StatsEntry, rhs: StatsEntry) -> Bool {
+        // MARK: NAGRAM — section first, so the basic-data note (the largest id) stays under the overview. Every
+        // other entry's id already grows with its section.
+        if lhs.section != rhs.section {
+            return lhs.section < rhs.section
+        }
         return lhs.stableId < rhs.stableId
     }
     
@@ -181,6 +197,8 @@ private enum StatsEntry: ItemListNodeEntry {
                  let .reactionsTitle(_, text),
                  let .publicForwardsTitle(_, text):
                 return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
+            case let .nagramBasicDataInfo(_, text): // MARK: NAGRAM
+                return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
             case let .overview(_, stats, storyViews, publicShares):
                 return StatsOverviewItem(context: arguments.context, presentationData: presentationData, systemStyle: .glass, isGroup: false, stats: stats as? Stats, storyViews: storyViews, publicShares: publicShares, sectionId: self.section, style: .blocks)
             case let .votesGraph(_, _, _, graph, type, noInitialZoom), let .interactionsGraph(_, _, _, graph, type, noInitialZoom), let .reactionsGraph(_, _, _, graph, type, noInitialZoom):
@@ -248,6 +266,10 @@ private func messageStatsControllerEntries(data: PostStats?, pollData: PollStats
             publicShares = forwards.count
         }
         entries.append(.overview(presentationData.theme, data, storyViews, publicShares))
+        // MARK: NAGRAM — say so when the server gave no detailed statistics (both graphs failed to load).
+        if data is MessageStats, case .Failed = data.interactionsGraph, case .Failed = data.reactionsGraph {
+            entries.append(.nagramBasicDataInfo(presentationData.theme, ngI18n("Nagram.MessageStats.BasicDataOnly", presentationData.strings.baseLanguageCode)))
+        }
         
         if let pollData, !pollData.votesGraph.isEmpty {
             entries.append(.votesTitle(presentationData.theme, presentationData.strings.PollStats_GraphHeader.uppercased()))

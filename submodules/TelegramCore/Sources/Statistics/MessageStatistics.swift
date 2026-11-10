@@ -71,7 +71,8 @@ private func requestMessageStats(postbox: Postbox, network: Network, messageId: 
         
         let request = Api.functions.stats.getMessageStats(flags: flags, channel: inputChannel, msgId: messageId.id)
         let signal: Signal<Api.stats.MessageStats, MTRpcError>
-        if network.datacenterId != datacenterId {
+        // MARK: NAGRAM — a channel the server keeps no statistics for has no stats DC (0): ask the main DC.
+        if datacenterId != 0 && network.datacenterId != datacenterId {
             signal = network.download(datacenterId: Int(datacenterId), isMedia: false, tag: nil)
             |> castError(MTRpcError.self)
             |> mapToSignal { worker in
@@ -130,7 +131,20 @@ private func requestMessageStats(postbox: Postbox, network: Network, messageId: 
                 return .single(nil)
             }
         }
-        |> retryRequest
+        // MARK: NAGRAM — the server refuses detailed statistics for some channels (those under 50 subscribers).
+        // Retrying left the screen loading forever; any error now yields the counts the message itself carries,
+        // with both graphs marked failed so the screen can say it shows only basic data.
+        |> `catch` { error -> Signal<MessageStats?, NoError> in
+            let failedGraph = StatsGraph.Failed(error: error.errorDescription ?? "")
+            return .single(MessageStats(
+                views: views,
+                forwards: forwards,
+                reactions: reactions,
+                interactionsGraph: failedGraph,
+                interactionsGraphDelta: 86400,
+                reactionsGraph: failedGraph
+            ))
+        }
     }
 }
 

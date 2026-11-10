@@ -625,6 +625,7 @@
 "Nagram.GroupDescriptionExternalLinks.Footer" = "Telegram 默认只让群简介里的 Telegram 链接可点击。打开后，其他网址也能点开，打开方式与频道简介里的链接相同。";
 "Nagram.MemberRequests.DismissAndBan" = "拒绝并封禁";
 "Nagram.ShowChannelForwardCount" = "显示转发次数";
+"Nagram.MessageStats.BasicDataOnly" = "仅基础数据：Telegram 没有返回这条消息的详细统计，这里只显示消息本身的浏览、转发和回应数。";
 "Nagram.RegexFilters.Scope.Chats" = "%d 个聊天";
 "Nagram.RegexFilters.OnlyInChat" = "只在「%@」中生效";
 "Nagram.RegexFilters.OnlyInChats" = "只在 %d 个聊天中生效";

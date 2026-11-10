@@ -2231,7 +2231,11 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 }
             }
             
-            if infoSummaryData.canViewStats, forwards >= 1 || views >= 100 {
+            // MARK: NAGRAM — as on Android: an admin sees a post's statistics as soon as it has a view or forward,
+            // also in a channel the server keeps no statistics for (under 50 subscribers), where the screen shows the
+            // post's own counts.
+            let nagramCanViewStats = (channel.flags.contains(.isCreator) || channel.adminRights != nil) && (forwards >= 1 || views >= 1)
+            if (infoSummaryData.canViewStats && (forwards >= 1 || views >= 100)) || nagramCanViewStats {
                 actions.append(.viewStats, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextViewStats, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Statistics"), color: theme.actionSheet.primaryTextColor)
                 }, action: { c, _ in

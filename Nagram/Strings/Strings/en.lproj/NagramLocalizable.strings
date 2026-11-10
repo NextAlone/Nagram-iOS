@@ -625,6 +625,7 @@ With iCloud Keychain sync on, backups follow your other devices and appear on th
 "Nagram.GroupDescriptionExternalLinks.Footer" = "Telegram only makes Telegram links clickable in group descriptions. Turn this on to open other web links there too; they open the same way as links in channel descriptions.";
 "Nagram.MemberRequests.DismissAndBan" = "Dismiss and Ban";
 "Nagram.ShowChannelForwardCount" = "Show Forward Count";
+"Nagram.MessageStats.BasicDataOnly" = "Basic data only: Telegram returned no detailed statistics for this post, so only its own views, forwards and reactions are shown.";
 "Nagram.RegexFilters.Scope.Chats" = "%d chats";
 "Nagram.RegexFilters.OnlyInChat" = "Only in “%@”";
 "Nagram.RegexFilters.OnlyInChats" = "Only in %d Chats";

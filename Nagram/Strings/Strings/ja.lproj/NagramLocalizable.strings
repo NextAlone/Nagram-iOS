@@ -625,6 +625,7 @@ iCloud キーチェーン同期を有効にすると、バックアップは他�
 "Nagram.GroupDescriptionExternalLinks.Footer" = "Telegram はグループ説明内の Telegram リンクのみをタップ可能にしています。オンにすると他のウェブリンクも、チャンネル説明のリンクと同じように開けます。";
 "Nagram.MemberRequests.DismissAndBan" = "却下してブロック";
 "Nagram.ShowChannelForwardCount" = "転送数を表示";
+"Nagram.MessageStats.BasicDataOnly" = "基本データのみ：この投稿の詳細な統計を Telegram から取得できなかったため、投稿自体の閲覧数・転送数・リアクション数のみを表示しています。";
 "Nagram.RegexFilters.Scope.Chats" = "%d 件のチャット";
 "Nagram.RegexFilters.OnlyInChat" = "「%@」のみ";
 "Nagram.RegexFilters.OnlyInChats" = "%d 件のチャットのみ";
