@@ -215,6 +215,11 @@ public struct NagramRegexFilterMatcher {
         return self.rules.isEmpty
     }
 
+    /// The same for one chat until its rules change: the matcher cache builds new matchers only for new rules.
+    public var identity: ObjectIdentifier {
+        return ObjectIdentifier(self.resultCache)
+    }
+
     public func apply(to text: String, authorPeerId: Int64? = nil) -> NagramRegexFilterResult {
         guard !self.rules.isEmpty else {
             return .visible(text: text, spoilerRanges: [])

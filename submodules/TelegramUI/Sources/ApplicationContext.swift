@@ -145,10 +145,10 @@ final class AuthorizedApplicationContext {
             accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.inAppNotificationSettings]),
             nagramRegexFiltersSignal()
         )
-        |> mapToSignal { [context = self.context] renderedCount, sharedData, _ -> Signal<Int32, NoError> in
+        |> mapToSignal { [context = self.context, nagramFilteredUnreadCache = self.nagramFilteredUnreadCache] renderedCount, sharedData, _ -> Signal<Int32, NoError> in
             let inAppSettings = sharedData.entries[ApplicationSpecificSharedDataKeys.inAppNotificationSettings]?.get(InAppNotificationSettings.self) ?? .defaultSettings
             // MARK: NAGRAM — 从桌面角标中扣除被消息屏蔽规则隐藏的未读消息。
-            return context.engine.messages.nagramFilteredUnreadBadgeAdjustment(includeTags: inAppSettings.totalUnreadCountIncludeTags, countsChats: inAppSettings.totalUnreadCountDisplayCategory == .chats)
+            return context.engine.messages.nagramFilteredUnreadBadgeAdjustment(cache: nagramFilteredUnreadCache, includeTags: inAppSettings.totalUnreadCountIncludeTags, countsChats: inAppSettings.totalUnreadCountDisplayCategory == .chats)
             |> map { adjustment -> Int32 in
                 return max(0, renderedCount.0 - adjustment)
             }
@@ -170,7 +170,8 @@ final class AuthorizedApplicationContext {
     private var showNewsTabDisposable: Disposable?
     private var enablePostboxTransactionsDiposable: Disposable?
     private var nagramAutoReadFilteredDisposable: Disposable? // MARK: NAGRAM
-    
+    private let nagramFilteredUnreadCache = NagramFilteredUnreadCache() // MARK: NAGRAM
+
     init(sharedApplicationContext: SharedApplicationContext, mainWindow: Window1, context: AccountContextImpl, accountManager: AccountManager<TelegramAccountManagerTypes>, showCallsTab: Bool, reinitializedNotificationSettings: @escaping () -> Void) {
         self.sharedApplicationContext = sharedApplicationContext
         
@@ -853,7 +854,9 @@ final class AuthorizedApplicationContext {
         })
 
         // MARK: NAGRAM — 被过滤的消息自动已读：未读变化或规则变化后（合并一秒内的变化）扫一遍，只在开关打开时运行。
+        // 扫描与角标共用缓存，只重读有变化的聊天。
         let nagramEngine = self.context.engine
+        let nagramFilteredUnreadCache = self.nagramFilteredUnreadCache
         self.nagramAutoReadFilteredDisposable = (combineLatest(
             nagramBoolSignal("nagram.regexFilters.autoReadHidden", defaultValue: false),
             nagramRegexFiltersSignal(),
@@ -865,7 +868,7 @@ final class AuthorizedApplicationContext {
             }
             return .complete()
             |> delay(1.0, queue: Queue.concurrentDefaultQueue())
-            |> then(nagramEngine.messages.nagramMarkFullyFilteredChatsAsRead())
+            |> then(nagramEngine.messages.nagramMarkFullyFilteredChatsAsRead(cache: nagramFilteredUnreadCache))
         }).start()
         
         self.rootController.setForceInCallStatusBar((self.context.sharedContext as! SharedAccountContextImpl).currentCallStatusBarNode)
