@@ -1,5 +1,10 @@
 import UIKit
 
+// MARK: NAGRAM — "High Refresh Rate Scrolling": also hold the display's highest rate while a finger drags a CoreList
+// list (the chat history among them), not only while a release decelerates. Off by default because it costs battery;
+// the app sets it from Nagram settings, which this module cannot read.
+public var nagramPhysicsScrollHighFrameRateDragging: Bool = false
+
 /// `ScrollEngine` driving `CoreVirtualListView` via the owned `ScrollPhysics` core (`.stepped`
 /// deceleration). Drives `contentHost.bounds.origin.y` exactly like a `UIScrollView`, so the list's
 /// layout math is unchanged — only the driver differs. Touch only; trackpad and `.keyframe`
@@ -10,6 +15,9 @@ public final class PhysicsScrollEngine: NSObject, ScrollEngine {
     private let core: PhysicsScrollCore
     private let pan = PhysicsPanGestureRecognizer(target: nil, action: nil)
     private var displayLink: CADisplayLink?
+    // MARK: NAGRAM — holds the maximum rate over the finger-down interval while `nagramPhysicsScrollHighFrameRateDragging`
+    // is on; a release that decelerates hands over to the driver's own link, which pins the same rate.
+    private var nagramDragRateLink: CADisplayLink?
     /// Whether the pan recognized a drag this gesture (so a bare-tap touch-up can spring back without
     /// double-handling a real release, which `.ended`/`.cancelled` already handle).
     private var sawDrag = false
@@ -363,6 +371,7 @@ public final class PhysicsScrollEngine: NSObject, ScrollEngine {
         switch state {
         case .began:
             sawDrag = true
+            nagramStartDragRateLink() // MARK: NAGRAM
             onWillBeginDragging?()
             // Trackpad-style indirect scroll delivers no touch-down, so `onTouchDown` never catches an
             // in-flight keyframe flight — catch it here. Idempotent for touch (onTouchDown nulled it).
@@ -418,6 +427,7 @@ public final class PhysicsScrollEngine: NSObject, ScrollEngine {
             }
             beganWasForced = false
             trackpadTranslationBaseline = 0
+            nagramStopDragRateLink() // MARK: NAGRAM
             // Paired with the `.began` notification above: the pan can only reach `.ended`/`.cancelled`
             // after `.began`, so the two callbacks always bracket the finger-down interval. Fired AFTER
             // deceleration is launched so an observer reading motion state sees the post-release truth.
@@ -864,9 +874,30 @@ public final class PhysicsScrollEngine: NSObject, ScrollEngine {
     public func tearDown() {
         if flight != nil { catchFlight() }
         stopDisplayLink()
+        nagramStopDragRateLink() // MARK: NAGRAM
     }
 
-    deinit { displayLink?.invalidate() }
+    deinit {
+        displayLink?.invalidate()
+        nagramDragRateLink?.invalidate() // MARK: NAGRAM
+    }
+
+    // MARK: NAGRAM — the link moves nothing: requesting the range is what keeps the display at its maximum rate
+    // while the finger drives the content. Its target is a separate object so the link does not retain the engine.
+    private func nagramStartDragRateLink() {
+        nagramStopDragRateLink()
+        guard nagramPhysicsScrollHighFrameRateDragging else { return }
+        guard #available(iOS 15.0, *), let range = maxRefreshRange() else { return }
+        let link = CADisplayLink(target: NagramDragRateLinkTarget(), selector: #selector(NagramDragRateLinkTarget.tick(_:)))
+        link.preferredFrameRateRange = range
+        link.add(to: .main, forMode: .common)
+        nagramDragRateLink = link
+    }
+
+    private func nagramStopDragRateLink() {
+        nagramDragRateLink?.invalidate()
+        nagramDragRateLink = nil
+    }
 }
 
 extension PhysicsScrollEngine: UIGestureRecognizerDelegate {
@@ -956,5 +987,11 @@ extension PhysicsScrollEngine: UIGestureRecognizerDelegate {
         beganWasForced = true
         gestureRecognizer.state = .began
         return true
+    }
+}
+
+// MARK: NAGRAM
+private final class NagramDragRateLinkTarget: NSObject {
+    @objc func tick(_ link: CADisplayLink) {
     }
 }

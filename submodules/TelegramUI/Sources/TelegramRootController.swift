@@ -35,6 +35,7 @@ import ShareWithPeersScreen
 import ChatEmptyNode
 import NewsScreen
 // MARK: NAGRAM
+import CoreList // MARK: NAGRAM
 import NagramSettings
 import NagramSettingsSignal
 
@@ -166,10 +167,12 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
             (strongSelf.rootTabController as? TabBarControllerImpl)?.updateLayout(transition: .immediate)
         })
         
-        // MARK: NAGRAM — the list view lives in Display, which cannot read Nagram settings itself.
+        // MARK: NAGRAM — the list view lives in Display and the chat history's scroll engine in CoreList, neither of
+        // which can read Nagram settings itself.
         self.nagramHighRefreshRateScrollingDisposable = (nagramBoolSignal("nagram.highRefreshRateScrolling", defaultValue: false)
         |> deliverOnMainQueue).startStrict(next: { value in
             nagramListViewHighFrameRateDragging = value
+            nagramPhysicsScrollHighFrameRateDragging = value
         })
         
         if context.sharedContext.applicationBindings.isMainApp {
