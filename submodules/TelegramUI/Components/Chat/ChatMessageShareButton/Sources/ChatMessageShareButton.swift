@@ -159,13 +159,11 @@ public class ChatMessageShareButton: ASDisplayNode {
             var updatedBottomIconImage: UIImage?
             var updatedIconOffset = CGPoint()
             if nagramTranslate {
-                // MARK: NAGRAM — translate glyph; once translated, the close glyph returns to the original.
+                // MARK: NAGRAM — the translate glyph in both states (pressing it toggles original and translation),
+                // drawn at 18pt like the other side-button glyphs: the 24pt context-menu glyph overfills the button.
                 let iconColor = bubbleVariableColor(variableColor: presentationData.theme.theme.chat.message.shareButtonForegroundColor, wallpaper: presentationData.theme.wallpaper)
-                if isExpand {
-                    updatedIconImage = PresentationResourcesChat.chatFreeCloseButtonIcon(presentationData.theme.theme, wallpaper: presentationData.theme.wallpaper)
-                    updatedIconOffset = CGPoint(x: UIScreenPixel, y: UIScreenPixel)
-                } else if let image = UIImage(bundleImageName: "Chat/Context Menu/Translate") {
-                    updatedIconImage = generateTintedImage(image: image, color: iconColor)
+                if let image = UIImage(bundleImageName: "Chat/Context Menu/Translate") {
+                    updatedIconImage = generateScaledImage(image: generateTintedImage(image: image, color: iconColor), size: CGSize(width: 18.0, height: 18.0), opaque: false)
                 }
             } else if isSummarize {
                 if isExpand {

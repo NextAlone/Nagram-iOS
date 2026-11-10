@@ -8982,21 +8982,24 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         self.updateVisibility(isScroll: false)
     }
     
-    // MARK: NAGRAM — the translate button sits where the summarize button does, at the bubble's top, and above the
-    // share button when a short bubble leaves no room between them.
+    // MARK: NAGRAM — the translate button sits where the share button does, at the bubble's bottom beside the time
+    // (as Swiftgram's quick-translate button does), and directly above the share button when there is one.
     private func nagramUpdateTranslateButtonFrame(item: ChatMessageItem, backgroundFrame: CGRect, incoming: Bool, bubblelessSideButtonsX: CGFloat?, shareButtonOffset: CGPoint?, disablesComments: Bool, isHidden: Bool, isSidePanelOpen: Bool, animation: ListViewItemUpdateAnimation) {
         guard let translateButtonNode = self.nagramTranslateButtonNode else {
             return
         }
         let buttonSize = translateButtonNode.update(presentationData: item.presentationData, controllerInteraction: item.controllerInteraction, chatLocation: item.chatLocation, subject: item.associatedData.subject, message: EngineMessage(item.message), accountPeerId: item.context.account.peerId, disableComments: disablesComments, nagramTranslate: true)
 
-        var buttonFrame = CGRect(origin: CGPoint(x: !incoming ? backgroundFrame.minX - buttonSize.width - 8.0 : (bubblelessSideButtonsX ?? backgroundFrame.maxX + 8.0), y: backgroundFrame.minY + 1.0), size: buttonSize)
-        if let shareButtonOffset, incoming {
-            buttonFrame.origin.x = shareButtonOffset.x
+        var buttonFrame = CGRect(origin: CGPoint(x: !incoming ? backgroundFrame.minX - buttonSize.width - 8.0 : (bubblelessSideButtonsX ?? backgroundFrame.maxX + 8.0), y: backgroundFrame.maxY - buttonSize.height - 1.0), size: buttonSize)
+        if let shareButtonOffset {
+            if incoming {
+                buttonFrame.origin.x = shareButtonOffset.x
+            }
+            buttonFrame.origin.y += shareButtonOffset.y
         }
         if let shareButtonNode = self.shareButtonNode {
             let shareButtonMinY = shareButtonNode.position.y - shareButtonNode.bounds.height / 2.0
-            buttonFrame.origin.y = min(buttonFrame.origin.y, shareButtonMinY - buttonSize.height - 6.0)
+            buttonFrame.origin.y = shareButtonMinY - buttonSize.height - 6.0
         }
         if isSidePanelOpen {
             buttonFrame.origin.x -= buttonFrame.width * 0.5
