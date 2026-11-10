@@ -1924,6 +1924,9 @@ plist_fragment(
     <string>We need this so that you can share photos and videos from your photo library.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>We need this so that you can share photos and videos from your photo library.</string>
+    <!-- MARK: NAGRAM: with limited photo access PhotoKit otherwise asks to update the selection on the first library access of every launch; the attachment picker's Manage button offers it instead. -->
+    <key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
+    <true/>
     <key>NSSiriUsageDescription</key>
     <string>You can use Siri to send messages.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
