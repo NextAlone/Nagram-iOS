@@ -1535,7 +1535,8 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
         }
 
         // MARK: NAGRAM — 控制行位于按钮面板上方（原生代码未加入这些按钮，位置仅供 Nagram 使用）。
-        let playbackRowY = panelHeight - buttonPanelInsets.bottom - 44.0 - nagramControlsRowHeight
+        // 相册组的缩略图条占着按钮面板上方的 contentInset，控制行要再让出这段高度。
+        let playbackRowY = panelHeight - buttonPanelInsets.bottom - 44.0 - contentInset - nagramControlsRowHeight
         if let image = self.backwardButton.backgroundIconNode.image {
             self.backwardButton.frame = CGRect(origin: CGPoint(x: floor(buttonsCenterX - image.size.width / 2.0) - 66.0, y: playbackRowY + floorToScreenPixels((44.0 - image.size.height) * 0.5)), size: image.size)
         }
