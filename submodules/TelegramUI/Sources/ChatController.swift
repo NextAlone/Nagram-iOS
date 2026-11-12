@@ -19,6 +19,7 @@ import AccountContext
 import WalletContext
 import NagramSettings // MARK: NAGRAM
 import NagramSettingsUI // MARK: NAGRAM
+import NagramSettingsSignal // MARK: NAGRAM
 import TelegramStringFormatting
 import OverlayStatusController
 import DeviceLocationManager
@@ -7589,26 +7590,19 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 var index: Int
             }
             
+            // MARK: NAGRAM — keep the whole newest window so that the newest pinned message the regex filters do not
+            // hide can be chosen below.
             let topMessage = pinnedHistorySignal(anchorMessageId: nil, count: 10)
-            |> map { update -> TopMessage? in
+            |> map { update -> [TopMessage] in
                 switch update {
                 case .Loading:
-                    return nil
+                    return []
                 case let .HistoryView(viewValue, _, _, _, _, _, _):
-                    if let entry = viewValue.entries.last {
-                        let index: Int
-                        if let location = entry.location {
-                            index = location.index
-                        } else {
-                            index = viewValue.entries.count - 1
-                        }
-                        
+                    return viewValue.entries.enumerated().map { i, entry in
                         return TopMessage(
                             message: entry.message,
-                            index: index
+                            index: entry.location?.index ?? i
                         )
-                    } else {
-                        return nil
                     }
                 }
             }
@@ -7743,9 +7737,41 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             topPinnedMessage = combineLatest(queue: .mainQueue(),
                 adjustedReplyHistory,
                 topMessage,
-                referenceMessage ?? .single(nil)
+                referenceMessage ?? .single(nil),
+                nagramRegexFiltersSignal() // MARK: NAGRAM
             )
-            |> map { pinnedMessages, topMessage, referenceMessage -> TopPinnedMessageState in
+            |> map { pinnedMessages, topMessages, referenceMessage, _ -> TopPinnedMessageState in
+                // MARK: NAGRAM — the pinned bar skips pinned messages a regex rule hides, as the chat does, and counts
+                // only the rest. Only hidden messages inside the loaded window are subtracted from the positions.
+                let accountPeerId = context.account.peerId
+                let nagramIsHidden: (Message) -> Bool = { message in
+                    let isOutgoing = !message.effectivelyIncoming(accountPeerId)
+                    guard let matcher = NagramSettings.shared.regexFilterMatcher(peerId: peerId.toInt64(), isOutgoing: isOutgoing) else {
+                        return false
+                    }
+                    return matcher.isHidden(text: message.text, authorPeerId: message.author?.id.id._internalGetInt64Value())
+                }
+                var pinnedMessages = pinnedMessages
+                var hiddenPinnedCount = 0
+                pinnedMessages.messages = pinnedMessages.messages.compactMap { entry -> PinnedHistory.PinnedMessage? in
+                    if nagramIsHidden(entry.message) {
+                        hiddenPinnedCount += 1
+                        return nil
+                    }
+                    return PinnedHistory.PinnedMessage(message: entry.message, index: entry.index - hiddenPinnedCount)
+                }
+                pinnedMessages.totalCount = max(0, pinnedMessages.totalCount - hiddenPinnedCount)
+                var hiddenTopCount = 0
+                var visibleTopMessages: [TopMessage] = []
+                for topMessage in topMessages {
+                    if nagramIsHidden(topMessage.message) {
+                        hiddenTopCount += 1
+                    } else {
+                        visibleTopMessages.append(TopMessage(message: topMessage.message, index: topMessage.index - hiddenTopCount))
+                    }
+                }
+                let topMessage = visibleTopMessages.last
+                
                 var message: ChatPinnedMessage?
                 
                 let topMessageId: MessageId
