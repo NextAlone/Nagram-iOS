@@ -613,6 +613,19 @@ private func applyDiscussionMessage(transaction: Transaction, account: Account, 
             resolvedMaxMessage = nil
         }
 
+        // MARK: NAGRAM — an account outside the discussion group gets no updates for it, so a thread whose holes an
+        // earlier fill closed never learns of newer comments, and a reopen shows the stored ones as complete (#69).
+        // Comments newer than the newest stored one, up to the server's max_id, are unknown: make them a hole again.
+        if let maxId {
+            let commentsPeerId = parsedIndex.id.peerId
+            let threadId = Int64(parsedIndex.id.id)
+            let storedTopId = transaction.getMessagesWithThreadId(peerId: commentsPeerId, namespace: Namespaces.Message.Cloud, threadId: threadId, from: MessageIndex.upperBound(peerId: commentsPeerId, namespace: Namespaces.Message.Cloud), includeFrom: false, to: MessageIndex.lowerBound(peerId: commentsPeerId, namespace: Namespaces.Message.Cloud), limit: 1).first?.id.id
+            let lowerBound = max(storedTopId ?? 0, parsedIndex.id.id) + 1
+            if lowerBound <= maxId {
+                transaction.addHole(peerId: commentsPeerId, threadId: threadId, namespace: Namespaces.Message.Cloud, space: .everywhere, range: lowerBound ... maxId)
+            }
+        }
+
         let maxReadIncomingMessageId = readInboxMaxId.flatMap { readMaxId in
             MessageId(peerId: parsedIndex.id.peerId, namespace: Namespaces.Message.Cloud, id: readMaxId)
         }
