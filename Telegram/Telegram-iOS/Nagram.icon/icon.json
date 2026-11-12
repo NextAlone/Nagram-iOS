@@ -15,9 +15,7 @@
     },
     {
       "appearance" : "dark",
-      "value" : {
-        "automatic-gradient" : "display-p3:0.12549,0.12941,0.14118,1.00000"
-      }
+      "value" : "system-dark"
     }
   ],
   "groups" : [
