@@ -159,3 +159,12 @@ public func nagramRegexFiltersSignal() -> Signal<Int32, NoError> {
     }
     return initial |> then(changes)
 }
+
+/// 对话自己的主题或壁纸（用法：`signal |> nagramIgnoringChatThemesAndWallpapers`）。
+/// 「忽略对话自定义主题和壁纸」打开时一律给 nil，界面改用全局主题和壁纸；切换开关即时生效。
+public func nagramIgnoringChatThemesAndWallpapers<T>(_ signal: Signal<T?, NoError>) -> Signal<T?, NoError> {
+    return combineLatest(signal, nagramBoolSignal("nagram.ignoreChatThemesAndWallpapers", defaultValue: false))
+    |> map { value, ignoreChatThemesAndWallpapers -> T? in
+        return ignoreChatThemesAndWallpapers ? nil : value
+    }
+}

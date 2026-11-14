@@ -351,6 +351,9 @@ public final class NagramSettings {
     /// 自定义 Liquid Glass 色调强度百分比（0–100，默认 100 = 当前视觉）
     @NagramDefault("nagram.glassTransparencyPercent", Int32(100))
     public var glassTransparencyPercent: Int32
+    /// 忽略为单个对话设置的主题和壁纸，对话与资料页改用全局主题和壁纸（默认关 = 原生）
+    @NagramDefault("nagram.ignoreChatThemesAndWallpapers", false)
+    public var ignoreChatThemesAndWallpapers: Bool
 
     // MARK: 波次 3 批 B — UI 中改
     /// 底栏布局完整配置。新逻辑只读写这一份模型。

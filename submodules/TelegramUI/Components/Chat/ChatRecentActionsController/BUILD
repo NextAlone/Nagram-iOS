@@ -56,6 +56,7 @@ swift_library(
         "//submodules/TelegramUI/Components/GlassBackgroundComponent",
         "//submodules/TelegramUI/Components/AdminUserActionsSheet",
         "//submodules/BrowserUI",
+        "//Nagram/SettingsSignal:NagramSettingsSignal", # MARK: NAGRAM — 忽略对话自定义主题和壁纸
     ],
     visibility = [
         "//visibility:public",

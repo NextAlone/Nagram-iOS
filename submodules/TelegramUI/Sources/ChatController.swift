@@ -6834,6 +6834,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         }
         
         let chatTheme: Signal<ChatTheme?, NoError> = self.chatThemePromise.get()
+        |> nagramIgnoringChatThemesAndWallpapers // MARK: NAGRAM — 忽略对话自定义主题和壁纸；主题面板里的预览不受影响
         |> distinctUntilChanged
     
         let uploadingChatWallpaper: Signal<TelegramWallpaper?, NoError>
@@ -6855,6 +6856,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         |> map { chatWallpaper, uploadingChatWallpaper in
             return uploadingChatWallpaper ?? chatWallpaper
         }
+        |> nagramIgnoringChatThemesAndWallpapers // MARK: NAGRAM — 忽略对话自定义主题和壁纸
         |> distinctUntilChanged
         
         let themeSettings = context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.presentationThemeSettings])
