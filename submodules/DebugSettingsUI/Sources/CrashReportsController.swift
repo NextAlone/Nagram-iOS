@@ -17,7 +17,7 @@ import ContextUI
 import BuildConfig
 import AppBundle
 
-private let crashReportBot = "iOSCrashReportsBot"
+// MARK: NAGRAM - Crash logs never go to Telegram's @iOSCrashReportsBot: a fork's crashes are not theirs to triage, and the message would identify the user to them. Logs are shared only to a chat the user picks.
 private let crashReportWorkQueue = DispatchQueue(label: "org.telegram.crash-report-ui", qos: .utility)
 
 private struct CrashReportItemTag: ItemListItemTag {
@@ -154,13 +154,6 @@ private final class CrashReportActions {
         guard self.canPresent, let sourceNode = self.reportNode(report.id) else { return }
         let data = self.sharedContext.currentPresentationData.with { $0 }
         let items: [ContextMenuItem] = [
-            .action(ContextMenuActionItem(text: "Send to Telegram Team", icon: { theme in
-                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Forward"), color: theme.contextMenu.primaryColor)
-            }, action: { controller, _ in
-                controller?.dismiss(completion: {
-                    self.confirmSend(report)
-                })
-            })),
             .action(ContextMenuActionItem(text: "Share Log", icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Share"), color: theme.contextMenu.primaryColor)
             }, action: { controller, _ in
@@ -217,7 +210,7 @@ private final class CrashReportActions {
         }
     }
 
-    private func share(_ report: CrashReport) {
+    func share(_ report: CrashReport) {
         guard self.canPresent, !self.busy else { return }
         guard let context = self.context else {
             self.alert("Sign In Required", "Sign in to a Telegram account to share this log.")
@@ -231,82 +224,12 @@ private final class CrashReportActions {
             let progress = OverlayStatusController(theme: self.sharedContext.currentPresentationData.with { $0 }.theme, type: .loading(cancelled: nil))
             self.progress = progress
             self.present(progress)
-            self.enqueue(report, context: context, peerId: peer.id, threadId: threadId, toTelegramTeam: false)
+            self.enqueue(report, context: context, peerId: peer.id, threadId: threadId)
         }
         self.push(controller)
     }
 
-    func confirmSend(_ report: CrashReport) {
-        guard self.canPresent, !self.busy else { return }
-        guard let context = self.context else {
-            self.alert("Sign In Required", "Sign in to a Telegram account to send this log.")
-            return
-        }
-        self.busy = true
-        self.disposable.set((context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId))
-        |> deliverOnMainQueue).start(next: { [weak self] peer in
-            guard let self else { return }
-            self.busy = false
-            guard let peer else {
-                self.alert("Could Not Load Account", "Please try again.")
-                return
-            }
-            var sender = peer.debugDisplayTitle
-            if let username = peer.addressName, !username.isEmpty {
-                sender += " (@\(username))"
-            }
-            // Reset before showing the confirmation so dismissing it by tapping outside is harmless.
-            self.show(textAlertController(sharedContext: self.sharedContext, title: "Send Crash Log?", text: "From: \(sender)\n\nThe archive includes the crash diagnostic and stack addresses. App and device details are included in the message text. You can review these in View Log.", actions: [
-                TextAlertAction(type: .genericAction, title: self.sharedContext.currentPresentationData.with { $0 }.strings.Common_Cancel, action: {}),
-                TextAlertAction(type: .defaultAction, title: "Send", action: { self.send(report, context: context) })
-            ]))
-        }))
-    }
-
-    func send(_ report: CrashReport, context: AccountContext) {
-        guard self.canPresent, !self.busy else { return }
-        self.busy = true
-        let progress = OverlayStatusController(theme: self.sharedContext.currentPresentationData.with { $0 }.theme, type: .loading(cancelled: nil))
-        self.progress = progress
-        self.present(progress)
-        let resolution = context.engine.peers.resolvePeerByName(name: crashReportBot, referrer: nil)
-        |> mapToSignal { result -> Signal<EnginePeer?, NoError> in
-            if case let .result(peer) = result { return .single(peer) }
-            return .complete()
-        }
-        |> take(1)
-        |> timeout(15.0, queue: Queue.mainQueue(), alternate: .single(nil))
-        |> deliverOnMainQueue
-        self.disposable.set(resolution.start(next: { [weak self] peer in
-            guard let self else { return }
-            guard let peer, case let .user(user) = peer, user.botInfo != nil else {
-                self.finishSending()
-                self.alert("Could Not Find Crash Log Bot", "Check your connection and try again. The log remains saved on this device.")
-                return
-            }
-            // Cached resolution can complete synchronously. Install the next phase after
-            // the current MetaDisposable.set has returned.
-            DispatchQueue.main.async {
-                self.checkBlockedAndEnqueue(report, context: context, peer: peer)
-            }
-        }))
-    }
-
-    private func checkBlockedAndEnqueue(_ report: CrashReport, context: AccountContext, peer: EnginePeer) {
-        let peerId = peer.id
-        self.disposable.set((context.engine.data.get(TelegramEngine.EngineData.Item.Peer.IsBlocked(id: peerId))
-        |> deliverOnMainQueue).start(next: { [weak self] blocked in
-            guard let self else { return }
-            if case .known(true) = blocked {
-                self.finishSending()
-                self.alert("Crash Log Bot Is Blocked", "Open @\(crashReportBot) and unblock it before sending the log.")
-                return
-            }
-            self.enqueue(report, context: context, peerId: peerId, threadId: nil, toTelegramTeam: true)
-        }))
-    }
-
-    private func enqueue(_ report: CrashReport, context: AccountContext, peerId: EnginePeer.Id, threadId: Int64?, toTelegramTeam: Bool) {
+    private func enqueue(_ report: CrashReport, context: AccountContext, peerId: EnginePeer.Id, threadId: Int64?) {
         crashReportWorkQueue.async { [self] in
             let archive = Result {
                 let data = try crashReportArchive(report)
@@ -343,7 +266,7 @@ private final class CrashReportActions {
                             self.alert("Could Not Queue Log", "Please try again. The log remains saved on this device.")
                             return
                         }
-                        self.show(UndoOverlayController(presentationData: self.sharedContext.currentPresentationData.with { $0 }, content: .succeed(text: toTelegramTeam ? "Thank you for helping make Telegram better!" : "Log shared", timeout: nil, customUndoText: nil), action: { _ in
+                        self.show(UndoOverlayController(presentationData: self.sharedContext.currentPresentationData.with { $0 }, content: .succeed(text: "Log shared", timeout: nil, customUndoText: nil), action: { _ in
                             return false
                         }))
                     }))
@@ -400,7 +323,7 @@ private enum CrashReportEntry: ItemListNodeEntry {
                 }).start()
             })
         case .alertsInfo:
-            return ItemListTextItem(presentationData: presentationData, text: .plain("Show a prompt after the app crashes so you can send a log to help us fix the issue."), sectionId: self.section)
+            return ItemListTextItem(presentationData: presentationData, text: .plain("Show a prompt after the app crashes so you can share the log to a chat you choose."), sectionId: self.section)
         case .reportsHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "RECENT CRASHES", sectionId: self.section)
         case let .report(_, _, report):
@@ -507,10 +430,10 @@ public func setupCrashReportPrompt(context: AccountContext, isInternalBuild: Boo
         let pending = reports.filter { !$0.wasPresented }
         guard !pending.isEmpty else { return }
         didPresent = true
-        let controller = textAlertController(sharedContext: context.sharedContext, title: "New Crash Log Available", text: "The app closed unexpectedly.\n\nWould you like to send a crash log to help us fix the issue?", actions: [
+        let controller = textAlertController(sharedContext: context.sharedContext, title: "New Crash Log Available", text: "The app closed unexpectedly.\n\nWould you like to share the crash log to a chat?", actions: [
             TextAlertAction(type: .genericAction, title: "Not Now", action: {}),
-            TextAlertAction(type: .defaultAction, title: "Send Log", action: {
-                actions.send(pending[0], context: context)
+            TextAlertAction(type: .defaultAction, title: "Share Log", action: {
+                actions.share(pending[0])
             })
         ])
         alert = controller
