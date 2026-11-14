@@ -13,6 +13,7 @@ import ChatNavigationButton
 import ChatTitleView
 import ComponentFlow
 import AdminUserActionsSheet
+import NagramSettingsSignal // MARK: NAGRAM
 
 public final class ChatRecentActionsController: TelegramBaseController {
     private var controllerNode: ChatRecentActionsControllerNode {
@@ -216,6 +217,7 @@ public final class ChatRecentActionsController: TelegramBaseController {
                 return nil
             }
         }
+        |> nagramIgnoringChatThemesAndWallpapers // MARK: NAGRAM — 忽略对话自定义主题和壁纸
         |> distinctUntilChanged
         
         self.presentationDataDisposable = combineLatest(

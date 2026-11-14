@@ -657,3 +657,5 @@
 "Nagram.HighRefreshRateScrolling" = "高更新率捲動";
 "Nagram.HighRefreshRateScrolling.Footer" = "拖動列表時也保持螢幕的最高更新率，而不只是放手後的滑動。在 ProMotion 螢幕上更流暢，但更耗電。";
 "Nagram.WebBrowser.InAppSafari" = "Safari（App 內）";
+"Nagram.IgnoreChatThemesAndWallpapers" = "忽略對話自訂主題和背景";
+"Nagram.IgnoreChatThemesAndWallpapers.Footer" = "所有對話都使用全域主題和背景，不顯示為單一對話設定的主題和背景。只改變你看到的樣子，不影響其他人。";

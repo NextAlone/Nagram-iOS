@@ -7215,6 +7215,7 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
                     return nil
                 }
             }
+            |> nagramIgnoringChatThemesAndWallpapers // MARK: NAGRAM — 忽略对话自定义主题和壁纸
             |> distinctUntilChanged
             
             presentationDataSignal = combineLatest(

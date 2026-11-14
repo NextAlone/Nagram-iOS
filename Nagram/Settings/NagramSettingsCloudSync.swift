@@ -39,6 +39,7 @@ enum NagramSettingsSyncKeys {
         "nagram.controlHighlightEnabled",
         "nagram.glassTransparencyMode",
         "nagram.glassTransparencyPercent",
+        "nagram.ignoreChatThemesAndWallpapers",
         "nagram.stickerSize",
         "nagram.stickerTimestamp",
         "nagram.videoPIPSwipeDirection",
