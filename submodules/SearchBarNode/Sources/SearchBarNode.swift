@@ -281,7 +281,8 @@ private final class TokenNode: ASDisplayNode {
         }
 
         let iconSize = self.token.icon?.size ?? CGSize()
-        let titleSize = self.titleNode.measure(CGSize(width: constrainedSize.width - 6.0, height: constrainedSize.height))
+        // MARK: NAGRAM — 负宽度会触发 ASSizeRangeMake 断言。
+        let titleSize = self.titleNode.measure(CGSize(width: max(0.0, constrainedSize.width - 6.0), height: constrainedSize.height))
         var width = titleSize.width + 6.0
         if !iconSize.width.isZero {
             width += iconSize.width + 7.0
@@ -372,7 +373,17 @@ private class SearchBarTextField: UITextField, UIScrollViewDelegate {
     var theme: SearchBarNodeTheme
     let style: SearchBarStyle
     
+    // MARK: NAGRAM — 记录上次布局 token 时的宽度；宽度变化后由 layoutSubviews 重新布局。
+    private var tokensLayoutWidth: CGFloat?
+
     fileprivate func layoutTokens(transition: ContainedViewLayoutTransition = .immediate) {
+        // MARK: NAGRAM — 搜索栏尚未布局（宽度为 0）时直接以 .member 进入搜索会设置 token，
+        // 此时按负宽度测量 TokenNode 会触发 ASSizeRangeMake 断言崩溃；推迟到 layoutSubviews 拿到宽度后再布局。
+        if !self.tokens.isEmpty && self.bounds.width.isZero {
+            self.tokensLayoutWidth = nil
+            return
+        }
+        self.tokensLayoutWidth = self.bounds.width
         var hasSelected = false
         for i in 0 ..< self.tokens.count {
             let token = self.tokens[i]
@@ -432,7 +443,8 @@ private class SearchBarTextField: UITextField, UIScrollViewDelegate {
                 self.tokenContainerNode.addSubnode(tokenNode)
             }
             
-            let constrainedSize = CGSize(width: self.bounds.size.width - 90.0, height: self.bounds.size.height)
+            // MARK: NAGRAM — 窄宽度下不传负宽度给 TokenNode。
+            let constrainedSize = CGSize(width: max(0.0, self.bounds.size.width - 90.0), height: self.bounds.size.height)
             let nodeSize = tokenNode.updateLayout(constrainedSize: constrainedSize, transition: tokenNodeTransition)
             tokenSizes.append((token.id, nodeSize, tokenNode, wasAdded))
             totalRawTabSize += nodeSize.width
@@ -674,6 +686,11 @@ private class SearchBarTextField: UITextField, UIScrollViewDelegate {
         
         if bounds.size.width.isZero {
             return
+        }
+        
+        // MARK: NAGRAM — 补做因宽度为 0 推迟、或宽度变化后过期的 token 布局。
+        if !self.tokens.isEmpty && self.tokensLayoutWidth != bounds.width {
+            self.layoutTokens()
         }
         
         var textOffset: CGFloat = 1.0

@@ -624,10 +624,6 @@ private func nagramGroups(
             .navigation(titleKey: "Nagram.SessionBackup", action: sessionBackupAction),
             .toggle(titleKey: "Nagram.SessionBackup.ICloud", get: { NagramSettings.shared.sessionBackupICloudSync }, set: { NagramSettings.shared.sessionBackupICloudSync = $0 }),
         ]),
-        NagramGroup(tab: .other, headerKey: "Nagram.Section.Experimental", footerKeys: ["Nagram.MediaMetadata.Footer", "Nagram.FixLinkPreviews.Footer"], rows: [
-            .toggle(titleKey: "Nagram.MediaMetadata", get: { NagramSettings.shared.mediaMetadataEnabled }, set: { NagramSettings.shared.mediaMetadataEnabled = $0 }),
-            .toggle(titleKey: "Nagram.FixLinkPreviews", get: { NagramSettings.shared.fixLinkPreviews }, set: { NagramSettings.shared.fixLinkPreviews = $0 }),
-        ]),
     ].filter { group in
         // 没有 iCloud KVS entitlement 的构建里同步不可用，不显示该分组。
         return group.headerKey != "Nagram.Section.Sync" || NagramSettings.isICloudSyncAvailable
