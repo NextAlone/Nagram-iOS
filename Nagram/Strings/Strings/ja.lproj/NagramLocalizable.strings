@@ -657,3 +657,5 @@ iCloud キーチェーン同期を有効にすると、バックアップは他�
 "Nagram.HighRefreshRateScrolling" = "高リフレッシュレートのスクロール";
 "Nagram.HighRefreshRateScrolling.Footer" = "リストをドラッグしている間も、指を離した後だけでなく、画面の最高リフレッシュレートで描画します。ProMotion ディスプレイではより滑らかになりますが、バッテリーの消費が増えます。";
 "Nagram.WebBrowser.InAppSafari" = "Safari（アプリ内）";
+"Nagram.IgnoreChatThemesAndWallpapers" = "チャット別のテーマと壁紙を無視";
+"Nagram.IgnoreChatThemesAndWallpapers.Footer" = "チャットごとに設定されたテーマや壁紙を使わず、すべてのチャットをアプリ全体のテーマと壁紙で表示します。変わるのは自分の表示だけで、ほかの人には影響しません。";

@@ -432,7 +432,7 @@ private func nagramGroups(
     }
     return [
         // 界面
-        NagramGroup(tab: .interface, headerKey: "Nagram.Section.Appearance", footerKeys: ["Nagram.GlassTransparency.Footer", "Nagram.HighRefreshRateScrolling.Footer"], rows: [
+        NagramGroup(tab: .interface, headerKey: "Nagram.Section.Appearance", footerKeys: ["Nagram.GlassTransparency.Footer", "Nagram.HighRefreshRateScrolling.Footer", "Nagram.IgnoreChatThemesAndWallpapers.Footer"], rows: [
             .navigation(titleKey: "Nagram.BottomBarLayout", action: bottomBarLayoutAction),
             .navigation(titleKey: "Nagram.SettingsPageItems", action: settingsPageItemsAction),
             .toggle(titleKey: "Nagram.HideTabBarPermissionWarnings", get: { NagramSettings.shared.hideTabBarPermissionWarnings }, set: { NagramSettings.shared.hideTabBarPermissionWarnings = $0 }),
@@ -440,6 +440,7 @@ private func nagramGroups(
             .slider(titleKey: "Nagram.GlassTransparency.OverlayOpacity", minValue: 0, maxValue: 100, get: { NagramSettings.shared.glassTransparencyPercent }, set: { NagramSettings.shared.glassTransparencyPercent = $0 }, isVisible: { NagramSettings.shared.glassTransparencyModeValue == .custom }),
             .toggle(titleKey: "Nagram.ControlHighlight", get: { NagramSettings.shared.controlHighlightEnabled }, set: { NagramSettings.shared.controlHighlightEnabled = $0 }),
             .toggle(titleKey: "Nagram.HighRefreshRateScrolling", get: { NagramSettings.shared.highRefreshRateScrolling }, set: { NagramSettings.shared.highRefreshRateScrolling = $0 }),
+            .toggle(titleKey: "Nagram.IgnoreChatThemesAndWallpapers", get: { NagramSettings.shared.ignoreChatThemesAndWallpapers }, set: { NagramSettings.shared.ignoreChatThemesAndWallpapers = $0 }),
         ]),
         NagramGroup(tab: .interface, headerKey: "Nagram.Section.OneHanded", footerKeys: ["Nagram.Section.OneHanded.Footer"], rows: [
             .toggle(titleKey: "Nagram.OneHanded.ChatSearchFieldAtBottom", get: { NagramSettings.shared.chatSearchFieldAtBottom }, set: { NagramSettings.shared.chatSearchFieldAtBottom = $0 }),
