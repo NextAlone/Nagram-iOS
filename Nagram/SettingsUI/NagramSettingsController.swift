@@ -228,6 +228,8 @@ private func nagramRowDeepLinkAliases(titleKey: String) -> [String] {
         return ["ControlHighlight", "GlassHighlight", "LiquidGlassHighlight"]
     case "Nagram.HighRefreshRateScrolling":
         return ["HighRefreshRateScrolling", "HighFrameRateScrolling", "ProMotion", "120Hz"]
+    case "Nagram.IgnoreChatThemesAndWallpapers":
+        return ["IgnoreChatThemes", "IgnoreChatWallpapers", "ChatTheme", "ChatWallpaper", "CustomChatTheme", "CustomChatWallpaper"]
     case "Nagram.GlassTransparency":
         return ["GlassTransparency", "LiquidGlassTransparency", "GlassOpacity", "LiquidGlassOpacity", "LiquidGlass", "GlassTint"]
     case "Nagram.GlassTransparency.OverlayOpacity":
