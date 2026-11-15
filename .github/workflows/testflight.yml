@@ -47,6 +47,12 @@ on:
         default: false
   push:
     branches: [ "release", "main" ]
+    # Documentation alone builds nothing. A push to release brings the
+    # changes of the release with its notes; to publish notes alone, run the
+    # workflow by hand on release with publish set.
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
 
 concurrency:
   group: testflight-${{ github.ref }}
