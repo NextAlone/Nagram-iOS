@@ -172,7 +172,8 @@ only up to Rust 1.98.0, so `MODULE.bazel` supplies 1.98.1's in
 since the previous release (the latest `v<version>-<build>` tag), in user-facing Chinese. Overwrite
 the whole file for every release; do not append to it. A push to `release` publishes it as the
 build's What to Test text, the GitHub release body and the channel post, and the workflow refuses to
-publish notes that are unchanged since the previous release tag. The notes of earlier builds stay in
+publish notes that are unchanged since the previous release tag. A push that changes only documentation (`docs/**`, `*.md`)
+builds nothing; to publish notes alone, run `testflight.yml` by hand on `release` with `publish` set. The notes of earlier builds stay in
 their GitHub releases; the notes of an App Store version are gathered from those.
 
 The channel post of a TestFlight build is tagged `#testflight` and goes to the assets channel only. A
@@ -181,6 +182,29 @@ workflow (inputs: the submitted build number, optionally the version), the one p
 channel gets: it builds nothing and posts `docs/nagram/releases/appstore/<app version>.md` (plus an
 optional `.en.md`) without files, headed by a notice that the version is waiting for review. Run it
 once the build is submitted.
+
+### Writing the notes
+
+The release workflows post the notes quoted under "更新日志 | Changelog"; `## 上游` stays folded inside
+the quotation and `## 安装` is folded after it. The same rules apply to the App Store notes in
+`docs/nagram/releases/appstore/`.
+
+- No opening paragraph; start with the first section.
+- Top-level sections, in this order, empty ones left out: `## 新增` (features or settings that did not
+  exist before), `## 改善` (changes to existing features or behaviour: defaults, layout, icons, moved
+  buttons), `## 修复`, then `## 上游` and `## 安装`.
+- Group a section with many items under `### <group>` (正则过滤, 界面与交互, 稳定性, ...). The post
+  shows a section as a bold label and a group as a plain one.
+- One item describes one action. Split an item that does several things or fixes several problems; no
+  "；同时", no explanatory tail.
+- A new setting is `<u>设置-Nagram-<page>[-<subpage>]</u> <setting>`, following the pages of the app;
+  when the path is not certain, write `「<feature>」 | <what>`.
+- A fix is `「<feature>」 | <symptom>的问题`: what the user saw, not how it was fixed. Without a clear
+  feature name, write the symptom alone.
+- The last item of a group ends with `。`, the others with `；`.
+- English notes (`.en.md`) mirror the Chinese ones section by section, group by group and item by item
+  (`## New`, `## Improvements`, `## Fixes`); fixes are noun phrases naming the symptom, items end with
+  `;` and the last with `.`.
 
 ## Code Style Guidelines
 
