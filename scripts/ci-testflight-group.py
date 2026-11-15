@@ -56,6 +56,7 @@ def what_to_test(path):
             line = re.sub(r"^(\s*)[-*]\s+", r"\1• ", line)
             line = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", line)
             line = re.sub(r"(\*\*|__|`)", "", line)
+            line = re.sub(r"</?(u|ins)>", "", line)
             lines.append(line.rstrip())
     text = re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
     if not text:

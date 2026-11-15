@@ -607,18 +607,18 @@ jobs:
             echo "notes_en=$NOTES_EN"
             echo "buttons<<BUTTONS"
             RELEASE="GitHub Release=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/v$VERSION-$BUILD"
+            FEEDBACK="danger:问题反馈=https://t.me/OrIssuesBot"
             if [ -n "$TESTFLIGHT_URL" ]; then
-              echo "*TestFlight=$TESTFLIGHT_URL | $RELEASE"
+              echo "*TestFlight=$TESTFLIGHT_URL | $RELEASE | $FEEDBACK"
             else
-              echo "*$RELEASE"
+              echo "*$RELEASE | $FEEDBACK"
             fi
-            echo "问题反馈=https://t.me/OrIssuesBot"
             echo "BUTTONS"
           } >> "$GITHUB_OUTPUT"
 
       - name: Post to the channel
         if: steps.configuration.outputs.chat != ''
-        uses: NextAlone/NagramActionRelated/channel-publish@5de594cfb14d39bd21f4bb513ac6fe355aec1b46
+        uses: NextAlone/NagramActionRelated/channel-publish@f6be16850f0f7eddbc0fa3db6561bd3abde0a8ea
         with:
           bot-token: ${{ secrets.NAGRAM_CHANNEL_BOT_TOKEN }}
           api-id: ${{ secrets.TELEGRAM_API_ID }}
@@ -631,11 +631,12 @@ jobs:
           hashtags: ios testflight
           notes-file: ${{ steps.post.outputs.notes }}
           notes-en-file: ${{ steps.post.outputs.notes_en }}
-          # The notes name these sections the same way in every release.
+          # The notes name these sections the same way in every release;
+          # how to install is no part of the quoted changelog.
           fold-sections: |
             上游
             安装
-          files-title: 下载
+          unquoted-sections: 安装
           files: |
             *.ipa | 未签名 IPA · iOS ${{ needs.build-upload.outputs.min_os }} 及以上
           buttons: ${{ steps.post.outputs.buttons }}
@@ -689,7 +690,7 @@ jobs:
 
       - name: Post to the channel
         if: steps.configuration.outputs.ready == 'true'
-        uses: NextAlone/NagramActionRelated/channel-publish@5de594cfb14d39bd21f4bb513ac6fe355aec1b46
+        uses: NextAlone/NagramActionRelated/channel-publish@f6be16850f0f7eddbc0fa3db6561bd3abde0a8ea
         with:
           bot-token: ${{ secrets.NAGRAM_CHANNEL_BOT_TOKEN }}
           api-id: ${{ secrets.TELEGRAM_API_ID }}
@@ -704,4 +705,4 @@ jobs:
           commits-file: ${{ runner.temp }}/channel-commits.json
           files: |
             *.ipa | 未签名 IPA · iOS ${{ needs.build-upload.outputs.min_os }} 及以上
-          buttons: Commit=${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+          buttons: success:Commit=${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }} | danger:问题反馈=https://t.me/OrIssuesBot
