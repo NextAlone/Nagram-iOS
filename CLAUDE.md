@@ -176,6 +176,10 @@ publish notes that are unchanged since the previous release tag. A push that cha
 builds nothing; to publish notes alone, run `testflight.yml` by hand on `release` with `publish` set. The notes of earlier builds stay in
 their GitHub releases; the notes of an App Store version are gathered from those.
 
+A release whose commit message contains `[upload-only]` (a hotfix for App Review) is only uploaded to
+TestFlight: no external group, no GitHub release or tag, no channel post, and no new notes are needed. The next
+full release's notes cover its changes, since they are compared with the last tag.
+
 The channel post of a TestFlight build is tagged `#testflight` and goes to the assets channel only. A
 version submitted to the App Store by hand is announced as `#release` by the manual `appstore.yml`
 workflow (inputs: the submitted build number, optionally the version), the one post the official

@@ -35,6 +35,12 @@ name: TestFlight (Nagram)
 # The post is tagged #testflight; appstore.yml announces the version submitted
 # to the App Store as #release.
 #
+# A release whose commit message contains [upload-only] (a hotfix for App
+# Review, say) is uploaded to TestFlight and nothing more: it does not go to
+# the external group, gets no GitHub release or channel post, and needs no new
+# notes. The next full release then covers its changes. A manual run with
+# publish set on such a commit does the same.
+#
 # Make the cert .p12:  security export is not enough — export from Keychain Access
 # (Apple Distribution: Kitta Ltd, "Export... .p12"), then: base64 -i dist.p12 | pbcopy
 
@@ -70,6 +76,7 @@ jobs:
       contents: read
     outputs:
       build: ${{ steps.check.outputs.build }}
+      upload_only: ${{ steps.check.outputs.upload_only }}
     steps:
       - name: Compare with the release branch
         id: check
@@ -86,6 +93,15 @@ jobs:
             fi
           fi
           echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          # The commit message is read here rather than from the push event so
+          # that a manual run on the same commit sees the flag too.
+          MESSAGE="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA" --jq .commit.message)"
+          UPLOAD_ONLY=false
+          if [[ "$MESSAGE" == *"[upload-only]"* ]]; then
+            echo "::notice::$GITHUB_SHA is flagged [upload-only]: it is uploaded to TestFlight and not published."
+            UPLOAD_ONLY=true
+          fi
+          echo "upload_only=$UPLOAD_ONLY" >> "$GITHUB_OUTPUT"
 
   build-upload:
     needs: gate
@@ -142,7 +158,7 @@ jobs:
           # has a limit: this is where notes that are too long are found.
           python3 scripts/ci-testflight-group.py --notes "$NOTES" --print-notes
         env:
-          PUBLISH: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/release') || inputs.publish }}
+          PUBLISH: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/release') || inputs.publish) && needs.gate.outputs.upload_only != 'true' }}
 
       - name: Select pinned Xcode
         id: xcode
@@ -467,7 +483,7 @@ jobs:
           retention-days: 7
 
       - name: Save the dSYMs for the release
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/release') || inputs.publish
+        if: ((github.event_name == 'push' && github.ref == 'refs/heads/release') || inputs.publish) && needs.gate.outputs.upload_only != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: Nagram-dsyms-${{ env.BUILD_NUMBER }}
@@ -476,7 +492,7 @@ jobs:
           retention-days: 7
 
       - name: Distribute to external TestFlight group
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/release') || inputs.publish
+        if: ((github.event_name == 'push' && github.ref == 'refs/heads/release') || inputs.publish) && needs.gate.outputs.upload_only != 'true'
         env:
           # Repository VARIABLES (Settings -> Secrets and variables -> Actions -> Variables):
           #   TESTFLIGHT_GROUPS  - optional name of the EXTERNAL group in App Store Connect
@@ -502,8 +518,8 @@ jobs:
 
   release:
     name: GitHub Release
-    needs: build-upload
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/release') || inputs.publish
+    needs: [gate, build-upload]
+    if: ((github.event_name == 'push' && github.ref == 'refs/heads/release') || inputs.publish) && needs.gate.outputs.upload_only != 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -557,8 +573,8 @@ jobs:
   # comes here as an artifact of the macOS job.
   channel:
     name: Channel
-    needs: [build-upload, release]
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/release') || inputs.publish
+    needs: [gate, build-upload, release]
+    if: ((github.event_name == 'push' && github.ref == 'refs/heads/release') || inputs.publish) && needs.gate.outputs.upload_only != 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
