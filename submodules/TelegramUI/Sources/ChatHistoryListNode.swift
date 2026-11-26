@@ -4177,7 +4177,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 break
             }
             var isHidden = false
-            if let matcher = message.effectivelyIncoming(self.context.account.peerId) ? incomingMatcher : outgoingMatcher, case .hidden = matcher.apply(to: message.text, authorPeerId: message.author?.id.id._internalGetInt64Value()) {
+            if let matcher = message.effectivelyIncoming(self.context.account.peerId) ? incomingMatcher : outgoingMatcher, case .hidden = matcher.apply(to: message.nagramRegexFilterText, authorPeerId: message.author?.id.id._internalGetInt64Value()) {
                 isHidden = true
             }
             if !isHidden {

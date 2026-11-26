@@ -634,7 +634,7 @@ func nagramChatListMessageIsHidden(_ message: EngineMessage, peerId: EnginePeer.
     guard let matcher = NagramSettings.shared.regexFilterMatcher(peerId: peerId?.toInt64(), isOutgoing: isOutgoing) else {
         return false
     }
-    return matcher.isHidden(text: message.text, authorPeerId: message.author?.id.id._internalGetInt64Value())
+    return matcher.isHidden(text: message._asMessage().nagramRegexFilterText, authorPeerId: message.author?.id.id._internalGetInt64Value())
 }
 
 private func nagramFilteredChatListMessages(_ messages: [EngineMessage], peerId: EnginePeer.Id?, accountPeerId: EnginePeer.Id, presentationData: ChatListPresentationData) -> [EngineMessage] {
@@ -649,15 +649,17 @@ private func nagramFilteredChatListMessages(_ messages: [EngineMessage], peerId:
             return engineMessage
         }
         var message = engineMessage._asMessage()
-        switch nagramRegexFilterMatcher.apply(to: message.text, authorPeerId: message.author?.id.id._internalGetInt64Value()) {
+        // A rich message's text is in its blocks: it can be hidden, but its text is not rewritten.
+        let isRichMessage = message.text.isEmpty && message.richText != nil
+        switch nagramRegexFilterMatcher.apply(to: message.nagramRegexFilterText, authorPeerId: message.author?.id.id._internalGetInt64Value()) {
         case .hidden:
             return nil
         case .contentHidden:
             let text = ngI18n("Nagram.RegexFilters.ContentHidden", presentationData.strings.baseLanguageCode)
-            let attributes = message.attributes.filter { !($0 is TextEntitiesMessageAttribute) }
+            let attributes = message.attributes.filter { !($0 is TextEntitiesMessageAttribute) && !($0 is RichTextMessageAttribute) }
             message = message.withUpdatedText(text).withUpdatedAttributes(attributes)
         case let .visible(text, spoilerRanges):
-            if text != message.text || !spoilerRanges.isEmpty {
+            if !isRichMessage && (text != message.text || !spoilerRanges.isEmpty) {
                 let attributes = message.attributes.filter { !($0 is TextEntitiesMessageAttribute) }
                 var textEntities: [MessageTextEntity] = []
                 if text == message.text {
@@ -704,7 +706,7 @@ private func nagramShouldIgnoreRegexFilteredUnreadBadge(messages: [EngineMessage
         guard !readState.isIncomingMessageIndexRead(message.index) else {
             continue
         }
-        if nagramRegexFilterMatcher.isHidden(text: message.text, authorPeerId: message.author?.id.id._internalGetInt64Value()) {
+        if nagramRegexFilterMatcher.isHidden(text: message._asMessage().nagramRegexFilterText, authorPeerId: message.author?.id.id._internalGetInt64Value()) {
             hiddenUnreadCount += 1
         }
     }

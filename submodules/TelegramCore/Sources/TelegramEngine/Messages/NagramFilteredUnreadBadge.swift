@@ -167,7 +167,7 @@ private func nagramUnreadPeerIds(transaction: Transaction) -> Set<PeerId> {
 
 private func nagramIsHidden(_ matcher: NagramRegexFilterMatcher) -> (Message) -> Bool {
     return { message in
-        return matcher.isHidden(text: message.text, authorPeerId: message.author?.id.id._internalGetInt64Value())
+        return matcher.isHidden(text: message.nagramRegexFilterText, authorPeerId: message.author?.id.id._internalGetInt64Value())
     }
 }
 

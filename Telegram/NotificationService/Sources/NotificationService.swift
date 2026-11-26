@@ -2284,7 +2284,7 @@ private final class NotificationServiceHandler {
                                             var parsedMedia: Media?
                                             if let messageId, let message = transaction.getMessage(messageId) {
                                                 // MARK: NAGRAM — 后台命中 hide/用户 ID 规则时不展示通知，也不让原始未读数覆盖桌面角标。
-                                                if let matcher = NagramSettings.shared.regexFilterMatcher(peerId: message.id.peerId.toInt64(), isOutgoing: false), matcher.isHidden(text: message.text, authorPeerId: message.author?.id.id._internalGetInt64Value()) {
+                                                if let matcher = NagramSettings.shared.regexFilterMatcher(peerId: message.id.peerId.toInt64(), isOutgoing: false), matcher.isHidden(text: message.nagramRegexFilterText, authorPeerId: message.author?.id.id._internalGetInt64Value()) {
                                                     content = NotificationContent(isLockedMessage: nil)
                                                     content.dismissAfterDelivery = true
                                                 }

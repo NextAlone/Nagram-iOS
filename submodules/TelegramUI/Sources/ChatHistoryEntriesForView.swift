@@ -189,15 +189,17 @@ func chatHistoryEntriesForView(
 
         let nagramRegexFilterMatcher = message.effectivelyIncoming(context.account.peerId) ? nagramIncomingRegexFilterMatcher : nagramOutgoingRegexFilterMatcher // MARK: NAGRAM
         if let nagramRegexFilterMatcher { // MARK: NAGRAM — 正则消息过滤只影响聊天展示，不写回 Postbox。
-            switch nagramRegexFilterMatcher.apply(to: message.text, authorPeerId: message.author?.id.id._internalGetInt64Value()) {
+            // A rich message's text is in its blocks: it can be hidden, but its text is not rewritten.
+            let isRichMessage = message.text.isEmpty && message.richText != nil
+            switch nagramRegexFilterMatcher.apply(to: message.nagramRegexFilterText, authorPeerId: message.author?.id.id._internalGetInt64Value()) {
             case .hidden:
                 continue
             case .contentHidden:
                 let text = ngI18n("Nagram.RegexFilters.ContentHidden", presentationData.strings.baseLanguageCode)
-                let attributes = message.attributes.filter { !($0 is TextEntitiesMessageAttribute) }
+                let attributes = message.attributes.filter { !($0 is TextEntitiesMessageAttribute) && !($0 is RichTextMessageAttribute) }
                 message = message.withUpdatedText(text).withUpdatedAttributes(attributes)
             case let .visible(text, spoilerRanges):
-                if text != message.text || !spoilerRanges.isEmpty {
+                if !isRichMessage && (text != message.text || !spoilerRanges.isEmpty) {
                     let attributes = message.attributes.filter { !($0 is TextEntitiesMessageAttribute) }
                     var textEntities: [MessageTextEntity] = text == message.text ? (message.textEntitiesAttribute?.entities ?? []) : []
                     for range in spoilerRanges {

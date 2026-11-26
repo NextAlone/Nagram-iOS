@@ -7751,7 +7751,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     guard let matcher = NagramSettings.shared.regexFilterMatcher(peerId: peerId.toInt64(), isOutgoing: isOutgoing) else {
                         return false
                     }
-                    return matcher.isHidden(text: message.text, authorPeerId: message.author?.id.id._internalGetInt64Value())
+                    return matcher.isHidden(text: message.nagramRegexFilterText, authorPeerId: message.author?.id.id._internalGetInt64Value())
                 }
                 var pinnedMessages = pinnedMessages
                 var hiddenPinnedCount = 0
