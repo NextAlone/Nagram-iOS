@@ -2225,7 +2225,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
 
         // MARK: NAGRAM — the translate button beside an incoming text message in a language the user does not read.
         var nagramNeedsTranslateButton = false
-        if incoming, !isPreview, !isAd, !isUnsupportedContent, !isEphemeralMessage, !needsSummarizeButton, !bubbleStyle.isBubbleless, item.associatedData.translateToLanguage == nil, let nagramTranslateToLanguage = item.controllerInteraction.nagramMessageTranslationLanguage, !item.message.text.isEmpty, item.message.id.peerId.namespace != Namespaces.Peer.SecretChat, !Namespaces.Message.allNonRegular.contains(item.message.id.namespace) {
+        if incoming, !isPreview, !isAd, !isUnsupportedContent, !isEphemeralMessage, !bubbleStyle.isBubbleless, item.associatedData.translateToLanguage == nil, let nagramTranslateToLanguage = item.controllerInteraction.nagramMessageTranslationLanguage, !item.message.text.isEmpty, item.message.id.peerId.namespace != Namespaces.Peer.SecretChat, !Namespaces.Message.allNonRegular.contains(item.message.id.namespace) {
             if case .messageOptions = item.associatedData.subject {
             } else if item.controllerInteraction.nagramTranslatedMessageIds.contains(item.message.id) {
                 nagramNeedsTranslateButton = true
