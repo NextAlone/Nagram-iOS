@@ -289,6 +289,8 @@ public struct NagramRegexFilterMatcher {
 
 private let nagramRegexFilterRulesKey = "nagram.regexFilters.rules"
 private let nagramRegexFilterDisabledPeerIdsKey = "nagram.regexFilters.disabledPeerIds"
+// Chats turned on one by one while filtering is off everywhere else.
+private let nagramRegexFilterEnabledPeerIdsKey = "nagram.regexFilters.enabledPeerIds"
 private let nagramRegexFiltersEnabledKey = "nagram.regexFilters.isEnabled"
 private let nagramRegexFiltersFilterOutgoingKey = "nagram.regexFilters.filterOutgoing"
 
@@ -311,7 +313,7 @@ private let nagramRegexFilterDefaults: UserDefaults = {
         return nagramRegexFilterSharedDefaults ?? standardDefaults
     }
     if let sharedDefaults = nagramRegexFilterSharedDefaults {
-        for key in [nagramRegexFilterRulesKey, nagramRegexFilterDisabledPeerIdsKey, nagramRegexFiltersEnabledKey, nagramRegexFiltersFilterOutgoingKey] {
+        for key in [nagramRegexFilterRulesKey, nagramRegexFilterDisabledPeerIdsKey, nagramRegexFilterEnabledPeerIdsKey, nagramRegexFiltersEnabledKey, nagramRegexFiltersFilterOutgoingKey] {
             if let value = standardDefaults.object(forKey: key) {
                 sharedDefaults.set(value, forKey: key)
             } else {
@@ -479,31 +481,43 @@ public extension NagramSettings {
         self.regexFilterRules = rules
     }
 
+    /// With filtering on, every chat filters except those turned off one by one; with it off, only the chats
+    /// turned on one by one filter. A chat list or notification lookup without a peer follows the global switch.
     func isRegexFilteringEnabled(peerId: Int64?, isOutgoing: Bool = false) -> Bool {
-        guard self.regexFiltersEnabled else {
-            return false
-        }
         if isOutgoing && !self.regexFiltersFilterOutgoing {
             return false
         }
         guard let peerId else {
-            return true
+            return self.regexFiltersEnabled
         }
-        return !self.regexFilterDisabledPeerIds.contains(peerId)
+        if self.regexFiltersEnabled {
+            return !self.regexFilterDisabledPeerIds.contains(peerId)
+        } else {
+            return self.regexFilterEnabledPeerIds.contains(peerId)
+        }
     }
 
     func setRegexFilteringEnabled(_ enabled: Bool, peerId: Int64) {
-        var disabledPeerIds = self.regexFilterDisabledPeerIds
-        let shouldBeDisabled = !enabled
-        guard disabledPeerIds.contains(peerId) != shouldBeDisabled else {
+        guard self.isRegexFilteringEnabled(peerId: peerId) != enabled else {
             return
         }
-        if enabled {
-            disabledPeerIds.remove(peerId)
+        if self.regexFiltersEnabled {
+            var disabledPeerIds = self.regexFilterDisabledPeerIds
+            if enabled {
+                disabledPeerIds.remove(peerId)
+            } else {
+                disabledPeerIds.insert(peerId)
+            }
+            self.regexFilterDisabledPeerIds = disabledPeerIds
         } else {
-            disabledPeerIds.insert(peerId)
+            var enabledPeerIds = self.regexFilterEnabledPeerIds
+            if enabled {
+                enabledPeerIds.insert(peerId)
+            } else {
+                enabledPeerIds.remove(peerId)
+            }
+            self.regexFilterEnabledPeerIds = enabledPeerIds
         }
-        self.regexFilterDisabledPeerIds = disabledPeerIds
         self.notifyRegexFiltersChanged()
     }
 
@@ -518,18 +532,35 @@ public extension NagramSettings {
 private extension NagramSettings {
     var regexFilterDisabledPeerIds: Set<Int64> {
         get {
-            let values = nagramRegexFilterDefaults.stringArray(forKey: nagramRegexFilterDisabledPeerIdsKey) ?? []
-            return Set(values.compactMap(Int64.init))
+            return self.regexFilterPeerIds(forKey: nagramRegexFilterDisabledPeerIdsKey)
         }
         set {
-            if newValue.isEmpty {
-                NagramSettingsCloudSync.shared.removeObject(forKey: nagramRegexFilterDisabledPeerIdsKey)
-                nagramMirrorRegexFilterValue(nil, forKey: nagramRegexFilterDisabledPeerIdsKey)
-            } else {
-                let values = newValue.map { String($0) }.sorted()
-                NagramSettingsCloudSync.shared.set(values, forKey: nagramRegexFilterDisabledPeerIdsKey)
-                nagramMirrorRegexFilterValue(values, forKey: nagramRegexFilterDisabledPeerIdsKey)
-            }
+            self.setRegexFilterPeerIds(newValue, forKey: nagramRegexFilterDisabledPeerIdsKey)
+        }
+    }
+
+    var regexFilterEnabledPeerIds: Set<Int64> {
+        get {
+            return self.regexFilterPeerIds(forKey: nagramRegexFilterEnabledPeerIdsKey)
+        }
+        set {
+            self.setRegexFilterPeerIds(newValue, forKey: nagramRegexFilterEnabledPeerIdsKey)
+        }
+    }
+
+    func regexFilterPeerIds(forKey key: String) -> Set<Int64> {
+        let values = nagramRegexFilterDefaults.stringArray(forKey: key) ?? []
+        return Set(values.compactMap(Int64.init))
+    }
+
+    func setRegexFilterPeerIds(_ peerIds: Set<Int64>, forKey key: String) {
+        if peerIds.isEmpty {
+            NagramSettingsCloudSync.shared.removeObject(forKey: key)
+            nagramMirrorRegexFilterValue(nil, forKey: key)
+        } else {
+            let values = peerIds.map { String($0) }.sorted()
+            NagramSettingsCloudSync.shared.set(values, forKey: key)
+            nagramMirrorRegexFilterValue(values, forKey: key)
         }
     }
 

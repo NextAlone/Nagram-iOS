@@ -141,7 +141,8 @@ enum NagramSettingsSyncKeys {
         "nagram.textStyleMenu.enabled",
         "nagram.textStyleMenu.position",
         "nagram.regexFilters.rules",
-        "nagram.regexFilters.disabledPeerIds"
+        "nagram.regexFilters.disabledPeerIds",
+        "nagram.regexFilters.enabledPeerIds"
     ]
 
     private static let syncedPrefixes: [String] = [
@@ -366,7 +367,7 @@ final class NagramSettingsCloudSync {
     }
 
     private func postRelatedNotifications(forKey key: String, previousValue: Any?, newValue: Any?) {
-        if key == "nagram.regexFilters.rules" || key == "nagram.regexFilters.disabledPeerIds" {
+        if key == "nagram.regexFilters.rules" || key == "nagram.regexFilters.disabledPeerIds" || key == "nagram.regexFilters.enabledPeerIds" {
             NotificationCenter.default.post(name: .nagramRegexFiltersDidChange, object: nil)
         }
 
