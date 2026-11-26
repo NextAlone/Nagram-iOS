@@ -1188,10 +1188,9 @@ public final class MediaPickerScreenImpl: ViewController, MediaPickerScreen, Att
                 }
             } else if let camera = self.modernCamera, let cameraView = self.modernCameraView {
                 if self.cameraCellBranch == .chatCamera {
-                    // MARK: NAGRAM — no live preview until the camera is tapped.
-                    if !NagramSettings.shared.disableGalleryCameraPreview {
-                        self.scheduleChatCameraCaptureUpdate()
-                    }
+                    // MARK: NAGRAM — with the preview turned off, modernCameraHasLivePreview is false and the
+                    // update stops the session the camera starts on creation.
+                    self.scheduleChatCameraCaptureUpdate()
                 } else if isCameraActive {
                     // MARK: NAGRAM
                     if !NagramSettings.shared.disableGalleryCameraPreview {
