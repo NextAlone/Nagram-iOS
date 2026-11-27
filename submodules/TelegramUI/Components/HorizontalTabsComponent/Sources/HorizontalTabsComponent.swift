@@ -827,7 +827,8 @@ public final class HorizontalTabsComponent: Component {
             var shouldFocusOnSelectedTab = self.isDraggingTabs
             
             if component.isEditing {
-                if self.reorderedItemIds == nil {
+                // MARK: NAGRAM — Follow incoming tab changes until the user makes a drag of their own.
+                if self.reorderedItemIds == nil || self.reorderedItemIds == self.component?.tabs.map(\.id) {
                     self.reorderedItemIds = component.tabs.map(\.id)
                 }
             } else {
@@ -885,6 +886,8 @@ public final class HorizontalTabsComponent: Component {
                         orderedTabs.append(tab)
                     }
                 }
+                // MARK: NAGRAM — Newly available tabs can be dragged and hidden tabs leave the drag order.
+                self.reorderedItemIds = orderedTabs.map(\.id)
             }
             
             var items: [(tabId: AnyHashable, itemView: ItemView, size: CGSize, itemTransition: ComponentTransition)] = []

@@ -344,6 +344,9 @@
 "Nagram.ShowDC" = "データセンターを表示";
 "Nagram.ShowRegDate" = "登録日を表示";
 "Nagram.ShowCommonGroupMessages" = "共通グループでの発言を表示";
+"Nagram.ProfileTabs" = "プロフィールのタブ";
+"Nagram.ProfileTabs.Hide" = "タブを非表示";
+"Nagram.ProfileTabs.Footer" = "プロフィール画面でタブを長押しし、並べ替えを選んでからドラッグします。タブの順序と表示設定はすべてのプロフィールに適用されます。";
 "Nagram.CommonGroupMessages" = "共通グループでの発言";
 "Nagram.CommonGroupMessages.Searching" = "共通グループを検索中 {searched} / {total}…";
 "Nagram.CommonGroupMessages.Searched" = "{total} 件の共通グループを検索しました";

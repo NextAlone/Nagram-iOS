@@ -423,6 +423,7 @@ private func nagramGroups(
     llmTranslationSettingsAction: @escaping () -> Void,
     sttSettingsAction: @escaping () -> Void,
     groupProfileSettingsAction: @escaping () -> Void,
+    profileTabsAction: @escaping () -> Void,
     sessionBackupAction: @escaping () -> Void
 ) -> [NagramGroup] {
     let sensitiveContentEnabled: () -> Bool = {
@@ -608,6 +609,7 @@ private func nagramGroups(
             .toggle(titleKey: "Nagram.ShowRegDate", get: { NagramSettings.shared.showRegDate }, set: { NagramSettings.shared.showRegDate = $0 }),
             .toggle(titleKey: "Nagram.ShowCommonGroupMessages", get: { NagramSettings.shared.showCommonGroupMessages }, set: { NagramSettings.shared.showCommonGroupMessages = $0 }),
             .navigation(titleKey: "Nagram.GroupProfileSettings", action: groupProfileSettingsAction),
+            .navigation(titleKey: "Nagram.ProfileTabs", action: profileTabsAction),
         ]),
         NagramGroup(tab: .other, headerKey: "Nagram.Section.Privacy", footerKeys: ["Nagram.DisableFiltering.Footer", "Nagram.ForceCopy.Footer"], rows: [
             .toggle(titleKey: "Nagram.HidePhoneInSettings", get: { NagramSettings.shared.hidePhoneInSettings }, set: { NagramSettings.shared.hidePhoneInSettings = $0 }),
@@ -725,6 +727,7 @@ public func nagramSettingsSearchEntries(lang: String) -> [NagramSettingsSearchEn
         llmTranslationSettingsAction: {},
         sttSettingsAction: {},
         groupProfileSettingsAction: {},
+        profileTabsAction: {},
         sessionBackupAction: {}
     )
 
@@ -978,6 +981,8 @@ public func nagramSettingsController(context: AccountContext, deepLinkPath: Stri
         pushControllerImpl?(nagramSTTSettingsController(context: context))
     }, groupProfileSettingsAction: {
         pushControllerImpl?(nagramGroupProfileSettingsController(context: context))
+    }, profileTabsAction: {
+        pushControllerImpl?(nagramProfileTabsController(context: context))
     }, sessionBackupAction: {
         pushControllerImpl?(nagramSessionBackupController(context: context))
     })

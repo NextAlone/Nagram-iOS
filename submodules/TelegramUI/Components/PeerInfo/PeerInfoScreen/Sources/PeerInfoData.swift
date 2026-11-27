@@ -413,6 +413,31 @@ private func peerInfoStatusWithHiddenCommunityPrefix(_ status: PeerInfoStatusDat
     return status
 }
 
+// MARK: NAGRAM — store stable names independently of Telegram's Int32 pane indices.
+extension PeerInfoPaneKey {
+    var nagramProfilePane: NagramProfilePane {
+        switch self {
+        case .botPreview: return .botPreview
+        case .members: return .members
+        case .stories: return .stories
+        case .gifts: return .gifts
+        case .media: return .media
+        case .savedMessagesChats: return .savedMessagesChats
+        case .savedMessages: return .savedMessages
+        case .files: return .files
+        case .music: return .music
+        case .voice: return .voice
+        case .links: return .links
+        case .gifs: return .gifs
+        case .polls: return .polls
+        case .groupsInCommon: return .groupsInCommon
+        case .similarChannels: return .similarChannels
+        case .similarBots: return .similarBots
+        case .storyArchive: return .storyArchive
+        }
+    }
+}
+
 final class PeerInfoScreenData {
     let peer: EnginePeer?
     let chatPeer: EnginePeer?
@@ -423,7 +448,20 @@ final class PeerInfoScreenData {
     let peerNotificationSettings: TelegramPeerNotificationSettings?
     let threadNotificationSettings: TelegramPeerNotificationSettings?
     let globalNotificationSettings: EngineGlobalNotificationSettings?
-    let availablePanes: [PeerInfoPaneKey]
+    // MARK: NAGRAM — the header, gestures and pane loader all consume the same visible order.
+    let originalAvailablePanes: [PeerInfoPaneKey]
+    private(set) var availablePanes: [PeerInfoPaneKey]
+
+    func applyProfilePaneSettings(_ settings: NagramProfilePaneSettings, revealing explicitPane: PeerInfoPaneKey?) {
+        let order = settings.ordered(self.originalAvailablePanes.map(\.nagramProfilePane))
+        self.availablePanes = order.compactMap { pane in
+            guard pane == explicitPane?.nagramProfilePane || !settings.isHidden(pane) else {
+                return nil
+            }
+            return self.originalAvailablePanes.first(where: { $0.nagramProfilePane == pane })
+        }
+    }
+
     let groupsInCommon: GroupsInCommonContext?
     let linkedDiscussionPeer: EnginePeer?
     let linkedMonoforumPeer: EnginePeer?
@@ -540,6 +578,7 @@ final class PeerInfoScreenData {
         self.threadNotificationSettings = threadNotificationSettings
         self.globalNotificationSettings = globalNotificationSettings
         self._isContact = isContact
+        self.originalAvailablePanes = availablePanes // MARK: NAGRAM
         self.availablePanes = availablePanes
         self.groupsInCommon = groupsInCommon
         self.linkedDiscussionPeer = linkedDiscussionPeer

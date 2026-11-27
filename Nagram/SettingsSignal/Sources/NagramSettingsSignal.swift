@@ -40,6 +40,15 @@ public func nagramStringSignal(_ key: String, defaultValue: String) -> Signal<St
     return (initial |> then(changes)) |> distinctUntilChanged
 }
 
+public func nagramProfilePaneSettingsSignal() -> Signal<NagramProfilePaneSettings, NoError> {
+    return combineLatest(
+        nagramStringSignal("nagram.profilePanes.order", defaultValue: ""),
+        nagramStringSignal("nagram.profilePanes.hidden", defaultValue: "")
+    )
+    |> map { _, _ in NagramSettings.shared.profilePaneSettings }
+    |> distinctUntilChanged
+}
+
 public func nagramSTTSettingsSignal() -> Signal<Int32, NoError> {
     return Signal { subscriber in
         let version = Atomic<Int32>(value: 0)

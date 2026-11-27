@@ -344,6 +344,9 @@
 "Nagram.ShowDC" = "Show Data Center";
 "Nagram.ShowRegDate" = "Show Registration Date";
 "Nagram.ShowCommonGroupMessages" = "Show Messages in Common Groups";
+"Nagram.ProfileTabs" = "Profile Tabs";
+"Nagram.ProfileTabs.Hide" = "Hide Tab";
+"Nagram.ProfileTabs.Footer" = "Press and hold a profile tab, choose Reorder Tabs, then drag it into place. Tab order and visibility apply to all profiles.";
 "Nagram.CommonGroupMessages" = "Messages in Common Groups";
 "Nagram.CommonGroupMessages.Searching" = "Searching {searched} of {total} common groups…";
 "Nagram.CommonGroupMessages.Searched" = "Searched {total} common groups";

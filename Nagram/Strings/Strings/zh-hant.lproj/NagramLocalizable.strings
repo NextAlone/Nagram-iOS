@@ -344,6 +344,9 @@
 "Nagram.ShowDC" = "顯示資料中心";
 "Nagram.ShowRegDate" = "顯示註冊日期";
 "Nagram.ShowCommonGroupMessages" = "顯示共同群組發言入口";
+"Nagram.ProfileTabs" = "個人資料頁分類";
+"Nagram.ProfileTabs.Hide" = "隱藏分類";
+"Nagram.ProfileTabs.Footer" = "在個人資料頁長按分類，選擇排序後即可拖曳。分類的順序與顯示設定適用於所有個人資料頁。";
 "Nagram.CommonGroupMessages" = "共同群組發言";
 "Nagram.CommonGroupMessages.Searching" = "正在搜尋共同群組 {searched} / {total}…";
 "Nagram.CommonGroupMessages.Searched" = "已搜尋 {total} 個共同群組";
