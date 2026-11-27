@@ -116,6 +116,7 @@ enum NagramSettingsSyncKeys {
         "nagram.groupProfileSettingItems",
         "nagram.hiddenSettingsPageItems",
         "nagram.hidePhoneInSettings",
+        "nagram.hideContactsLimitedAccessBanner",
         "nagram.bottomBarLayout.version",
         "nagram.bottomBarLayout.isBottomBarVisible",
         "nagram.bottomBarLayout.bottomItems",

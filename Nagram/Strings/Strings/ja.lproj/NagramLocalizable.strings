@@ -370,6 +370,7 @@
 "Nagram.HidePhoneInSettings" = "設定の電話番号を非表示";
 "Nagram.ConfirmCalls" = "通話前に確認";
 "Nagram.HideTabBarPermissionWarnings" = "タブバーの権限警告を非表示";
+"Nagram.HideContactsLimitedAccessBanner" = "連絡先の制限付きアクセス通知を非表示";
 "Nagram.HideStories" = "ストーリーズを非表示";
 "Nagram.Section.Stories" = "ストーリーズ";
 "Nagram.HideTopStories" = "上部のストーリーズを非表示";

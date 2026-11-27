@@ -370,6 +370,7 @@
 "Nagram.HidePhoneInSettings" = "隐藏设置页手机号";
 "Nagram.ConfirmCalls" = "通话前确认";
 "Nagram.HideTabBarPermissionWarnings" = "隐藏标签栏权限警告";
+"Nagram.HideContactsLimitedAccessBanner" = "隐藏通讯录受限访问提示";
 "Nagram.HideStories" = "隐藏动态";
 "Nagram.Section.Stories" = "动态";
 "Nagram.HideTopStories" = "隐藏顶部动态区域";

@@ -370,6 +370,7 @@
 "Nagram.HidePhoneInSettings" = "Hide Phone Number in Settings";
 "Nagram.ConfirmCalls" = "Confirm Before Calling";
 "Nagram.HideTabBarPermissionWarnings" = "Hide Tab Bar Permission Warnings";
+"Nagram.HideContactsLimitedAccessBanner" = "Hide Limited Contacts Access Banner";
 "Nagram.HideStories" = "Hide Stories";
 "Nagram.Section.Stories" = "Stories";
 "Nagram.HideTopStories" = "Hide Top Stories Area";

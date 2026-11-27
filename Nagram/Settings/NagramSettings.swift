@@ -676,6 +676,9 @@ public final class NagramSettings {
     /// 隐藏标签栏上的权限警告
     @NagramDefault("nagram.hideTabBarPermissionWarnings", false)
     public var hideTabBarPermissionWarnings: Bool
+    /// 隐藏联系人页「已限制访问通讯录」提示条（默认关 = 保持原生）
+    @NagramDefault("nagram.hideContactsLimitedAccessBanner", false)
+    public var hideContactsLimitedAccessBanner: Bool
     /// 资料页显示注册日期（默认关 = 保持原生）
     @NagramDefault("nagram.showRegDate", false)
     public var showRegDate: Bool

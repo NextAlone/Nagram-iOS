@@ -22,6 +22,8 @@ import AppBundle
 import ContextUI
 import PhoneNumberFormat
 import LocalizedPeerData
+// MARK: NAGRAM
+import NagramSettingsSignal
 import ContextUI
 
 private let dropDownIcon = { () -> UIImage in
@@ -1940,7 +1942,11 @@ public final class ContactListNode: ASDisplayNode {
                         selectionStateSignal,
                         pendingRemovalPeerIdsSignal,
                         presentationDataPromise.get(),
-                        contactsAuthorization.get(),
+                        // MARK: NAGRAM — 开关打开时把 .limited 视为 .allowed，不显示「已限制访问通讯录」提示条
+                        combineLatest(contactsAuthorization.get(), nagramBoolSignal("nagram.hideContactsLimitedAccessBanner", defaultValue: false))
+                        |> map { status, hideLimitedBanner -> AccessType in
+                            return hideLimitedBanner && status == .limited ? .allowed : status
+                        },
                         contactsWarningSuppressed.get(),
                         self.storySubscriptions.get(),
                         topPeers
