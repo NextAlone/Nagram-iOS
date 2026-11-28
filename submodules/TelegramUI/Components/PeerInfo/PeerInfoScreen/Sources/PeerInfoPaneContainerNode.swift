@@ -908,7 +908,7 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
 
     @discardableResult
     private func saveProfileTabOrder() -> Bool {
-        guard let availablePanes = self.currentAvailablePanes, let ids = (self.tabsContainer.view as? HorizontalTabsComponent.View)?.reorderedItemIds else {
+        guard let scope = self.currentParams?.data?.profilePaneScope, let availablePanes = self.currentAvailablePanes, let ids = (self.tabsContainer.view as? HorizontalTabsComponent.View)?.reorderedItemIds else {
             return false
         }
         let reordered = ids.compactMap { $0.base as? PeerInfoPaneKey }.filter { availablePanes.contains($0) }
@@ -917,18 +917,18 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
         }
         // The settings observer lays out the committed order; rendering beforehand would briefly undo the drag.
         self.didJustReorderTabs = true
-        NagramSettings.shared.setProfilePaneOrder(reordered.map(\.nagramProfilePane))
+        NagramSettings.shared.setProfilePaneOrder(reordered.map(\.nagramProfilePane), in: scope)
         return true
     }
 
     private func hideProfileTab(_ key: PeerInfoPaneKey) {
-        guard self.currentAvailablePanes?.contains(key) == true, !NagramSettings.shared.profilePaneSettings.isHidden(key.nagramProfilePane) else {
+        guard let data = self.currentParams?.data, let scope = data.profilePaneScope, data.availablePanes.contains(key), data.profilePaneSettings?.isHidden(key.nagramProfilePane) == false else {
             return
         }
         if self.isEditingProfileTabs {
             self.saveProfileTabOrder()
         }
-        NagramSettings.shared.setProfilePaneHidden(true, for: key.nagramProfilePane)
+        NagramSettings.shared.setProfilePaneHidden(true, for: key.nagramProfilePane, in: scope)
     }
 
     private func canSetMainProfileTab(_ key: PeerInfoPaneKey) -> Bool {
@@ -942,13 +942,13 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
     }
 
     private func openTabContextMenu(key: PeerInfoPaneKey, sourceView: ContextExtractedContentContainingView, gesture: ContextGesture?) {
-        guard let params = self.currentParams, !self.isEditingProfileTabs, let availablePanes = self.currentAvailablePanes, availablePanes.contains(key) else {
+        guard let params = self.currentParams, let data = params.data, !self.isEditingProfileTabs, data.availablePanes.contains(key) else {
             return
         }
 
         var items: [ContextMenuItem] = []
-        if self.canCustomizeProfileTabs {
-            if availablePanes.count > 1 {
+        if self.canCustomizeProfileTabs, let scope = data.profilePaneScope, let settings = data.profilePaneSettings {
+            if data.availablePanes.count > 1 {
                 items.append(.action(ContextMenuActionItem(text: params.presentationData.strings.ChatList_ReorderTabs, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/ReorderItems"), color: theme.contextMenu.primaryColor)
                 }, action: { [weak self] controller, _ in
@@ -961,17 +961,17 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
                     })
                 })))
             }
-            let isHidden = NagramSettings.shared.profilePaneSettings.isHidden(key.nagramProfilePane)
+            let isHidden = settings.isHidden(key.nagramProfilePane)
             let visibilityTitle = isHidden ? params.presentationData.strings.PeerInfo_Gifts_Context_Show : ngI18n("Nagram.ProfileTabs.Hide", params.presentationData.strings.baseLanguageCode)
             items.append(.action(ContextMenuActionItem(text: visibilityTitle, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: isHidden ? "Peer Info/ShowIcon" : "Peer Info/HideIcon"), color: theme.contextMenu.primaryColor)
             }, action: { [weak self] controller, _ in
                 controller?.dismiss(completion: { [weak self] in
-                    guard let self, self.canCustomizeProfileTabs else {
+                    guard let self, self.canCustomizeProfileTabs, self.currentParams?.data?.profilePaneScope == scope else {
                         return
                     }
                     if isHidden {
-                        NagramSettings.shared.setProfilePaneHidden(false, for: key.nagramProfilePane)
+                        NagramSettings.shared.setProfilePaneHidden(false, for: key.nagramProfilePane, in: scope)
                     } else {
                         self.hideProfileTab(key)
                     }
@@ -982,7 +982,11 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
             if !items.isEmpty {
                 items.append(.separator)
             }
-            items.append(.action(ContextMenuActionItem(text: params.presentationData.strings.PeerInfo_Tabs_SetMainTab, icon: { theme in
+            let localOverride = data.profilePaneSettings?.overridesMainPane(key.nagramProfilePane, in: data.panesBeforeMainTab.map(\.nagramProfilePane)) == true
+            let mainTabLayout: ContextMenuActionItemTextLayout = localOverride
+                ? .secondLineWithValue(ngI18n("Nagram.ProfileTabs.MainTabLocalOverride", params.presentationData.strings.baseLanguageCode))
+                : .singleLine
+            items.append(.action(ContextMenuActionItem(text: params.presentationData.strings.PeerInfo_Tabs_SetMainTab, textLayout: mainTabLayout, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/ReorderItems"), color: theme.actionSheet.primaryTextColor)
             }, action: { [weak self] _, f in
                 guard let self else {
@@ -1390,7 +1394,7 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
         
         let tabsSideInset: CGFloat = sideInset + 16.0
         // MARK: NAGRAM
-        let editingTabSettings = self.isEditingProfileTabs ? NagramSettings.shared.profilePaneSettings : nil
+        let editingTabSettings = self.isEditingProfileTabs ? data?.profilePaneSettings : nil
         let hideTabTitle = self.isEditingProfileTabs ? ngI18n("Nagram.ProfileTabs.Hide", presentationData.strings.baseLanguageCode) : nil
         
         let tabsContainerSize = CGSize(width: size.width - self.stripInsets.left - self.stripInsets.right - tabsSideInset * 2.0, height: tabsHeight)

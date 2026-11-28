@@ -151,6 +151,7 @@ enum NagramSettingsSyncKeys {
     private static let syncedPrefixes: [String] = [
         "nagram.chatListStartupSpecificFolder.",
         "nagram.recentChatFolders.",
+        "nagram.profilePanes.byType.",
         "nagram.autoTranslate."
     ]
 

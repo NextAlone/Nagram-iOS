@@ -449,10 +449,14 @@ final class PeerInfoScreenData {
     let threadNotificationSettings: TelegramPeerNotificationSettings?
     let globalNotificationSettings: EngineGlobalNotificationSettings?
     // MARK: NAGRAM — the header, gestures and pane loader all consume the same visible order.
+    let profilePaneScope: NagramProfilePaneScope?
+    private(set) var profilePaneSettings: NagramProfilePaneSettings?
+    let panesBeforeMainTab: [PeerInfoPaneKey]
     let originalAvailablePanes: [PeerInfoPaneKey]
     private(set) var availablePanes: [PeerInfoPaneKey]
 
     func applyProfilePaneSettings(_ settings: NagramProfilePaneSettings, revealing explicitPane: PeerInfoPaneKey?) {
+        self.profilePaneSettings = settings
         let order = settings.ordered(self.originalAvailablePanes.map(\.nagramProfilePane))
         self.availablePanes = order.compactMap { pane in
             guard pane == explicitPane?.nagramProfilePane || !settings.isHidden(pane) else {
@@ -528,6 +532,8 @@ final class PeerInfoScreenData {
         globalNotificationSettings: EngineGlobalNotificationSettings?,
         isContact: Bool,
         availablePanes: [PeerInfoPaneKey],
+        profilePaneScope: NagramProfilePaneScope? = nil, // MARK: NAGRAM
+        panesBeforeMainTab: [PeerInfoPaneKey]? = nil, // MARK: NAGRAM
         groupsInCommon: GroupsInCommonContext?,
         linkedDiscussionPeer: EnginePeer?,
         linkedMonoforumPeer: EnginePeer?,
@@ -578,6 +584,8 @@ final class PeerInfoScreenData {
         self.threadNotificationSettings = threadNotificationSettings
         self.globalNotificationSettings = globalNotificationSettings
         self._isContact = isContact
+        self.profilePaneScope = profilePaneScope // MARK: NAGRAM
+        self.panesBeforeMainTab = panesBeforeMainTab ?? availablePanes // MARK: NAGRAM
         self.originalAvailablePanes = availablePanes // MARK: NAGRAM
         self.availablePanes = availablePanes
         self.groupsInCommon = groupsInCommon
@@ -1271,6 +1279,15 @@ func peerInfoScreenData(
                 businessConnectedBot: nil
             ))
         case let .user(userPeerId, secretChatId, kind):
+            // MARK: NAGRAM — My Profile and Saved Messages share a peer ID but have distinct tabs.
+            let profilePaneScope: NagramProfilePaneScope
+            if isMyProfile {
+                profilePaneScope = .myProfile
+            } else if peerId == context.account.peerId {
+                profilePaneScope = .savedMessages
+            } else {
+                profilePaneScope = kind == .bot ? .bot : .user
+            }
             let groupsInCommon: GroupsInCommonContext?
             if isMyProfile {
                 groupsInCommon = nil
@@ -1737,6 +1754,7 @@ func peerInfoScreenData(
                     availablePanes = nil
                 }
                 
+                let panesBeforeMainTab = availablePanes // MARK: NAGRAM — preview replacing the current server main tab.
                 if var currentAvailablePanes = availablePanes, let cachedData = peerView.cachedData as? CachedUserData, let mainProfileTab = cachedData.mainProfileTab {
                     let mainTabKey = PeerInfoPaneKey(tab: mainProfileTab)
                     if currentAvailablePanes.contains(mainTabKey) && currentAvailablePanes.first != mainTabKey {
@@ -1828,6 +1846,8 @@ func peerInfoScreenData(
                         globalNotificationSettings: globalNotificationSettings,
                         isContact: peerView.peerIsContact,
                         availablePanes: availablePanes ?? [],
+                        profilePaneScope: profilePaneScope, // MARK: NAGRAM
+                        panesBeforeMainTab: panesBeforeMainTab, // MARK: NAGRAM
                         groupsInCommon: groupsInCommon,
                         linkedDiscussionPeer: nil,
                         linkedMonoforumPeer: nil,
@@ -2047,6 +2067,7 @@ func peerInfoScreenData(
                     availablePanes = nil
                 }
                 
+                let panesBeforeMainTab = availablePanes // MARK: NAGRAM — preview replacing the current server main tab.
                 if var currentAvailablePanes = availablePanes, let cachedData = peerView.cachedData as? CachedChannelData, let mainProfileTab = cachedData.mainProfileTab {
                     let mainTabKey = PeerInfoPaneKey(tab: mainProfileTab)
                     if currentAvailablePanes.contains(mainTabKey) && currentAvailablePanes.first != mainTabKey {
@@ -2131,6 +2152,8 @@ func peerInfoScreenData(
                         globalNotificationSettings: globalNotificationSettings,
                         isContact: peerView.peerIsContact,
                         availablePanes: availablePanes ?? [],
+                        profilePaneScope: .channel, // MARK: NAGRAM
+                        panesBeforeMainTab: panesBeforeMainTab, // MARK: NAGRAM
                         groupsInCommon: nil,
                         linkedDiscussionPeer: discussionPeer,
                         linkedMonoforumPeer: monoforumPeer,
@@ -2515,6 +2538,7 @@ func peerInfoScreenData(
                         globalNotificationSettings: globalNotificationSettings,
                         isContact: peerView.peerIsContact,
                         availablePanes: availablePanes ?? [],
+                        profilePaneScope: .group, // MARK: NAGRAM
                         groupsInCommon: nil,
                         linkedDiscussionPeer: discussionPeer,
                         linkedMonoforumPeer: monoforumPeer,

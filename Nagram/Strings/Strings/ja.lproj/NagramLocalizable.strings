@@ -346,7 +346,12 @@
 "Nagram.ShowCommonGroupMessages" = "共通グループでの発言を表示";
 "Nagram.ProfileTabs" = "プロフィールのタブ";
 "Nagram.ProfileTabs.Hide" = "タブを非表示";
-"Nagram.ProfileTabs.Footer" = "プロフィール画面でタブを長押しし、並べ替えを選んでからドラッグします。タブの順序と表示設定はすべてのプロフィールに適用されます。";
+"Nagram.ProfileTabs.Users" = "ユーザー";
+"Nagram.ProfileTabs.BotPreview" = "ボットのミニアプリのプレビュー";
+"Nagram.ProfileTabs.SavedMessagesChats" = "チャット別の保存済みメッセージ";
+"Nagram.ProfileTabs.SavedMessagesFromChat" = "このチャットから保存したメッセージ";
+"Nagram.ProfileTabs.MainTabLocalOverride" = "ローカルのタブ設定が優先されます";
+"Nagram.ProfileTabs.Footer" = "この種類のプロフィールでタブを長押しし、「%@」を選んでからドラッグします。すべてのタブを非表示にしても、ここで再表示できます。";
 "Nagram.CommonGroupMessages" = "共通グループでの発言";
 "Nagram.CommonGroupMessages.Searching" = "共通グループを検索中 {searched} / {total}…";
 "Nagram.CommonGroupMessages.Searched" = "{total} 件の共通グループを検索しました";

@@ -490,7 +490,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
     let preloadHistoryDisposable = MetaDisposable()
     let nagramProfileSettingsDisposable = MetaDisposable() // MARK: NAGRAM
     // MARK: NAGRAM — an explicit media, gift or story link can open a hidden tab for this visit.
-    private var profilePaneSettings = NagramSettings.shared.profilePaneSettings
+    private var profilePaneSettingsByScope: [NagramProfilePaneScope: NagramProfilePaneSettings] = [:]
     private var temporarilyRevealedPane: PeerInfoPaneKey?
     // MARK: NAGRAM — 设置页联系人 / 通话记录入口随底栏设置、设置页隐藏项刷新
     private var nagramShowCallsTab: Bool = CallListSettings.defaultSettings.showTab
@@ -602,9 +602,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
         self.chatLocationContextHolder = chatLocationContextHolder
         self.isMediaOnly = context.account.peerId == peerId && !isSettings && !isMyProfile
         self.initialExpandPanes = initialPaneKey != nil
-        if let initialPaneKey, self.profilePaneSettings.isHidden(initialPaneKey.nagramProfilePane) { // MARK: NAGRAM
-            self.temporarilyRevealedPane = initialPaneKey
-        }
+        self.temporarilyRevealedPane = initialPaneKey // MARK: NAGRAM — resolve its visibility once the profile type is known.
         self.switchToStoryFolder = switchToStoryFolder
         self.switchToMediaTarget = switchToMediaTarget
         self.switchToGiftsTarget = switchToGiftsTarget
@@ -2787,14 +2785,8 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             guard let self else {
                 return
             }
-            let panesChanged = self.profilePaneSettings != paneSettings
-            if panesChanged {
-                self.profilePaneSettings = paneSettings
-                if let revealed = self.temporarilyRevealedPane, !paneSettings.isHidden(revealed.nagramProfilePane) {
-                    self.temporarilyRevealedPane = nil
-                }
-                self.data?.applyProfilePaneSettings(paneSettings, revealing: self.temporarilyRevealedPane)
-            }
+            self.profilePaneSettingsByScope = paneSettings
+            let panesChanged = self.data.map { self.applyProfilePaneSettings(to: $0) } ?? false
             self.requestLayout(animated: panesChanged)
         }))
         
@@ -3061,6 +3053,19 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
     private let shareThemePreloadDisposable = MetaDisposable()
     private var didPreloadShareTheme = false
 
+    // MARK: NAGRAM
+    @discardableResult
+    private func applyProfilePaneSettings(to data: PeerInfoScreenData) -> Bool {
+        guard let scope = data.profilePaneScope else { return false }
+        let settings = self.profilePaneSettingsByScope[scope] ?? NagramSettings.shared.profilePaneSettings(for: scope)
+        guard data.profilePaneSettings != settings else { return false }
+        if let pane = self.temporarilyRevealedPane, !settings.isHidden(pane.nagramProfilePane) {
+            self.temporarilyRevealedPane = nil
+        }
+        data.applyProfilePaneSettings(settings, revealing: self.temporarilyRevealedPane)
+        return true
+    }
+
     private func updateData(_ data: PeerInfoScreenData) {
         let previousData = self.data
         if !self.didPreloadShareTheme, let peer = data.peer, peer.id != self.context.account.peerId, let addressName = peer.addressName, !addressName.isEmpty {
@@ -3078,7 +3083,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
                 previousMemberCount = memberList.count
             }
         }
-        data.applyProfilePaneSettings(self.profilePaneSettings, revealing: self.temporarilyRevealedPane) // MARK: NAGRAM
+        self.applyProfilePaneSettings(to: data) // MARK: NAGRAM
         self.data = data
         if previousData?.members?.membersContext !== data.members?.membersContext {
             if let peer = data.peer, let _ = data.members {

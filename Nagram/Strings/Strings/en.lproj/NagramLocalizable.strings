@@ -346,7 +346,12 @@
 "Nagram.ShowCommonGroupMessages" = "Show Messages in Common Groups";
 "Nagram.ProfileTabs" = "Profile Tabs";
 "Nagram.ProfileTabs.Hide" = "Hide Tab";
-"Nagram.ProfileTabs.Footer" = "Press and hold a profile tab, choose Reorder Tabs, then drag it into place. Tab order and visibility apply to all profiles.";
+"Nagram.ProfileTabs.Users" = "Users";
+"Nagram.ProfileTabs.BotPreview" = "Bot app preview";
+"Nagram.ProfileTabs.SavedMessagesChats" = "Saved Messages by chat";
+"Nagram.ProfileTabs.SavedMessagesFromChat" = "Messages saved from this chat";
+"Nagram.ProfileTabs.MainTabLocalOverride" = "Your local tab settings take priority";
+"Nagram.ProfileTabs.Footer" = "Press and hold a tab on a profile of this type, choose “%@”, then drag it into place. You can turn tabs back on here, even if you hide them all.";
 "Nagram.CommonGroupMessages" = "Messages in Common Groups";
 "Nagram.CommonGroupMessages.Searching" = "Searching {searched} of {total} common groups…";
 "Nagram.CommonGroupMessages.Searched" = "Searched {total} common groups";

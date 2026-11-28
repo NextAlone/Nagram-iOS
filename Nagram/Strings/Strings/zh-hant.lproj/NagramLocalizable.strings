@@ -346,7 +346,12 @@
 "Nagram.ShowCommonGroupMessages" = "顯示共同群組發言入口";
 "Nagram.ProfileTabs" = "個人資料頁分類";
 "Nagram.ProfileTabs.Hide" = "隱藏分類";
-"Nagram.ProfileTabs.Footer" = "在個人資料頁長按分類，選擇排序後即可拖曳。分類的順序與顯示設定適用於所有個人資料頁。";
+"Nagram.ProfileTabs.Users" = "使用者";
+"Nagram.ProfileTabs.BotPreview" = "機器人迷你應用程式預覽";
+"Nagram.ProfileTabs.SavedMessagesChats" = "依對話瀏覽收藏";
+"Nagram.ProfileTabs.SavedMessagesFromChat" = "從此對話收藏的訊息";
+"Nagram.ProfileTabs.MainTabLocalOverride" = "本機分類設定優先";
+"Nagram.ProfileTabs.Footer" = "在這類個人資料頁長按分類，選擇「%@」後即可拖曳。即使隱藏了所有分類，也可以在這裡重新開啟。";
 "Nagram.CommonGroupMessages" = "共同群組發言";
 "Nagram.CommonGroupMessages.Searching" = "正在搜尋共同群組 {searched} / {total}…";
 "Nagram.CommonGroupMessages.Searched" = "已搜尋 {total} 個共同群組";

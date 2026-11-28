@@ -40,12 +40,17 @@ public func nagramStringSignal(_ key: String, defaultValue: String) -> Signal<St
     return (initial |> then(changes)) |> distinctUntilChanged
 }
 
-public func nagramProfilePaneSettingsSignal() -> Signal<NagramProfilePaneSettings, NoError> {
-    return combineLatest(
-        nagramStringSignal("nagram.profilePanes.order", defaultValue: ""),
-        nagramStringSignal("nagram.profilePanes.hidden", defaultValue: "")
-    )
-    |> map { _, _ in NagramSettings.shared.profilePaneSettings }
+public func nagramProfilePaneSettingsSignal() -> Signal<[NagramProfilePaneScope: NagramProfilePaneSettings], NoError> {
+    func settings() -> [NagramProfilePaneScope: NagramProfilePaneSettings] {
+        return Dictionary(uniqueKeysWithValues: NagramProfilePaneScope.allCases.map { ($0, NagramSettings.shared.profilePaneSettings(for: $0)) })
+    }
+    return Signal { subscriber in
+        let observer = NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: NagramDemoMode.userDefaults, queue: .main) { _ in
+            subscriber.putNext(settings())
+        }
+        subscriber.putNext(settings())
+        return ActionDisposable { NotificationCenter.default.removeObserver(observer) }
+    }
     |> distinctUntilChanged
 }
 
