@@ -18,6 +18,9 @@ import ComponentFlow
 import ComponentDisplayAdapters
 import TabSelectorComponent
 import MultilineTextComponent
+import NagramSettings // MARK: NAGRAM
+import NagramSettingsUI // MARK: NAGRAM
+import NagramStrings // MARK: NAGRAM
 import BottomButtonPanelComponent
 import UndoUI
 import HorizontalTabsComponent
@@ -609,6 +612,7 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
     private let tabsBackgroundView: GlassBackgroundView
     private let tabsContainer = ComponentView<Empty>()
     private var didJustReorderTabs = false
+    private(set) var isEditingProfileTabs = false // MARK: NAGRAM
     
     private var actionPanel: ComponentView<Empty>?
     
@@ -668,7 +672,7 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
     private var currentAvailablePanes: [PeerInfoPaneKey]?
     private let updatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)?
     
-    private let initialPaneKey: PeerInfoPaneKey?
+    private var initialPaneKey: PeerInfoPaneKey? // MARK: NAGRAM — Consumed by the first completed selection.
     
     init(context: AccountContext, updatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)?, peerId: EnginePeer.Id, chatLocation: ChatLocation, sharedMediaFromForumTopic: (EnginePeer.Id, Int64)?, chatLocationContextHolder: Atomic<ChatLocationContextHolder?>, isMediaOnly: Bool, initialPaneKey: PeerInfoPaneKey?, initialStoryFolderId: Int64?, initialGiftCollectionId: Int64?, switchToMediaTarget: PeerInfoSwitchToMediaTarget?) {
         self.context = context
@@ -887,40 +891,133 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
         }
     }
     
-    func openTabContextMenu(key: PeerInfoPaneKey, sourceView: UIView, gesture: ContextGesture?) {
-        guard let params = self.currentParams, let sourceView = sourceView as? ContextExtractedContentContainingView else {
+    // MARK: NAGRAM — Personal profile tab layout
+    private var canCustomizeProfileTabs: Bool {
+        return self.currentParams?.disableTabSwitching == false && self.selectionPanelNode == nil
+    }
+
+    func finishEditingProfileTabs() {
+        guard self.isEditingProfileTabs else {
             return
         }
-        
+        self.isEditingProfileTabs = false
+        if !self.saveProfileTabOrder() {
+            self.requestUpdate?(.animated(duration: 0.2, curve: .easeInOut))
+        }
+    }
+
+    @discardableResult
+    private func saveProfileTabOrder() -> Bool {
+        guard let scope = self.currentParams?.data?.profilePaneScope, let availablePanes = self.currentAvailablePanes, let ids = (self.tabsContainer.view as? HorizontalTabsComponent.View)?.reorderedItemIds else {
+            return false
+        }
+        let reordered = ids.compactMap { $0.base as? PeerInfoPaneKey }.filter { availablePanes.contains($0) }
+        guard reordered != availablePanes.filter({ reordered.contains($0) }) else {
+            return false
+        }
+        // The settings observer lays out the committed order; rendering beforehand would briefly undo the drag.
+        self.didJustReorderTabs = true
+        NagramSettings.shared.setProfilePaneOrder(reordered.map(\.nagramProfilePane), in: scope)
+        return true
+    }
+
+    private func hideProfileTab(_ key: PeerInfoPaneKey) {
+        guard let data = self.currentParams?.data, let scope = data.profilePaneScope, data.availablePanes.contains(key), data.profilePaneSettings?.isHidden(key.nagramProfilePane) == false else {
+            return
+        }
+        if self.isEditingProfileTabs {
+            self.saveProfileTabOrder()
+        }
+        NagramSettings.shared.setProfilePaneHidden(true, for: key.nagramProfilePane, in: scope)
+    }
+
+    private func canSetMainProfileTab(_ key: PeerInfoPaneKey) -> Bool {
+        guard let data = self.currentParams?.data, data.originalAvailablePanes.contains(key), key != data.originalAvailablePanes.first, key.tab != nil, let peer = data.peer else {
+            return false
+        }
+        if case let .channel(channel) = peer, case .broadcast = channel.info {
+            return channel.hasPermission(.changeInfo)
+        }
+        return peer.id == self.context.account.peerId && (key == .gifts || key == .stories)
+    }
+
+    private func openTabContextMenu(key: PeerInfoPaneKey, sourceView: ContextExtractedContentContainingView, gesture: ContextGesture?) {
+        guard let params = self.currentParams, let data = params.data, !self.isEditingProfileTabs, data.availablePanes.contains(key) else {
+            return
+        }
+
         var items: [ContextMenuItem] = []
-        items.append(.action(ContextMenuActionItem(text: params.presentationData.strings.PeerInfo_Tabs_SetMainTab, icon: { theme in
-            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/ReorderItems"), color: theme.actionSheet.primaryTextColor)
-        }, action: { [weak self] _, f in
-            guard let self else {
-                return
+        if self.canCustomizeProfileTabs, let scope = data.profilePaneScope, let settings = data.profilePaneSettings {
+            if data.availablePanes.count > 1 {
+                items.append(.action(ContextMenuActionItem(text: params.presentationData.strings.ChatList_ReorderTabs, icon: { theme in
+                    return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/ReorderItems"), color: theme.contextMenu.primaryColor)
+                }, action: { [weak self] controller, _ in
+                    controller?.dismiss(completion: { [weak self] in
+                        guard let self, self.canCustomizeProfileTabs, let panes = self.currentAvailablePanes, panes.count > 1 else {
+                            return
+                        }
+                        self.isEditingProfileTabs = true
+                        self.requestUpdate?(.animated(duration: 0.2, curve: .easeInOut))
+                    })
+                })))
             }
-            f(.default)
-            
-            guard let tab = key.tab else {
-                return
+            let isHidden = settings.isHidden(key.nagramProfilePane)
+            let visibilityTitle = isHidden ? params.presentationData.strings.PeerInfo_Gifts_Context_Show : ngI18n("Nagram.ProfileTabs.Hide", params.presentationData.strings.baseLanguageCode)
+            items.append(.action(ContextMenuActionItem(text: visibilityTitle, icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: isHidden ? "Peer Info/ShowIcon" : "Peer Info/HideIcon"), color: theme.contextMenu.primaryColor)
+            }, action: { [weak self] controller, _ in
+                controller?.dismiss(completion: { [weak self] in
+                    guard let self, self.canCustomizeProfileTabs, self.currentParams?.data?.profilePaneScope == scope else {
+                        return
+                    }
+                    if isHidden {
+                        NagramSettings.shared.setProfilePaneHidden(false, for: key.nagramProfilePane, in: scope)
+                    } else {
+                        self.hideProfileTab(key)
+                    }
+                })
+            })))
+        }
+        if self.canSetMainProfileTab(key) {
+            if !items.isEmpty {
+                items.append(.separator)
             }
-            Queue.mainQueue().after(0.15) { [weak self] in
+            let localOverride = data.profilePaneSettings?.overridesMainPane(key.nagramProfilePane, in: data.panesBeforeMainTab.map(\.nagramProfilePane)) == true
+            let mainTabLayout: ContextMenuActionItemTextLayout = localOverride
+                ? .secondLineWithValue(ngI18n("Nagram.ProfileTabs.MainTabLocalOverride", params.presentationData.strings.baseLanguageCode))
+                : .singleLine
+            items.append(.action(ContextMenuActionItem(text: params.presentationData.strings.PeerInfo_Tabs_SetMainTab, textLayout: mainTabLayout, icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/ReorderItems"), color: theme.actionSheet.primaryTextColor)
+            }, action: { [weak self] _, f in
                 guard let self else {
                     return
                 }
+                f(.default)
 
-                self.didJustReorderTabs = true
-                let _ = (self.context.engine.peers.setMainProfileTab(peerId: self.peerId, tab: tab)
-                |> deliverOnMainQueue).start(completed: { [weak self] in
-                    guard let self else {
+                guard let tab = key.tab else {
+                    return
+                }
+                Queue.mainQueue().after(0.15) { [weak self] in
+                    guard let self, self.canSetMainProfileTab(key) else {
                         return
                     }
-                    let controller = UndoOverlayController(presentationData: params.presentationData, content: .actionSucceeded(title: nil, text: params.presentationData.strings.PeerInfo_Tabs_SetMainTab_Succeed, cancel: nil, destructive: false), action: { _ in return true })
-                    self.parentController?.present(controller, in: .current)
-                })
-            }
-        })))
+
+                    self.didJustReorderTabs = true
+                    let _ = (self.context.engine.peers.setMainProfileTab(peerId: self.peerId, tab: tab)
+                    |> deliverOnMainQueue).start(completed: { [weak self] in
+                        guard let self else {
+                            return
+                        }
+                        let controller = UndoOverlayController(presentationData: params.presentationData, content: .actionSucceeded(title: nil, text: params.presentationData.strings.PeerInfo_Tabs_SetMainTab_Succeed, cancel: nil, destructive: false), action: { _ in return true })
+                        self.parentController?.present(controller, in: .current)
+                    })
+                }
+            })))
+        }
         
+        guard !items.isEmpty else {
+            return
+        }
         let contextController = makeContextController(
             presentationData: params.presentationData,
             source: .reference(TabsReferenceContentSource(sourceView: sourceView)),
@@ -951,13 +1048,25 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
         let previousAvailablePanes = self.currentAvailablePanes
         let availablePanes = data?.availablePanes ?? []
         self.currentAvailablePanes = data?.availablePanes
+
+        // MARK: NAGRAM — The last tab can also disappear through a settings update.
+        if self.isEditingProfileTabs, data != nil, availablePanes.isEmpty {
+            self.isEditingProfileTabs = false
+        }
+        if let pendingKey = self.pendingSwitchToPaneKey, previousAvailablePanes?.contains(pendingKey) == true, !availablePanes.contains(pendingKey) {
+            self.pendingSwitchToPaneKey = nil
+            if self.initialPaneKey == pendingKey {
+                self.initialPaneKey = nil
+            }
+        }
         
         let previousPaneKeys = Set<PeerInfoPaneKey>(self.currentPanes.keys)
         
         let previousCurrentPaneKey = self.currentPaneKey
         var updateCurrentPaneStatus = false
         
-        if let previousAvailablePanes, !previousAvailablePanes.contains(.stories), availablePanes.contains(.stories) {
+        // MARK: NAGRAM — Restoring the Stories tab in settings preserves the current selection.
+        if let previousPanes = self.currentParams?.data?.originalAvailablePanes, !previousPanes.contains(.stories), availablePanes.contains(.stories) {
             self.pendingSwitchToPaneKey = .stories
         }
         
@@ -967,6 +1076,7 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
                 for i in (0 ... index - 1).reversed() {
                     if availablePanes.contains(previousAvailablePanes[i]) {
                         nextCandidatePaneKey = previousAvailablePanes[i]
+                        break // MARK: NAGRAM — Select the nearest preceding tab when the active one is hidden.
                     }
                 }
             }
@@ -979,6 +1089,7 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
             } else {
                 self.currentPaneKey = nil
                 self.pendingSwitchToPaneKey = nil
+                updateCurrentPaneStatus = true // MARK: NAGRAM
             }
         } else if self.currentPaneKey == nil {
             self.pendingSwitchToPaneKey = self.initialPaneKey ?? availablePanes.first
@@ -1173,6 +1284,7 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
         var updatedCurrentIndex = currentIndex
         if let pendingSwitchToPaneKey = self.pendingSwitchToPaneKey, let _ = self.currentPanes[pendingSwitchToPaneKey] {
             self.pendingSwitchToPaneKey = nil
+            self.initialPaneKey = nil // MARK: NAGRAM
             previousPaneKey = self.currentPaneKey
             self.currentPaneKey = pendingSwitchToPaneKey
             updateCurrentPaneStatus = true
@@ -1280,18 +1392,10 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
         }
         tabsAlpha *= tabsAlpha
         
-        var canManageTabs = false
-        if let peer = data?.peer {
-            if peer.id == self.context.account.peerId {
-                canManageTabs = true
-            } else if case let .channel(channel) = data?.peer, case .broadcast = channel.info {
-                if channel.hasPermission(.changeInfo) {
-                    canManageTabs = true
-                }
-            }
-        }
-        
         let tabsSideInset: CGFloat = sideInset + 16.0
+        // MARK: NAGRAM
+        let editingTabSettings = self.isEditingProfileTabs ? data?.profilePaneSettings : nil
+        let hideTabTitle = self.isEditingProfileTabs ? ngI18n("Nagram.ProfileTabs.Hide", presentationData.strings.baseLanguageCode) : nil
         
         let tabsContainerSize = CGSize(width: size.width - self.stripInsets.left - self.stripInsets.right - tabsSideInset * 2.0, height: tabsHeight)
         let tabsContainerEffectiveSize = self.tabsContainer.update(
@@ -1300,71 +1404,27 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
                 context: self.context,
                 theme: presentationData.theme,
                 tabs: availablePanes.map { paneKey -> HorizontalTabsComponent.Tab in
-                    var canReorder = false
+                    // MARK: NAGRAM — Settings and the tabs share the same localized titles.
+                    let title = nagramProfilePaneTitle(paneKey.nagramProfilePane, strings: presentationData.strings)
                     let content: HorizontalTabsComponent.Tab.Content
-                    switch paneKey {
-                    case .stories:
-                        content = .title(HorizontalTabsComponent.Tab.Title(text: presentationData.strings.PeerInfo_PaneStories, entities: [], enableAnimations: false))
-                        canReorder = true
-                    case .storyArchive:
-                        content = .title(HorizontalTabsComponent.Tab.Title(text: presentationData.strings.PeerInfo_PaneArchivedStories, entities: [], enableAnimations: false))
-                    case .botPreview:
-                        content = .title(HorizontalTabsComponent.Tab.Title(text: presentationData.strings.PeerInfo_PaneBotPreviews, entities: [], enableAnimations: false))
-                    case .media:
-                        content = .title(HorizontalTabsComponent.Tab.Title(text: presentationData.strings.PeerInfo_PaneMedia, entities: [], enableAnimations: false))
-                        canReorder = self.peerId.namespace == Namespaces.Peer.CloudChannel
-                    case .files:
-                        content = .title(HorizontalTabsComponent.Tab.Title(text: presentationData.strings.PeerInfo_PaneFiles, entities: [], enableAnimations: false))
-                        canReorder = self.peerId.namespace == Namespaces.Peer.CloudChannel
-                    case .links:
-                        content = .title(HorizontalTabsComponent.Tab.Title(text: presentationData.strings.PeerInfo_PaneLinks, entities: [], enableAnimations: false))
-                        canReorder = self.peerId.namespace == Namespaces.Peer.CloudChannel
-                    case .voice:
-                        content = .title(HorizontalTabsComponent.Tab.Title(text: presentationData.strings.PeerInfo_PaneVoiceAndVideo, entities: [], enableAnimations: false))
-                        canReorder = self.peerId.namespace == Namespaces.Peer.CloudChannel
-                    case .gifs:
-                        content = .title(HorizontalTabsComponent.Tab.Title(text: presentationData.strings.PeerInfo_PaneGifs, entities: [], enableAnimations: false))
-                        canReorder = self.peerId.namespace == Namespaces.Peer.CloudChannel
-                    case .music:
-                        content = .title(HorizontalTabsComponent.Tab.Title(text: presentationData.strings.PeerInfo_PaneAudio, entities: [], enableAnimations: false))
-                        canReorder = self.peerId.namespace == Namespaces.Peer.CloudChannel
-                    case .groupsInCommon:
-                        content = .title(HorizontalTabsComponent.Tab.Title(text: presentationData.strings.PeerInfo_PaneGroups, entities: [], enableAnimations: false))
-                    case .members:
-                        content = .title(HorizontalTabsComponent.Tab.Title(text: presentationData.strings.PeerInfo_PaneMembers, entities: [], enableAnimations: false))
-                    case .similarChannels:
-                        content = .title(HorizontalTabsComponent.Tab.Title(text: presentationData.strings.PeerInfo_PaneRecommended, entities: [], enableAnimations: false))
-                    case .similarBots:
-                        content = .title(HorizontalTabsComponent.Tab.Title(text: presentationData.strings.PeerInfo_PaneRecommendedBots, entities: [], enableAnimations: false))
-                    case .savedMessagesChats:
-                        content = .title(HorizontalTabsComponent.Tab.Title(text: presentationData.strings.DialogList_TabTitle, entities: [], enableAnimations: false))
-                    case .savedMessages:
-                        content = .title(HorizontalTabsComponent.Tab.Title(text: presentationData.strings.PeerInfo_SavedMessagesTabTitle, entities: [], enableAnimations: false))
-                    case .gifts:
+                    if paneKey == .gifts {
                         var icons: [ProfileGiftsContext.State.StarGift] = []
                         if let gifts = data?.profileGiftsContext?.currentState?.gifts.prefix(3) {
                             icons = Array(gifts)
                         }
                         content = .custom(AnyComponent(
-                            GiftsTabItemComponent(context: self.context, icons: icons, title: presentationData.strings.PeerInfo_PaneGifts, theme: presentationData.theme)
+                            GiftsTabItemComponent(context: self.context, icons: icons, title: title, theme: presentationData.theme)
                         ))
-                        canReorder = true
-                    case .polls:
-                        content = .title(HorizontalTabsComponent.Tab.Title(text: presentationData.strings.PeerInfo_PanePolls, entities: [], enableAnimations: false))
+                    } else {
+                        content = .title(HorizontalTabsComponent.Tab.Title(text: title, entities: [], enableAnimations: false))
                     }
-                    
-                    var tabAccessibilityLabel: String?
-                    if case .gifts = paneKey {
-                        // The tab shows the title and the first gifts' stickers; it is read by its title.
-                        tabAccessibilityLabel = presentationData.strings.PeerInfo_PaneGifts
-                    }
-                    
+
                     return HorizontalTabsComponent.Tab(
                         id: AnyHashable(paneKey),
                         content: content,
                         badge: nil,
                         action: { [weak self] in
-                            guard let self else {
+                            guard let self, !self.isEditingProfileTabs else { // MARK: NAGRAM
                                 return
                             }
                             if self.currentPaneKey == paneKey {
@@ -1395,21 +1455,22 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
                                 }
                             }
                         },
-                        contextAction: paneKey != availablePanes.first && canManageTabs && canReorder ? { [weak self] sourceView, gesture in
-                            guard let self else {
-                                return
-                            }
-                            self.openTabContextMenu(key: paneKey, sourceView: sourceView, gesture: gesture)
+                        // MARK: NAGRAM
+                        contextAction: !self.isEditingProfileTabs && (self.canCustomizeProfileTabs || self.canSetMainProfileTab(paneKey)) ? { [weak self] sourceView, gesture in
+                            self?.openTabContextMenu(key: paneKey, sourceView: sourceView, gesture: gesture)
                         } : nil,
-                        deleteAction: nil,
-                        accessibilityLabel: tabAccessibilityLabel,
+                        deleteAction: editingTabSettings?.isHidden(paneKey.nagramProfilePane) == false ? { [weak self] in
+                            self?.hideProfileTab(paneKey)
+                        } : nil,
+                        accessibilityLabel: paneKey == .gifts ? title : nil,
+                        deleteAccessibilityLabel: hideTabTitle,
                         contextAccessibilityLabel: presentationData.strings.Common_More
                     )
                 },
                 // A lone tab has no pill: the bar fits its tabs, so the pill would fill the whole capsule and leave
                 // only its border, reading as a bare chip. Its title sits on the glass capsule instead.
                 selectedTab: availablePanes.count > 1 ? self.currentPaneKey.flatMap { HorizontalTabsComponent.Tab.Id($0) } : nil,
-                isEditing: false,
+                isEditing: self.isEditingProfileTabs, // MARK: NAGRAM
                 layout: .fit,
                 liftWhileSwitching: deviceMetrics.type != .tablet
             )),

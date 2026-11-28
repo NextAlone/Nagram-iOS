@@ -113,6 +113,8 @@ enum NagramSettingsSyncKeys {
         "nagram.disableChatAvatarStories",
         "nagram.showRegDate",
         "nagram.showCommonGroupMessages",
+        "nagram.profilePanes.order",
+        "nagram.profilePanes.hidden",
         "nagram.groupProfileSettingItems",
         "nagram.hiddenSettingsPageItems",
         "nagram.hidePhoneInSettings",
@@ -149,6 +151,7 @@ enum NagramSettingsSyncKeys {
     private static let syncedPrefixes: [String] = [
         "nagram.chatListStartupSpecificFolder.",
         "nagram.recentChatFolders.",
+        "nagram.profilePanes.byType.",
         "nagram.autoTranslate."
     ]
 

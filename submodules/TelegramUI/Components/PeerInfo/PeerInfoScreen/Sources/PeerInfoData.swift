@@ -413,6 +413,31 @@ private func peerInfoStatusWithHiddenCommunityPrefix(_ status: PeerInfoStatusDat
     return status
 }
 
+// MARK: NAGRAM — store stable names independently of Telegram's Int32 pane indices.
+extension PeerInfoPaneKey {
+    var nagramProfilePane: NagramProfilePane {
+        switch self {
+        case .botPreview: return .botPreview
+        case .members: return .members
+        case .stories: return .stories
+        case .gifts: return .gifts
+        case .media: return .media
+        case .savedMessagesChats: return .savedMessagesChats
+        case .savedMessages: return .savedMessages
+        case .files: return .files
+        case .music: return .music
+        case .voice: return .voice
+        case .links: return .links
+        case .gifs: return .gifs
+        case .polls: return .polls
+        case .groupsInCommon: return .groupsInCommon
+        case .similarChannels: return .similarChannels
+        case .similarBots: return .similarBots
+        case .storyArchive: return .storyArchive
+        }
+    }
+}
+
 final class PeerInfoScreenData {
     let peer: EnginePeer?
     let chatPeer: EnginePeer?
@@ -423,7 +448,24 @@ final class PeerInfoScreenData {
     let peerNotificationSettings: TelegramPeerNotificationSettings?
     let threadNotificationSettings: TelegramPeerNotificationSettings?
     let globalNotificationSettings: EngineGlobalNotificationSettings?
-    let availablePanes: [PeerInfoPaneKey]
+    // MARK: NAGRAM — the header, gestures and pane loader all consume the same visible order.
+    let profilePaneScope: NagramProfilePaneScope?
+    private(set) var profilePaneSettings: NagramProfilePaneSettings?
+    let panesBeforeMainTab: [PeerInfoPaneKey]
+    let originalAvailablePanes: [PeerInfoPaneKey]
+    private(set) var availablePanes: [PeerInfoPaneKey]
+
+    func applyProfilePaneSettings(_ settings: NagramProfilePaneSettings, revealing explicitPane: PeerInfoPaneKey?) {
+        self.profilePaneSettings = settings
+        let order = settings.ordered(self.originalAvailablePanes.map(\.nagramProfilePane))
+        self.availablePanes = order.compactMap { pane in
+            guard pane == explicitPane?.nagramProfilePane || !settings.isHidden(pane) else {
+                return nil
+            }
+            return self.originalAvailablePanes.first(where: { $0.nagramProfilePane == pane })
+        }
+    }
+
     let groupsInCommon: GroupsInCommonContext?
     let linkedDiscussionPeer: EnginePeer?
     let linkedMonoforumPeer: EnginePeer?
@@ -490,6 +532,8 @@ final class PeerInfoScreenData {
         globalNotificationSettings: EngineGlobalNotificationSettings?,
         isContact: Bool,
         availablePanes: [PeerInfoPaneKey],
+        profilePaneScope: NagramProfilePaneScope? = nil, // MARK: NAGRAM
+        panesBeforeMainTab: [PeerInfoPaneKey]? = nil, // MARK: NAGRAM
         groupsInCommon: GroupsInCommonContext?,
         linkedDiscussionPeer: EnginePeer?,
         linkedMonoforumPeer: EnginePeer?,
@@ -540,6 +584,9 @@ final class PeerInfoScreenData {
         self.threadNotificationSettings = threadNotificationSettings
         self.globalNotificationSettings = globalNotificationSettings
         self._isContact = isContact
+        self.profilePaneScope = profilePaneScope // MARK: NAGRAM
+        self.panesBeforeMainTab = panesBeforeMainTab ?? availablePanes // MARK: NAGRAM
+        self.originalAvailablePanes = availablePanes // MARK: NAGRAM
         self.availablePanes = availablePanes
         self.groupsInCommon = groupsInCommon
         self.linkedDiscussionPeer = linkedDiscussionPeer
@@ -1232,6 +1279,15 @@ func peerInfoScreenData(
                 businessConnectedBot: nil
             ))
         case let .user(userPeerId, secretChatId, kind):
+            // MARK: NAGRAM — My Profile and Saved Messages share a peer ID but have distinct tabs.
+            let profilePaneScope: NagramProfilePaneScope
+            if isMyProfile {
+                profilePaneScope = .myProfile
+            } else if peerId == context.account.peerId {
+                profilePaneScope = .savedMessages
+            } else {
+                profilePaneScope = kind == .bot ? .bot : .user
+            }
             let groupsInCommon: GroupsInCommonContext?
             if isMyProfile {
                 groupsInCommon = nil
@@ -1698,6 +1754,7 @@ func peerInfoScreenData(
                     availablePanes = nil
                 }
                 
+                let panesBeforeMainTab = availablePanes // MARK: NAGRAM — preview replacing the current server main tab.
                 if var currentAvailablePanes = availablePanes, let cachedData = peerView.cachedData as? CachedUserData, let mainProfileTab = cachedData.mainProfileTab {
                     let mainTabKey = PeerInfoPaneKey(tab: mainProfileTab)
                     if currentAvailablePanes.contains(mainTabKey) && currentAvailablePanes.first != mainTabKey {
@@ -1789,6 +1846,8 @@ func peerInfoScreenData(
                         globalNotificationSettings: globalNotificationSettings,
                         isContact: peerView.peerIsContact,
                         availablePanes: availablePanes ?? [],
+                        profilePaneScope: profilePaneScope, // MARK: NAGRAM
+                        panesBeforeMainTab: panesBeforeMainTab, // MARK: NAGRAM
                         groupsInCommon: groupsInCommon,
                         linkedDiscussionPeer: nil,
                         linkedMonoforumPeer: nil,
@@ -2008,6 +2067,7 @@ func peerInfoScreenData(
                     availablePanes = nil
                 }
                 
+                let panesBeforeMainTab = availablePanes // MARK: NAGRAM — preview replacing the current server main tab.
                 if var currentAvailablePanes = availablePanes, let cachedData = peerView.cachedData as? CachedChannelData, let mainProfileTab = cachedData.mainProfileTab {
                     let mainTabKey = PeerInfoPaneKey(tab: mainProfileTab)
                     if currentAvailablePanes.contains(mainTabKey) && currentAvailablePanes.first != mainTabKey {
@@ -2092,6 +2152,8 @@ func peerInfoScreenData(
                         globalNotificationSettings: globalNotificationSettings,
                         isContact: peerView.peerIsContact,
                         availablePanes: availablePanes ?? [],
+                        profilePaneScope: .channel, // MARK: NAGRAM
+                        panesBeforeMainTab: panesBeforeMainTab, // MARK: NAGRAM
                         groupsInCommon: nil,
                         linkedDiscussionPeer: discussionPeer,
                         linkedMonoforumPeer: monoforumPeer,
@@ -2476,6 +2538,7 @@ func peerInfoScreenData(
                         globalNotificationSettings: globalNotificationSettings,
                         isContact: peerView.peerIsContact,
                         availablePanes: availablePanes ?? [],
+                        profilePaneScope: .group, // MARK: NAGRAM
                         groupsInCommon: nil,
                         linkedDiscussionPeer: discussionPeer,
                         linkedMonoforumPeer: monoforumPeer,

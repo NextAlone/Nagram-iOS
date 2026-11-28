@@ -489,6 +489,9 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
     let addMemberDisposable = MetaDisposable()
     let preloadHistoryDisposable = MetaDisposable()
     let nagramProfileSettingsDisposable = MetaDisposable() // MARK: NAGRAM
+    // MARK: NAGRAM — an explicit media, gift or story link can open a hidden tab for this visit.
+    private var profilePaneSettingsByScope: [NagramProfilePaneScope: NagramProfilePaneSettings] = [:]
+    private var temporarilyRevealedPane: PeerInfoPaneKey?
     // MARK: NAGRAM — 设置页联系人 / 通话记录入口随底栏设置、设置页隐藏项刷新
     private var nagramShowCallsTab: Bool = CallListSettings.defaultSettings.showTab
     private var nagramTabEntriesDisposable: Disposable?
@@ -599,6 +602,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
         self.chatLocationContextHolder = chatLocationContextHolder
         self.isMediaOnly = context.account.peerId == peerId && !isSettings && !isMyProfile
         self.initialExpandPanes = initialPaneKey != nil
+        self.temporarilyRevealedPane = initialPaneKey // MARK: NAGRAM — resolve its visibility once the profile type is known.
         self.switchToStoryFolder = switchToStoryFolder
         self.switchToMediaTarget = switchToMediaTarget
         self.switchToGiftsTarget = switchToGiftsTarget
@@ -2256,6 +2260,10 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
                 strongSelf.chatInterfaceInteraction.selectionState = strongSelf.state.selectedMessageIds.flatMap { ChatInterfaceSelectionState(selectedIds: $0) }
                 strongSelf.paneContainerNode.updateSelectedMessageIds(strongSelf.state.selectedMessageIds, animated: true)
             case .selectionDone:
+                if strongSelf.paneContainerNode.isEditingProfileTabs { // MARK: NAGRAM
+                    strongSelf.paneContainerNode.finishEditingProfileTabs()
+                    return
+                }
                 strongSelf.state = strongSelf.state.withSelectedMessageIds(nil).withSelectedStoryIds(nil).withPaneIsReordering(false)
                 if let (layout, navigationHeight) = strongSelf.validLayout {
                     strongSelf.containerLayoutUpdated(layout: layout, navigationHeight: navigationHeight, transition: .animated(duration: 0.4, curve: .spring), additive: false)
@@ -2771,9 +2779,15 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             nagramBoolSignal("nagram.showProfileId", defaultValue: false),
             nagramBoolSignal("nagram.showDC", defaultValue: false),
             nagramBoolSignal("nagram.showRegDate", defaultValue: false),
-            nagramBoolSignal("nagram.showCommonGroupMessages", defaultValue: false)
-        ).startStrict(next: { [weak self] _, _, _, _ in
-            self?.requestLayout(animated: false)
+            nagramBoolSignal("nagram.showCommonGroupMessages", defaultValue: false),
+            nagramProfilePaneSettingsSignal()
+        ).startStrict(next: { [weak self] _, _, _, _, paneSettings in
+            guard let self else {
+                return
+            }
+            self.profilePaneSettingsByScope = paneSettings
+            let panesChanged = self.data.map { self.applyProfilePaneSettings(to: $0) } ?? false
+            self.requestLayout(animated: panesChanged)
         }))
         
         // MARK: NAGRAM — 设置页联系人 / 通话记录入口随底栏设置刷新
@@ -3039,6 +3053,19 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
     private let shareThemePreloadDisposable = MetaDisposable()
     private var didPreloadShareTheme = false
 
+    // MARK: NAGRAM
+    @discardableResult
+    private func applyProfilePaneSettings(to data: PeerInfoScreenData) -> Bool {
+        guard let scope = data.profilePaneScope else { return false }
+        let settings = self.profilePaneSettingsByScope[scope] ?? NagramSettings.shared.profilePaneSettings(for: scope)
+        guard data.profilePaneSettings != settings else { return false }
+        if let pane = self.temporarilyRevealedPane, !settings.isHidden(pane.nagramProfilePane) {
+            self.temporarilyRevealedPane = nil
+        }
+        data.applyProfilePaneSettings(settings, revealing: self.temporarilyRevealedPane)
+        return true
+    }
+
     private func updateData(_ data: PeerInfoScreenData) {
         let previousData = self.data
         if !self.didPreloadShareTheme, let peer = data.peer, peer.id != self.context.account.peerId, let addressName = peer.addressName, !addressName.isEmpty {
@@ -3056,6 +3083,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
                 previousMemberCount = memberList.count
             }
         }
+        self.applyProfilePaneSettings(to: data) // MARK: NAGRAM
         self.data = data
         if previousData?.members?.membersContext !== data.members?.membersContext {
             if let peer = data.peer, let _ = data.members {
@@ -6404,7 +6432,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             }
             
             var disableTabSwitching = false
-            if self.state.selectedStoryIds != nil || self.state.paneIsReordering {
+            if self.state.selectedStoryIds != nil || self.state.paneIsReordering || self.paneContainerNode.isEditingProfileTabs { // MARK: NAGRAM
                 disableTabSwitching = true
             }
                         
@@ -6442,8 +6470,14 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
 
             // iPhone Duo: the bar's column takes the icons; the header's title clears what stays in the row.
             let iconsInSideColumn = !layout.presentedInFormSheet && sideColumnRegion(layout: layout, minY: (layout.navigationBarStatusBarHeight ?? 0.0) + 8.0, reservedBelow: (self.controller?.parent as? TabBarController)?.verticalTabBarFrame(for: layout)) != nil
-            self.headerNode.navigationRowRightButtonCount = peerInfoNavigationRowButtonCount(navigationSets.normal.right + navigationSets.expanded.right, iconsInSideColumn: iconsInSideColumn)
-            self.applyNavigationButtons(showsPaneSet ? navigationSets.expanded : navigationSets.normal)
+            // MARK: NAGRAM — Done is available even when the profile header is only partially collapsed.
+            if self.paneContainerNode.isEditingProfileTabs {
+                self.headerNode.navigationRowRightButtonCount = 1
+                self.applyNavigationButtons(PeerInfoNavigationButtonSet(left: [], right: [.selectionDone]))
+            } else {
+                self.headerNode.navigationRowRightButtonCount = peerInfoNavigationRowButtonCount(navigationSets.normal.right + navigationSets.expanded.right, iconsInSideColumn: iconsInSideColumn)
+                self.applyNavigationButtons(showsPaneSet ? navigationSets.expanded : navigationSets.normal)
+            }
         }
     }
     
@@ -7392,6 +7426,7 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
     override public func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
 
+        self.controllerNode.paneContainerNode.finishEditingProfileTabs() // MARK: NAGRAM
         self.controllerNode.logoutConfirmationDisposable.set(nil)
         
         self.dismissAllTooltips()

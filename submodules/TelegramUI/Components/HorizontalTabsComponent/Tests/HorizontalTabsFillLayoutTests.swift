@@ -184,6 +184,43 @@ final class HorizontalTabsFillLayoutTests: XCTestCase {
         withExtendedLifetime(componentView) {}
     }
 
+    // MARK: NAGRAM — Chat folders and profile tabs can change while the user edits their order.
+    func testEditingOrderFollowsIncomingChangesUntilADragAndKeepsSurvivingTabsAfterward() {
+        let (host, view) = self.makeView(titles: Self.shortTitles, isEditing: true)
+        let tabs = self.makeComponent(titles: Self.shortTitles + ["New"], selectedTab: 0).tabs
+        func update(_ ids: [Int], editing: Bool = true) {
+            let component = HorizontalTabsComponent(context: nil, theme: defaultDarkPresentationTheme, tabs: ids.map { tabs[$0] }, selectedTab: 0, isEditing: editing)
+            let _ = host.update(transition: .immediate, component: AnyComponent(component), environment: {}, containerSize: CGSize(width: Self.barWidth, height: Self.barHeight))
+        }
+
+        XCTAssertEqual(view.reorderedItemIds, [0, 1, 2, 3])
+        update([0, 2, 1, 4])
+        XCTAssertEqual(view.reorderedItemIds, [0, 2, 1, 4])
+
+        let frames = self.measure(view).titleFrames
+        guard let first = frames.first, let last = frames.last else {
+            XCTFail("Missing tab frames")
+            return
+        }
+        view.beginReordering(at: CGPoint(x: last.midX, y: last.midY))
+        let offset = first.midX - last.midX
+        // Move onto the first tab, then cross its centre.
+        view.updateReordering(offset: offset)
+        view.updateReordering(offset: offset - 2.0)
+        view.endReordering()
+        XCTAssertEqual(view.reorderedItemIds, [4, 0, 2, 1])
+
+        update([0, 3, 1, 4])
+        XCTAssertEqual(view.reorderedItemIds, [4, 0, 1, 3])
+        let displayedIds = self.measure(view).titleFrames.compactMap { view.tabId(at: CGPoint(x: $0.midX, y: $0.midY)) }
+        XCTAssertEqual(displayedIds, [4, 0, 1, 3])
+
+        update([0, 3, 1, 4], editing: false)
+        XCTAssertNil(view.reorderedItemIds)
+        update([0, 3, 1, 4])
+        XCTAssertEqual(view.reorderedItemIds, [0, 3, 1, 4])
+    }
+
     func testWithoutASelectedTabThePillStaysWhereItWas() {
         // The chat list search's suggested peers replace its filters, so no tab is selected. The pill
         // hides where it was: it used to shrink to an empty lens at the leading edge, which still drew
